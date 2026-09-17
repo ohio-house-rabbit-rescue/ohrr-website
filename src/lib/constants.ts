@@ -3,7 +3,7 @@ import type { SponsorTier } from './types'
 // Site-wide constants. Every fact here comes from ohiohouserabbitrescue.org
 // (captured 2026-09-17) — keep it that way: no invented facts.
 
-export const APP_URL = 'https://ohrr-app.netlify.app'
+export const APP_URL = 'https://ohrr-app.pages.dev'
 export const STAFF_URL = `${APP_URL}/staff`
 export const LIVE_SITE = 'https://ohiohouserabbitrescue.org'
 

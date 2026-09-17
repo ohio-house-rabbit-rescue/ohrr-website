@@ -15,7 +15,7 @@ import { APP_URL, LIVE_SITE, OHRR } from '../lib/constants'
 //   - staff sign-in is Supabase Auth (email + password), session kept in the browser.
 const UPDATED = 'September 17, 2026'
 const APP_HOST = APP_URL.replace('https://', '')
-const SITE_HOST = 'ohrr-website.netlify.app'
+const SITE_HOST = 'ohrr-website.pages.dev'
 
 // Generous type for older readers, on screen and in print.
 function H({ children }: { children: ReactNode }) {
