@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAnnouncements, useFeaturedRabbits } from '../lib/data'
-import { btn, RabbitCard, LiveNote, Section } from '../components/ui'
+import { btn, RabbitCard, LiveNote, Section, NewsImage } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { HomeHero, FeaturedStrip } from '../components/HomeHero'
 
@@ -12,8 +12,21 @@ function Announcements() {
       <div className="space-y-2">
         {items.map((a) => (
           <div key={a.id} className="rounded-2xl border border-brand-orange/30 bg-brand-orange-50/60 px-4 py-3 sm:px-5">
-            <p className="font-display text-sm font-extrabold text-ink">{a.title}</p>
-            <p className="mt-0.5 whitespace-pre-line text-sm text-slate-600">{a.body}</p>
+            <div className={a.imageUrl ? 'flex flex-col gap-3 py-1 sm:flex-row sm:items-start sm:gap-5' : ''}>
+              {a.imageUrl && (
+                <NewsImage
+                  src={a.imageUrl}
+                  alt={a.title}
+                  fit={a.imageFit}
+                  href={a.url}
+                  className="w-full shrink-0 sm:w-48 md:w-56"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="font-display text-sm font-extrabold text-ink">{a.title}</p>
+                <p className="mt-0.5 whitespace-pre-line text-sm text-slate-600">{a.body}</p>
+              </div>
+            </div>
           </div>
         ))}
       </div>

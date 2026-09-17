@@ -8,6 +8,7 @@ import {
   WISH_LIST_PAGE,
   AMAZON_WISH_LIST,
   MERCH_STORE,
+  BUNFEST_MERCH,
   LICENSE_PLATE,
   BECOME_SUPPORTER,
   ONLINE_AFFILIATES,
@@ -24,6 +25,11 @@ interface Way {
   href: string
   cta: string
   secondary?: { href: string; label: string }
+  // OHRR's own artwork for this channel, bundled under public/img/news/ (never hotlinked);
+  // alt text is the live-site post title. 'contain' keeps logos/artwork uncropped.
+  image?: string
+  imageAlt?: string
+  imageFit?: 'cover' | 'contain'
 }
 
 // Every way to give on the current OHRR site, in plain English, each with a button
@@ -48,6 +54,9 @@ const WAYS: Way[] = [
     href: KROGER_POST,
     cta: 'How to link your card',
     secondary: { href: KROGER_REWARDS, label: 'Go to Kroger Community Rewards' },
+    image: '/img/news/kroger-community-rewards.jpg',
+    imageAlt: 'Link OHRR to your Kroger Community Rewards',
+    imageFit: 'contain',
   },
   {
     h: 'Amazon Wish List',
@@ -61,12 +70,27 @@ const WAYS: Way[] = [
     p: 'T-shirts, sweatshirts and more in our Bonfire store, including the "Beach Bunny Vibes" and "They Still Talk About You" designs. Proceeds support our adoption activities.',
     href: MERCH_STORE,
     cta: 'Shop OHRR merch',
+    image: '/img/news/beach-bunny-vibes.jpg',
+    imageAlt: 'Beach Bunny Vibes – New OHRR Merch Fundraiser!',
+    imageFit: 'contain',
+  },
+  {
+    h: 'Midwest BunFest 2026 merchandise',
+    p: 'Midwest BunFest 2026 "Binky On!" merchandise — choose your color and style in the Midwest BunFest Bonfire store.',
+    href: BUNFEST_MERCH,
+    cta: 'Shop BunFest merch',
+    image: '/img/news/bunfest-2026-shirts.png',
+    imageAlt: 'Midwest BunFest Merchandise',
+    imageFit: 'contain',
   },
   {
     h: 'OHRR license plate — Drive for the Bunnies',
     p: 'Ohio drivers can order the official Ohio House Rabbit Rescue logo plate, featuring a Dutch rabbit. The logo plate is $25 a year on top of your normal fees ($15 comes to OHRR, $10 goes to the BMV); a personalized 6-character plate is $50 more a year. Order online at bmv.ohio.gov (OPLATES → "Choose logo plate" → "OH HSE RABBIT RESCUE") or in person at the BMV; plates arrive in about 20 business days.',
     href: LICENSE_PLATE,
     cta: 'License plate instructions',
+    image: '/img/news/license-plate-drive-for-the-bunnies.jpg',
+    imageAlt: 'Drive for the Bunnies – Get Your OHRR License Plate Today!',
+    imageFit: 'cover',
   },
   {
     h: 'Become a Supporter — it\'s free',
@@ -92,6 +116,9 @@ const WAYS: Way[] = [
     p: 'Help secure the long-term future of OHRR: name OHRR as a beneficiary in your will, trust, IRA, retirement plan or life insurance; give appreciated stock, bonds or mutual funds; or make a charitable distribution from your IRA. Planned gifts and annual gifts of $1,000 or more make you a Rescue Rabbit Guardian, with recognition on the OHRR website and at the Adoption Center.',
     href: LEGACY_FUND,
     cta: 'About the Legacy Fund',
+    image: '/img/news/rescue-rabbit-guardians-legacy-fund.png',
+    imageAlt: 'Thanks to Our Rescue Rabbit Guardians!',
+    imageFit: 'contain',
   },
   {
     h: 'Spay It Forward',
@@ -111,7 +138,17 @@ export default function Give() {
       <Section>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {WAYS.map((w) => (
-            <Card key={w.h} className="flex flex-col">
+            <Card key={w.h} className="flex flex-col overflow-hidden">
+              {w.image && (
+                <div className="-mx-5 -mt-5 mb-4 aspect-[4/3] border-b border-black/5 bg-white">
+                  <img
+                    src={w.image}
+                    alt={w.imageAlt ?? w.h}
+                    loading="lazy"
+                    className={`h-full w-full ${w.imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                  />
+                </div>
+              )}
               <h3 className="font-display text-lg font-extrabold text-brand-blue">{w.h}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{w.p}</p>
               {w.extra && <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{w.extra}</p>}

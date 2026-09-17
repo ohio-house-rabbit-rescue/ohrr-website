@@ -1,5 +1,5 @@
 import { useAnnouncements } from '../lib/data'
-import { PageHero, Section, btn, ext, Card, LiveNote } from '../components/ui'
+import { PageHero, Section, btn, ext, Card, LiveNote, NewsImage } from '../components/ui'
 import { formatShortDate } from '../lib/format'
 import { MAILING_LIST, LIVE_SITE, OHRR } from '../lib/constants'
 
@@ -21,18 +21,31 @@ export default function News() {
               <div className="mt-5 space-y-4">
                 {items.map((a) => (
                   <Card key={a.id}>
-                    {a.createdAt && (
-                      <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                        {formatShortDate(a.createdAt)}
-                      </p>
-                    )}
-                    <h2 className="mt-1 font-display text-lg font-extrabold text-ink">{a.title}</h2>
-                    <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-600">{a.body}</p>
-                    {a.url && (
-                      <a href={a.url} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
-                        Read more →
-                      </a>
-                    )}
+                    <div className={a.imageUrl ? 'flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5' : ''}>
+                      {a.imageUrl && (
+                        <NewsImage
+                          src={a.imageUrl}
+                          alt={a.title}
+                          fit={a.imageFit}
+                          href={a.url}
+                          className="w-full shrink-0 sm:w-56 md:w-64"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        {a.createdAt && (
+                          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                            {formatShortDate(a.createdAt)}
+                          </p>
+                        )}
+                        <h2 className="mt-1 font-display text-lg font-extrabold text-ink">{a.title}</h2>
+                        <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-600">{a.body}</p>
+                        {a.url && (
+                          <a href={a.url} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
+                            Read more →
+                          </a>
+                        )}
+                      </div>
+                    </div>
                   </Card>
                 ))}
               </div>

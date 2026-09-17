@@ -88,6 +88,15 @@ interface AnnouncementRow {
   title: string
   body: string
   created_at: string | null
+  image_url?: string | null
+}
+
+const ANNOUNCEMENT_COLUMNS = 'id,title,body,created_at'
+
+// True when PostgREST rejects a read/write because the optional `image_url` column
+// isn't there yet (migration 20260917160000_announcements_image.sql not applied).
+export function isMissingImageColumn(error: { message?: string } | null | undefined): boolean {
+  return /image_url/i.test(error?.message ?? '')
 }
 
 // Published announcements, newest first. Falls back to the live site's news
@@ -104,17 +113,30 @@ export function useAnnouncements(limit = 0): { items: Announcement[] | null; sou
     }
     ;(async () => {
       if (!isConfigured) return fallback()
-      let q = supabase
-        .from('announcements')
-        .select('id,title,body,created_at')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
-      if (limit > 0) q = q.limit(limit)
-      const { data, error } = await q
-      const rows = (data ?? []) as AnnouncementRow[]
-      if (error || rows.length === 0) return fallback()
+      const query = async (columns: string): Promise<{ data: unknown; error: { message?: string } | null }> => {
+        let q = supabase
+          .from('announcements')
+          .select(columns)
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+        if (limit > 0) q = q.limit(limit)
+        return await q
+      }
+      let res = await query(`${ANNOUNCEMENT_COLUMNS},image_url`)
+      // Until the owner applies the announcements-image migration, read without the column.
+      if (res.error && isMissingImageColumn(res.error)) res = await query(ANNOUNCEMENT_COLUMNS)
+      const rows = (res.data ?? []) as AnnouncementRow[]
+      if (res.error || rows.length === 0) return fallback()
       if (active) {
-        setItems(rows.map((r) => ({ id: r.id, title: r.title, body: r.body, createdAt: r.created_at })))
+        setItems(
+          rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            body: r.body,
+            createdAt: r.created_at,
+            imageUrl: r.image_url ?? null,
+          })),
+        )
         setSource('live')
       }
     })()

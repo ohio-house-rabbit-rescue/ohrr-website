@@ -19,6 +19,11 @@ export interface Announcement {
   createdAt?: string | null
   // Seed-only: a "read more" link on the current OHRR site.
   url?: string | null
+  // Optional photo or artwork: Supabase `image_url` (staff upload) or a bundled
+  // /img/news/… file for the seed. Never hotlinked.
+  imageUrl?: string | null
+  // Seed-only: 'contain' for logo/artwork so it is never cropped; photos use 'cover'.
+  imageFit?: 'cover' | 'contain' | null
 }
 
 export interface CareArticle {

@@ -260,3 +260,38 @@ export function SponsorLogo({
     </div>
   )
 }
+
+// An announcement's photo or artwork in a 4:3 frame: photos fill it ('cover'),
+// logos/artwork are shown whole on white ('contain', as the hero does for logo slides).
+// With `href` the image links out (the live-site post) in a new tab.
+export function NewsImage({
+  src,
+  alt,
+  fit,
+  href,
+  className = '',
+}: {
+  src: string
+  alt: string
+  fit?: 'cover' | 'contain' | null
+  href?: string | null
+  className?: string
+}) {
+  const frame = `aspect-[4/3] overflow-hidden rounded-xl bg-white ring-1 ring-black/5 ${className}`
+  const img = (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className={`h-full w-full ${fit === 'contain' ? 'object-contain' : 'object-cover'}`}
+    />
+  )
+  if (href) {
+    return (
+      <a href={href} {...ext} className={`block ${frame}`}>
+        {img}
+      </a>
+    )
+  }
+  return <div className={frame}>{img}</div>
+}

@@ -17,6 +17,8 @@ export const ADOPT_A_PET =
 export const BUNNY_DATES_ARTICLE = 'https://www.ohiohouserabbitrescue.org/bunny_dates_at_ohrr/'
 export const MAILING_LIST = 'https://ohiohouserabbitrescue.org/join-ohrr-mailing-list/'
 export const MERCH_STORE = 'https://www.bonfire.com/store/ohrr-shirt-store/'
+// Midwest BunFest's own Bonfire store (the "Bonfire Store" link on midwestbunfest.org).
+export const BUNFEST_MERCH = 'https://www.bonfire.com/midwest-bunfest-2026/'
 export const WISH_LIST_PAGE = 'https://ohiohouserabbitrescue.org/support-ohrr/wishlist/'
 export const AMAZON_WISH_LIST = 'https://www.amazon.com/hz/wishlist/ls/1C5PQRB5VI51L'
 export const WORKPLACE = 'https://www.ohiohouserabbitrescue.org/workplace-donations/'
