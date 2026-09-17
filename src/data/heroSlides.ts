@@ -11,7 +11,7 @@ export const sampleHeroSlides: HeroSlide[] = [
     headline: 'Midwest BunFest 2026 — Binky On!',
     subline:
       'Sunday, October 25, 2026, 10am – 4pm at The Makoy in Hilliard. Sponsors, rescue partners & vendors, a silent auction, raffle, the Hop Shop, bunny spa, glamour shots, the Chillaxabun Lounge and educational sessions all day.',
-    imageUrl: '/img/bunfest-2025-logo.jpg',
+    imageUrl: '/img/bunfest-2026-logo.png',
     imageFit: 'contain',
     ctaLabel: 'About Midwest BunFest',
     ctaUrl: '/bunfest',

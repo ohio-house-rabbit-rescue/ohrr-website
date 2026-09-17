@@ -31,7 +31,7 @@ export default function BunFest() {
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="rounded-3xl bg-gradient-to-br from-[#1690bf] to-[#0f7197] p-6 shadow-xl">
             <div className="rounded-2xl bg-white p-5">
-              <img src="/img/bunfest-2025-logo.jpg" alt="Midwest BunFest" className="mx-auto block w-full max-w-xs" />
+              <img src="/img/bunfest-2026-logo.png" alt="Midwest BunFest" className="mx-auto block w-full max-w-xs" />
             </div>
           </div>
           <div>
@@ -96,8 +96,8 @@ export default function BunFest() {
         )}
 
         <p className="mt-10 text-xs leading-relaxed text-slate-400">
-          Midwest BunFest is hosted and sponsored by Ohio House Rabbit Rescue. Logo shown is from a previous
-          year; the 2026 "Binky On!" logo is by tattoo artist Jillian Lisska.
+          Midwest BunFest is hosted and sponsored by Ohio House Rabbit Rescue. The 2026 "Binky On!" logo is by
+          tattoo artist Jillian Lisska.
         </p>
       </Section>
     </>
