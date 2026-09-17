@@ -1,22 +1,30 @@
-import { PageHero, Section, btn } from '../components/ui'
-import { APP_URL } from '../lib/constants'
+import { Link } from 'react-router-dom'
+import { useBunFestEvent } from '../lib/data'
+import { PageHero, Section, btn, ext, LiveNote, ArticleBody, Card } from '../components/ui'
+import { formatDate, formatTimeRange } from '../lib/format'
+import { BUNFEST_SITE } from '../lib/constants'
+import { EventWhenWhere } from './Events'
 
+// What's at Midwest BunFest — from the live announcement post.
 const FEATURES = [
-  { h: 'Vendors', p: "Bun specialty shopping — toys, treats, and handcrafted items you can't find locally." },
-  { h: 'Education', p: '10–15 sessions led by nationally recognized rabbit vets and educators.' },
-  { h: 'Bunny Spa', p: 'Nail trims and gentle grooming for your rabbit.' },
-  { h: 'Glamour Shots', p: 'Professional photos of your bunny.' },
-  { h: 'Silent Auction & Raffle', p: 'Bid and win — every dollar supports rescue.' },
-  { h: 'Rescue Partners', p: 'Meet rabbit rescues from across the Midwest.' },
+  { h: 'Sponsors, rescue partners & vendors', p: 'Bunny specialty shopping and rescue rabbit groups from across the region.' },
+  { h: 'Educational sessions', p: 'Sessions throughout the whole day.' },
+  { h: 'Bunny spa & glamour shots', p: 'Pampering and photos for your rabbit.' },
+  { h: 'Silent auction & raffle', p: 'Bid and win — every dollar supports rescue.' },
+  { h: 'OHRR Hop Shop', p: 'Healthy, safe supplies for your bunny; profits support OHRR.' },
+  { h: 'Chillaxabun Lounge', p: 'A quiet place where your bunny can chill, equipped with hay, water and a hidey house.' },
 ]
 
 export default function BunFest() {
+  const { event, source, loading } = useBunFestEvent()
+
+  const subtitle = event
+    ? `${formatDate(event.startsAt)}, ${formatTimeRange(event)} · ${[event.venue, event.city].filter(Boolean).join(', ')}`
+    : "OHRR's flagship fundraiser and educational expo."
+
   return (
     <>
-      <PageHero
-        title="Midwest BunFest"
-        subtitle="OHRR's flagship fundraiser — the largest rabbit festival and educational expo in the Eastern U.S. Every October."
-      />
+      <PageHero title={event?.title ?? 'Midwest BunFest'} subtitle={subtitle} />
       <Section>
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="rounded-3xl bg-gradient-to-br from-[#1690bf] to-[#0f7197] p-6 shadow-xl">
@@ -25,25 +33,70 @@ export default function BunFest() {
             </div>
           </div>
           <div>
-            <p className="text-base leading-relaxed text-slate-600 md:text-lg">
-              A national and international draw for rabbit owners, experts, and veterinarians —
-              promoted by 15–20 rescue partners across the Midwest. A full day of shopping, expert
-              talks, pampering, and community, all in support of OHRR's mission.
-            </p>
-            <a href={`${APP_URL}/bunfest`} target="_blank" rel="noopener" className={`${btn.blue} mt-6`}>
-              Explore BunFest in the app
-            </a>
+            {loading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : event ? (
+              <>
+                {event.theme && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-brand-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-orange-dark">
+                    This year's theme: {event.theme}
+                  </span>
+                )}
+                <p className="mt-3 font-display text-2xl font-black text-ink">Mark your calendars!</p>
+                <EventWhenWhere e={event} />
+                {event.summary && (
+                  <p className="mt-4 text-base leading-relaxed text-slate-600">{event.summary}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-base leading-relaxed text-slate-600">
+                Midwest BunFest is OHRR's annual multi-state educational exposition and fundraiser in
+                Columbus, Ohio. Check back for this year's date.
+              </p>
+            )}
+            <LiveNote source={source} />
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a href={event?.url ?? BUNFEST_SITE} {...ext} className={btn.blue}>
+                midwestbunfest.org
+              </a>
+              <Link to="/app" className={btn.outline}>
+                BunFest in the app
+              </Link>
+            </div>
           </div>
         </div>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
-            <div key={f.h} className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+            <Card key={f.h}>
               <h3 className="font-display text-lg font-extrabold text-brand-blue">{f.h}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{f.p}</p>
-            </div>
+            </Card>
           ))}
         </div>
+
+        <Card className="mt-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="font-display text-lg font-extrabold text-brand-blue">Silent auction</h3>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Preview the items that will be up for silent auction at Midwest BunFest 2026.
+            </p>
+          </div>
+          <Link to="/bunfest/silent-auction" className={btn.blue}>
+            Silent auction preview
+          </Link>
+        </Card>
+
+        {event?.body && (
+          <div className="mt-12 max-w-3xl">
+            <ArticleBody body={event.body} />
+          </div>
+        )}
+
+        <p className="mt-10 text-xs leading-relaxed text-slate-400">
+          Midwest BunFest is hosted and sponsored by Ohio House Rabbit Rescue. Logo shown is from a previous
+          year; the 2026 "Binky On!" logo is by tattoo artist Jillian Lisska.
+        </p>
       </Section>
     </>
   )
