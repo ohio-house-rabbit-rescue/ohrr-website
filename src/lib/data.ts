@@ -389,20 +389,32 @@ export function useHeroSlides(): { hero: HeroSlide[]; featured: HeroSlide[]; loa
           .eq('is_published', true)
           .order('sort_order', { ascending: false })
         const rows = (data ?? []) as HeroRow[]
+        // Live rows usually have no photo yet (staff can add one later). Borrow the
+        // bundled artwork, fit and countdown from the seed slide for the same link so
+        // pictures never vanish when the live list replaces the seed.
+        const seedFor = (placement: string, cta: string | null | undefined) =>
+          sampleHeroSlides.find((s) => s.placement === placement && s.ctaUrl === cta) ??
+          sampleHeroSlides.find((s) => s.ctaUrl === cta)
         if (!error && active && rows.length > 0) {
           setSlides(
-            rows.map((r) => ({
-              id: r.id,
-              placement: r.placement === 'featured' ? 'featured' : 'hero',
-              headline: r.headline,
-              subline: r.subline,
-              imageUrl: r.image_url,
-              ctaLabel: r.cta_label,
-              ctaUrl: r.cta_url,
-              startsAt: r.starts_at,
-              endsAt: r.ends_at,
-              sortOrder: r.sort_order,
-            })),
+            rows.map((r) => {
+              const placement = r.placement === 'featured' ? 'featured' : 'hero'
+              const seed = seedFor(placement, r.cta_url)
+              return {
+                id: r.id,
+                placement,
+                headline: r.headline,
+                subline: r.subline,
+                imageUrl: r.image_url || seed?.imageUrl || null,
+                imageFit: r.image_url ? null : (seed?.imageFit ?? null),
+                countdownTo: seed?.countdownTo ?? null,
+                ctaLabel: r.cta_label,
+                ctaUrl: r.cta_url,
+                startsAt: r.starts_at,
+                endsAt: r.ends_at,
+                sortOrder: r.sort_order,
+              }
+            }),
           )
           setSource('live')
           return
