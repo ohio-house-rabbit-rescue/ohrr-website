@@ -2,13 +2,20 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Adopt from './pages/Adopt'
+import AdoptPolicy from './pages/AdoptPolicy'
 import Learn from './pages/Learn'
 import LearnArticle from './pages/LearnArticle'
 import Vets from './pages/Vets'
 import Volunteer from './pages/Volunteer'
 import BunFest from './pages/BunFest'
+import SilentAuction from './pages/SilentAuction'
+import Events from './pages/Events'
 import Give from './pages/Give'
 import About from './pages/About'
+import Contact from './pages/Contact'
+import Surrender from './pages/Surrender'
+import HopShop from './pages/HopShop'
+import News from './pages/News'
 import GetApp from './pages/GetApp'
 // Staff / owner backend (same Supabase as the app)
 import { StaffProvider } from './lib/staff'
@@ -45,13 +52,20 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/adopt" element={<Adopt />} />
+        <Route path="/adopt/policy" element={<AdoptPolicy />} />
         <Route path="/learn" element={<Learn />} />
         <Route path="/learn/vets" element={<Vets />} />
         <Route path="/learn/:slug" element={<LearnArticle />} />
         <Route path="/volunteer" element={<Volunteer />} />
         <Route path="/bunfest" element={<BunFest />} />
+        <Route path="/bunfest/silent-auction" element={<SilentAuction />} />
+        <Route path="/events" element={<Events />} />
         <Route path="/give" element={<Give />} />
         <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/surrender" element={<Surrender />} />
+        <Route path="/hop-shop" element={<HopShop />} />
+        <Route path="/news" element={<News />} />
         <Route path="/app" element={<GetApp />} />
         <Route path="*" element={<Home />} />
       </Route>
