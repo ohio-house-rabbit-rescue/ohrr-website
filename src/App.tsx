@@ -22,6 +22,7 @@ import { StaffProvider } from './lib/staff'
 import StaffShell from './components/StaffShell'
 import StaffDashboard from './pages/staff/Dashboard'
 import ManageAnnouncements from './pages/staff/ManageAnnouncements'
+import ManageHero from './pages/staff/ManageHero'
 import ManageRabbits from './pages/staff/ManageRabbits'
 import ManageVolunteer from './pages/staff/ManageVolunteer'
 import ManageCare from './pages/staff/ManageCare'
@@ -41,6 +42,7 @@ export default function App() {
       >
         <Route index element={<StaffDashboard />} />
         <Route path="announcements" element={<ManageAnnouncements />} />
+        <Route path="homepage" element={<ManageHero />} />
         <Route path="rabbits" element={<ManageRabbits />} />
         <Route path="volunteer" element={<ManageVolunteer />} />
         <Route path="care" element={<ManageCare />} />

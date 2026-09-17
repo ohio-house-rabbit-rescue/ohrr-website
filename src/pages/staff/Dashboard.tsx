@@ -11,6 +11,11 @@ export default function StaffDashboard() {
       h: 'Announcements',
       p: 'Post notices that show on the website home and the app.',
     },
+    can('announcements.post') && {
+      to: '/staff/homepage',
+      h: 'Homepage features',
+      p: "Hero slides and featured cards on the home page. Also drives the app's home screen.",
+    },
     (can('adoptions.listings.create') ||
       can('adoptions.listings.edit') ||
       can('adoptions.status.change')) && {
