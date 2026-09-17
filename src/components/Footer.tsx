@@ -1,19 +1,40 @@
 import { Link } from 'react-router-dom'
-import { APP_URL, STAFF_URL, OHRR } from '../lib/constants'
+import { STAFF_URL, MAILING_LIST, OHRR } from '../lib/constants'
+import { ContactRow, ext } from './ui'
 
 const NAV = [
   { to: '/adopt', label: 'Adopt' },
   { to: '/learn', label: 'Learn' },
   { to: '/volunteer', label: 'Volunteer' },
-  { to: '/bunfest', label: 'Midwest BunFest' },
   { to: '/give', label: 'Ways to give' },
+  { to: '/events', label: 'Events' },
   { to: '/about', label: 'About' },
 ]
+
+const MORE = [
+  { to: '/bunfest', label: 'Midwest BunFest' },
+  { to: '/learn/vets', label: 'Rabbit-savvy vets' },
+  { to: '/adopt/policy', label: 'Adoption policy' },
+  { to: '/contact', label: 'Contact us' },
+  { to: '/hop-shop', label: 'Hop Shop' },
+  { to: '/surrender', label: 'Found a rabbit? Need to surrender?' },
+  { to: '/news', label: 'News' },
+  { to: '/app', label: 'Get the OHRR app' },
+]
+
+const link = 'font-semibold text-slate-600 hover:text-brand-blue'
 
 export default function Footer() {
   return (
     <footer className="border-t border-black/5 bg-canvas">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:grid-cols-2 md:grid-cols-3">
+      {/* Persistent, subtle contact row — the same three links on every page */}
+      <div className="border-b border-black/5">
+        <div className="mx-auto max-w-6xl px-5 py-3">
+          <ContactRow />
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:grid-cols-2 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">
             <img src="/img/ohrr-mark.png" alt="OHRR" className="h-11 w-11 object-contain" />
@@ -21,11 +42,24 @@ export default function Footer() {
               Ohio House Rabbit Rescue
             </span>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-slate-600">{OHRR.address}</p>
-          <p className="mt-2 text-sm text-slate-600">Open {OHRR.hours}</p>
+          <p className="mt-4 text-sm leading-relaxed text-slate-600">
+            {OHRR.street}
+            <br />
+            {OHRR.cityStateZip}
+          </p>
+          <p className="mt-2 text-sm text-slate-600">
+            Hop Shop &amp; Adoption Center: {OHRR.hours}
+            <br />
+            {OHRR.hoursNote}
+          </p>
           <p className="mt-2 text-sm">
             <a href={OHRR.phoneHref} className="font-semibold text-brand-blue">
               {OHRR.phone}
+            </a>
+          </p>
+          <p className="mt-1 text-sm">
+            <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
+              {OHRR.email}
             </a>
           </p>
         </div>
@@ -35,7 +69,7 @@ export default function Footer() {
           <ul className="mt-3 space-y-2 text-sm">
             {NAV.map((n) => (
               <li key={n.to}>
-                <Link to={n.to} className="font-semibold text-slate-600 hover:text-brand-blue">
+                <Link to={n.to} className={link}>
                   {n.label}
                 </Link>
               </li>
@@ -46,24 +80,47 @@ export default function Footer() {
         <div>
           <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">More</p>
           <ul className="mt-3 space-y-2 text-sm">
+            {MORE.map((n) => (
+              <li key={n.to}>
+                <Link to={n.to} className={link}>
+                  {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Connect</p>
+          <ul className="mt-3 space-y-2 text-sm">
             <li>
-              <a href={APP_URL} target="_blank" rel="noopener" className="font-semibold text-brand-orange hover:text-brand-orange-dark">
-                Open the OHRR app
-              </a>
-            </li>
-            <li>
-              <a href={STAFF_URL} target="_blank" rel="noopener" className="font-semibold text-slate-600 hover:text-brand-blue">
-                Staff &amp; owner sign-in
-              </a>
-            </li>
-            <li>
-              <a href={OHRR.facebook} target="_blank" rel="noopener" className="font-semibold text-slate-600 hover:text-brand-blue">
+              <a href={OHRR.facebook} {...ext} className={link}>
                 Facebook
+              </a>
+            </li>
+            <li>
+              <a href={OHRR.instagram} {...ext} className={link}>
+                Instagram
+              </a>
+            </li>
+            <li>
+              <a href={MAILING_LIST} {...ext} className={link}>
+                Join the OHRR mailing list
+              </a>
+            </li>
+            <li>
+              <a href={OHRR.marketingEmailHref} className={link}>
+                Media inquiries: {OHRR.marketingEmail}
+              </a>
+            </li>
+            <li>
+              <a href={STAFF_URL} {...ext} className={link}>
+                Staff &amp; owner sign-in
               </a>
             </li>
           </ul>
           <p className="mt-5 text-xs leading-relaxed text-slate-400">
-            501(c)(3) nonprofit · EIN {OHRR.ein}
+            501(c)(3) nonprofit · EIN {OHRR.ein} · Donations are tax-deductible
           </p>
         </div>
       </div>

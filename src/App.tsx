@@ -3,10 +3,13 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import Adopt from './pages/Adopt'
 import Learn from './pages/Learn'
+import LearnArticle from './pages/LearnArticle'
+import Vets from './pages/Vets'
 import Volunteer from './pages/Volunteer'
 import BunFest from './pages/BunFest'
 import Give from './pages/Give'
 import About from './pages/About'
+import GetApp from './pages/GetApp'
 // Staff / owner backend (same Supabase as the app)
 import { StaffProvider } from './lib/staff'
 import StaffShell from './components/StaffShell'
@@ -43,10 +46,13 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/adopt" element={<Adopt />} />
         <Route path="/learn" element={<Learn />} />
+        <Route path="/learn/vets" element={<Vets />} />
+        <Route path="/learn/:slug" element={<LearnArticle />} />
         <Route path="/volunteer" element={<Volunteer />} />
         <Route path="/bunfest" element={<BunFest />} />
         <Route path="/give" element={<Give />} />
         <Route path="/about" element={<About />} />
+        <Route path="/app" element={<GetApp />} />
         <Route path="*" element={<Home />} />
       </Route>
     </Routes>

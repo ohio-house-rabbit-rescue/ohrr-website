@@ -16,6 +16,9 @@ export interface Announcement {
   id: string
   title: string
   body: string
+  createdAt?: string | null
+  // Seed-only: a "read more" link on the current OHRR site.
+  url?: string | null
 }
 
 export interface CareArticle {
@@ -24,7 +27,13 @@ export interface CareArticle {
   title: string
   icon: string
   summary: string
+  body?: string | null
   tip?: string | null
+  // Seed-only: articles the live site hosts elsewhere (we link, not copy).
+  externalUrl?: string | null
+  externalSource?: string | null
+  // Seed-only: where the adapted text came from on ohiohouserabbitrescue.org.
+  sourceUrl?: string | null
 }
 
 export interface VolunteerOpp {
@@ -35,4 +44,74 @@ export interface VolunteerOpp {
   when_text?: string | null
   where_text?: string | null
   spots?: string | null
+}
+
+// Shared with the OHRR app (Supabase `events`).
+export interface EventItem {
+  id: string
+  slug: string
+  title: string
+  startsAt: string
+  endsAt?: string | null
+  venue?: string | null
+  address?: string | null
+  city?: string | null
+  summary?: string | null
+  body?: string | null
+  theme?: string | null
+  url?: string | null
+}
+
+// Shared with the OHRR app (Supabase `vets`).
+export interface Vet {
+  id: string
+  name: string
+  doctors?: string | null
+  address?: string | null
+  city?: string | null
+  region: string
+  phone?: string | null
+  phone2?: string | null
+  email?: string | null
+  website?: string | null
+  notes?: string | null
+  isEmergency: boolean
+  isLowCostSpay: boolean
+}
+
+export interface HopShopProduct {
+  id: string
+  name: string
+  description?: string | null
+  price_cents: number
+}
+
+// Shared with the OHRR app (Supabase `hero_slides`) — the home-page hero and featured strip.
+export interface HeroSlide {
+  id: string
+  placement: 'hero' | 'featured'
+  headline: string
+  subline?: string | null
+  imageUrl?: string | null
+  ctaLabel?: string | null
+  ctaUrl?: string | null
+  startsAt?: string | null
+  endsAt?: string | null
+  sortOrder: number
+  // Seed-only: a date to count down to (days), shown as a badge on the slide.
+  countdownTo?: string | null
+  // Seed-only: 'contain' for logo artwork so it is never cropped.
+  imageFit?: 'cover' | 'contain' | null
+}
+
+// Shared with the OHRR app (Supabase `raffle_items`) — the Midwest BunFest silent auction.
+export interface RaffleItem {
+  id: string
+  title: string
+  description?: string | null
+  donatedBy?: string | null
+  valueCents?: number | null
+  photoUrl?: string | null
+  session: 'morning' | 'afternoon' | 'all-day' | string
+  status: 'available' | 'won' | string
 }

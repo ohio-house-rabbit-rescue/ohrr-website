@@ -1,50 +1,89 @@
 import { useCareArticles } from '../lib/data'
-import { PageHero, Section, LiveNote } from '../components/ui'
-import { APP_URL } from '../lib/constants'
+import { PageHero, Section, LiveNote, LinkCard, H2 } from '../components/ui'
+import { CHRS_SITE, HRS_SITE } from '../lib/constants'
+import { CARE_DISCLAIMER } from '../data/careArticles'
 
-const FALLBACK = [
-  { slug: 'diet', title: 'Bunny Diet', summary: 'Hay first, fresh greens daily, pellets in moderation.' },
-  { slug: 'housing', title: 'Living Space', summary: 'Indoors, roomy, and bunny-proofed.' },
-  { slug: 'foods-to-avoid', title: 'Foods to Avoid', summary: 'Some foods are unsafe — keep these away from your bunny.' },
-  { slug: 'litter', title: 'Litter Training', summary: 'Most rabbits litter-train surprisingly easily.' },
-  { slug: 'bonding', title: 'Bonding', summary: 'Rabbits are social — but introductions take patience.' },
-  { slug: 'health', title: 'Health & Vets', summary: 'Rabbits hide illness — know the warning signs.' },
-]
+// Shown as the featured cards at the top, so they are left out of the article grid.
+const FEATURED = new Set(['bunny-living-space', 'tips-for-catching-a-stray'])
 
 export default function Learn() {
-  const live = useCareArticles()
-  const isLive = !!live && live.length > 0
-  const articles = isLive
-    ? live!.map((a) => ({ slug: a.slug, title: a.title, summary: a.summary }))
-    : FALLBACK
+  const { articles, source } = useCareArticles()
 
   return (
     <>
       <PageHero
         title="Rabbit care"
-        subtitle="Good care means happier rabbits — and fewer surrenders. The essentials, straight from OHRR."
+        subtitle="Good care means happier rabbits — and fewer surrenders. Articles straight from OHRR, plus rabbit-savvy vets across Ohio."
       />
       <Section>
-        <LiveNote source={isLive ? 'live' : 'sample'} />
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((a) => (
-            <a
-              key={a.slug}
-              href={`${APP_URL}/learn/${a.slug}`}
-              target="_blank"
-              rel="noopener"
-              className="group rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <h3 className="font-display text-lg font-extrabold text-brand-blue">{a.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{a.summary}</p>
-              <span className="mt-2 inline-block text-sm font-bold text-brand-orange">Read more →</span>
-            </a>
-          ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <LinkCard
+            to="/learn/vets"
+            h="Find a rabbit-savvy vet"
+            p="OHRR's list of vets for rabbit care across Ohio — Central Ohio, Cincinnati, Dayton, Toledo and Northeast Ohio — including 24/7 exotics emergency care and low-cost spay/neuter."
+            cta="See the vet list →"
+          />
+          <LinkCard
+            to="/learn/bunny-living-space"
+            h="Bunny Living Space"
+            p="Ready to adopt? What to include in your bunny's space, our housing requirements, and tips before you bring them home."
+            cta="Read more →"
+          />
+          <LinkCard
+            to="/learn/tips-for-catching-a-stray"
+            h="Tips for Catching a Stray"
+            p="Found a rabbit outdoors? How to tell if it is domestic, who to call, and how to catch it safely."
+            cta="Read more →"
+          />
         </div>
-        <p className="mt-6 text-xs leading-relaxed text-slate-400">
-          General guidance to get you started — always consult a rabbit-savvy vet for medical
-          concerns.
-        </p>
+
+        <div className="mt-12">
+          <H2>Articles on bunny care</H2>
+          <LiveNote source={source} />
+          {articles === null ? (
+            <p className="mt-6 text-sm text-slate-500">Loading…</p>
+          ) : (
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {articles.filter((a) => !FEATURED.has(a.slug)).map((a) =>
+                a.externalUrl ? (
+                  <LinkCard
+                    key={a.slug}
+                    href={a.externalUrl}
+                    h={a.title}
+                    p={a.summary}
+                    cta={`Read on ${a.externalSource ?? 'their site'} →`}
+                  />
+                ) : (
+                  <LinkCard key={a.slug} to={`/learn/${a.slug}`} h={a.title} p={a.summary} cta="Read more →" />
+                ),
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-12">
+          <H2>More resources</H2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <LinkCard
+              href={CHRS_SITE}
+              h="Rabbit Care and Behavior Booklet"
+              p='The Columbus House Rabbit Society has produced an excellent resource for the care of your rabbit. Go to the CHRS site, click on "Rabbit Care", and download the booklet.'
+              cta="Visit columbusrabbit.org →"
+            />
+            <LinkCard
+              href={HRS_SITE}
+              h="House Rabbit Society Rabbit Care Guide"
+              p="For additional information, go to the national House Rabbit Society's rabbit care guide."
+              cta="Visit rabbit.org →"
+            />
+          </div>
+          <p className="mt-6 text-sm text-slate-600">
+            We give our buns all the love, treats and PetMeds they need! Thank you to PetMeds for helping us
+            care for our bunnies.
+          </p>
+        </div>
+
+        <p className="mt-8 text-xs leading-relaxed text-slate-400">{CARE_DISCLAIMER}</p>
       </Section>
     </>
   )

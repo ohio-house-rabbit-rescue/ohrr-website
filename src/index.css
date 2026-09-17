@@ -24,3 +24,50 @@ body {
   font-family: var(--font-sans);
   color: var(--color-ink);
 }
+
+/* Print only: clean, ink-friendly pages for the vet list, adoption policy and
+   care articles. Nothing here changes how the site looks on screen. */
+.print-only {
+  display: none;
+}
+@media print {
+  html {
+    font-size: 12pt;
+  }
+  body {
+    color: #000;
+    background: #fff;
+  }
+  header,
+  footer,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block;
+  }
+  main {
+    padding: 0 !important;
+  }
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+  .print-urls a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #444;
+    word-break: break-all;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .shadow-sm,
+  .shadow-md,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: none !important;
+  }
+}

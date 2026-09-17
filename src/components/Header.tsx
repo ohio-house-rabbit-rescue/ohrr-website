@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { APP_URL } from '../lib/constants'
 
 const NAV = [
   { to: '/adopt', label: 'Adopt' },
   { to: '/learn', label: 'Learn' },
   { to: '/volunteer', label: 'Volunteer' },
-  { to: '/bunfest', label: 'BunFest' },
   { to: '/give', label: 'Give' },
+  { to: '/events', label: 'Events' },
   { to: '/about', label: 'About' },
 ]
 
@@ -44,29 +43,27 @@ export default function Header() {
               {n.label}
             </NavLink>
           ))}
-          <a
-            href={APP_URL}
-            target="_blank"
-            rel="noopener"
+          <Link
+            to="/app"
             className="rounded-full bg-brand-orange px-4 py-2 font-bold text-white shadow-sm transition hover:bg-brand-orange-dark"
           >
             Open the app
-          </a>
+          </Link>
         </nav>
 
         {/* Mobile: app button + hamburger */}
         <div className="flex items-center gap-2 md:hidden">
-          <a
-            href={APP_URL}
-            target="_blank"
-            rel="noopener"
+          <Link
+            to="/app"
+            onClick={() => setOpen(false)}
             className="rounded-full bg-brand-orange px-3 py-1.5 text-xs font-bold text-white"
           >
             App
-          </a>
+          </Link>
           <button
             type="button"
             aria-label="Menu"
+            aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600"
           >
