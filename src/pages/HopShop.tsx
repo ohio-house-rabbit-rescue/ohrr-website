@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useHopShopProducts } from '../lib/data'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LiveNote } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
 import { OHRR, WISH_LIST_PAGE } from '../lib/constants'
 
@@ -27,6 +28,7 @@ export default function HopShop() {
         title="The Hop Shop"
         subtitle="Did you know OHRR has its very own shop where you can purchase food, supplies and toys? The profits go to support OHRR."
       />
+      <PresentedBy surface="hop-shop" />
       <Section>
         <div className="grid gap-10 md:grid-cols-3">
           <div className="md:col-span-2">

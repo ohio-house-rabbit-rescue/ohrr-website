@@ -1,6 +1,7 @@
 import { useVets } from '../lib/data'
 import type { Vet } from '../lib/types'
 import { PageHero, Section, LiveNote, ext, PrintButton, H2 } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import {
   VET_REGIONS,
   VETS_DISCLAIMER,
@@ -106,6 +107,7 @@ export default function Vets() {
         title="Rabbit-savvy vets in Ohio"
         subtitle="Rabbits are exotic pets with different needs than dogs or cats. These vets are available for rabbit care."
       />
+      <PresentedBy surface="find-a-vet" />
       <Section>
         <div className="no-print flex flex-wrap items-center gap-3">
           <PrintButton label="Print the vet list" />

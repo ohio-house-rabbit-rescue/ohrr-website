@@ -236,3 +236,27 @@ export function ArticleBody({ body }: { body: string }) {
     </div>
   )
 }
+
+// A sponsor's real logo, or a neutral block with its initial when there isn't one.
+// `className` sets the height (e.g. "h-12 text-xl"); logos keep their aspect ratio.
+export function SponsorLogo({
+  name,
+  logoUrl,
+  className = 'h-12 text-xl',
+}: {
+  name: string
+  logoUrl?: string | null
+  className?: string
+}) {
+  if (logoUrl) {
+    return <img src={logoUrl} alt={name} loading="lazy" className={`w-auto max-w-full object-contain ${className}`} />
+  }
+  return (
+    <div
+      aria-hidden="true"
+      className={`flex aspect-square shrink-0 items-center justify-center rounded-xl bg-slate-100 font-display font-black text-slate-300 ${className}`}
+    >
+      {name.trim().slice(0, 1).toUpperCase()}
+    </div>
+  )
+}

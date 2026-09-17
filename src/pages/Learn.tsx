@@ -1,5 +1,6 @@
 import { useCareArticles } from '../lib/data'
 import { PageHero, Section, LiveNote, LinkCard, H2 } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import { CHRS_SITE, HRS_SITE } from '../lib/constants'
 import { CARE_DISCLAIMER } from '../data/careArticles'
 
@@ -15,6 +16,7 @@ export default function Learn() {
         title="Rabbit care"
         subtitle="Good care means happier rabbits — and fewer surrenders. Articles straight from OHRR, plus rabbit-savvy vets across Ohio."
       />
+      <PresentedBy surface="care-library" />
       <Section>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <LinkCard

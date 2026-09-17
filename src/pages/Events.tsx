@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEvents } from '../lib/data'
 import type { EventItem } from '../lib/types'
 import { PageHero, Section, LiveNote, btn, ext, H2, Card } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import { formatDate, formatTimeRange, isUpcoming } from '../lib/format'
 import { MAILING_LIST } from '../lib/constants'
 
@@ -88,6 +89,7 @@ export default function Events() {
         title="Events"
         subtitle="Upcoming OHRR hoppenings — please join us to support OHRR and the bunnies!"
       />
+      <PresentedBy surface="events" />
       <Section>
         <H2>Upcoming events</H2>
         {events !== null && <LiveNote source={source} />}

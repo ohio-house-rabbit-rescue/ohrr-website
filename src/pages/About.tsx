@@ -202,6 +202,7 @@ export default function About() {
             </Callout>
             <LinkCard to="/contact" h="Contact us" p="Address, hours, email, phone, social media and media inquiries." cta="Contact →" />
             <LinkCard to="/hop-shop" h="Hop Shop" p="Rabbit food, supplies and toys at the Adoption Center. Profits support OHRR." cta="Hop Shop →" />
+            <LinkCard to="/partners" h="Partners" p="The businesses and organizations that support OHRR and Midwest BunFest." cta="Partners →" />
             <LinkCard to="/surrender" h="Found a rabbit? Need to surrender?" p="Our admissions policy, the surrender forms, and how field rescues work." cta="Admissions →" />
             <LinkCard to="/news" h="News" p="Announcements and fundraisers from OHRR, plus the mailing list." cta="News →" />
           </aside>

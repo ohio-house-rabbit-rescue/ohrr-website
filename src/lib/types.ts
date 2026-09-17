@@ -115,3 +115,35 @@ export interface RaffleItem {
   session: 'morning' | 'afternoon' | 'all-day' | string
   status: 'available' | 'won' | string
 }
+
+// ---- Sponsors & placements (shared with the OHRR app; read-only on the site) ----
+
+export type SponsorTier = 'presenting' | 'program' | 'community' | 'friend'
+
+export type PlacementSurface =
+  | 'home'
+  | 'bunfest'
+  | 'silent-auction'
+  | 'events'
+  | 'care-library'
+  | 'find-a-vet'
+  | 'happy-tails'
+  | 'volunteer'
+  | 'hop-shop'
+  | 'my-bunny'
+
+// Shared with the OHRR app (Supabase `sponsors`).
+export interface Sponsor {
+  id: string
+  name: string
+  tier: SponsorTier
+  blurb?: string | null
+  logoUrl?: string | null
+  website?: string | null
+  perkTitle?: string | null
+  perkDetail?: string | null
+  perkCode?: string | null
+  termStart?: string | null
+  termEnd?: string | null
+  sortOrder: number
+}

@@ -17,6 +17,7 @@ const MORE = [
   { to: '/adopt/policy', label: 'Adoption policy' },
   { to: '/contact', label: 'Contact us' },
   { to: '/hop-shop', label: 'Hop Shop' },
+  { to: '/partners', label: 'Partners' },
   { to: '/surrender', label: 'Found a rabbit? Need to surrender?' },
   { to: '/news', label: 'News' },
   { to: '/app', label: 'Get the OHRR app' },

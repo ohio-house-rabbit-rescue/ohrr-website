@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useBunFestEvent } from '../lib/data'
 import { PageHero, Section, btn, ext, LiveNote, ArticleBody, Card } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import { formatDate, formatTimeRange } from '../lib/format'
 import { BUNFEST_SITE } from '../lib/constants'
 import { EventWhenWhere } from './Events'
@@ -25,6 +26,7 @@ export default function BunFest() {
   return (
     <>
       <PageHero title={event?.title ?? 'Midwest BunFest'} subtitle={subtitle} />
+      <PresentedBy surface="bunfest" />
       <Section>
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="rounded-3xl bg-gradient-to-br from-[#1690bf] to-[#0f7197] p-6 shadow-xl">

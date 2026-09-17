@@ -1,3 +1,5 @@
+import type { SponsorTier } from './types'
+
 // Site-wide constants. Every fact here comes from ohiohouserabbitrescue.org
 // (captured 2026-09-17) — keep it that way: no invented facts.
 
@@ -67,4 +69,13 @@ export const OHRR = {
   ein: '27-0830606',
   facebook: 'https://www.facebook.com/ohiohouserabbitrescue/',
   instagram: 'https://www.instagram.com/ohio_house_rabbit_rescue/',
+}
+
+// Sponsor tiers — the same values and labels the OHRR app's `sponsors` table uses.
+export const SPONSOR_TIERS: readonly SponsorTier[] = ['presenting', 'program', 'community', 'friend']
+export const TIER_LABEL: Record<SponsorTier, string> = {
+  presenting: 'Presenting Partner',
+  program: 'Program Sponsor',
+  community: 'Community Supporter',
+  friend: 'Friend of OHRR',
 }

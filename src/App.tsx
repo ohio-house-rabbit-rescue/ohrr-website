@@ -17,6 +17,8 @@ import Surrender from './pages/Surrender'
 import HopShop from './pages/HopShop'
 import News from './pages/News'
 import GetApp from './pages/GetApp'
+import Partners from './pages/Partners'
+import PartnerPerks from './pages/PartnerPerks'
 // Staff / owner backend (same Supabase as the app)
 import { StaffProvider } from './lib/staff'
 import StaffShell from './components/StaffShell'
@@ -67,6 +69,8 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/surrender" element={<Surrender />} />
         <Route path="/hop-shop" element={<HopShop />} />
+        <Route path="/partners" element={<Partners />} />
+        <Route path="/partners/perks" element={<PartnerPerks />} />
         <Route path="/news" element={<News />} />
         <Route path="/app" element={<GetApp />} />
         <Route path="*" element={<Home />} />

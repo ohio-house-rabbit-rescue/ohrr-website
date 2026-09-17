@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, isConfigured } from './supabase'
+import { SPONSOR_TIERS } from './constants'
 import type {
   Rabbit,
   Announcement,
@@ -10,6 +11,9 @@ import type {
   HopShopProduct,
   RaffleItem,
   HeroSlide,
+  Sponsor,
+  SponsorTier,
+  PlacementSurface,
 } from './types'
 import { sampleHeroSlides } from '../data/heroSlides'
 import { sampleRabbits } from '../data/sampleRabbits'
@@ -481,5 +485,140 @@ export function useHopShopProducts(): HopShopProduct[] | null {
       active = false
     }
   }, [])
+  return items
+}
+
+// ---- Sponsors & placements (read-only; the app owns the tables) ----
+// The tables may not exist yet: any error or empty result yields [] and the pages
+// show their empty state. No sample data and no Live/Sample note for these.
+
+interface SponsorRow {
+  id: string
+  name: string
+  tier: string
+  blurb: string | null
+  logo_url: string | null
+  website: string | null
+  perk_title: string | null
+  perk_detail: string | null
+  perk_code: string | null
+  term_start: string | null
+  term_end: string | null
+  is_active: boolean | null
+  sort_order: number | null
+}
+
+const SPONSOR_COLUMNS =
+  'id,name,tier,blurb,logo_url,website,perk_title,perk_detail,perk_code,term_start,term_end,is_active,sort_order'
+
+// A date-only "YYYY-MM-DD" end means the whole of that day.
+function endOf(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T23:59:59` : iso
+}
+
+function inTerm(start: string | null, end: string | null, now = Date.now()): boolean {
+  if (start && new Date(start).getTime() > now) return false
+  if (end && new Date(endOf(end)).getTime() < now) return false
+  return true
+}
+
+function mapSponsor(r: SponsorRow): Sponsor {
+  const tier = (SPONSOR_TIERS as readonly string[]).includes(r.tier) ? (r.tier as SponsorTier) : 'friend'
+  return {
+    id: r.id,
+    name: r.name,
+    tier,
+    blurb: r.blurb,
+    logoUrl: r.logo_url,
+    website: r.website,
+    perkTitle: r.perk_title,
+    perkDetail: r.perk_detail,
+    perkCode: r.perk_code,
+    termStart: r.term_start,
+    termEnd: r.term_end,
+    sortOrder: r.sort_order ?? 0,
+  }
+}
+
+// RLS already limits the public read to active, unexpired rows; this is a belt-and-braces
+// client-side check so a stale row never shows.
+function liveSponsors(rows: SponsorRow[]): Sponsor[] {
+  return rows
+    .filter((r) => r.is_active !== false && inTerm(r.term_start, r.term_end))
+    .map(mapSponsor)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+}
+
+// All current sponsors (null while loading, [] when none or the table is absent).
+export function useSponsors(): Sponsor[] | null {
+  const [items, setItems] = useState<Sponsor[] | null>(null)
+  useEffect(() => {
+    if (!isConfigured) {
+      setItems([])
+      return
+    }
+    let active = true
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sponsors')
+          .select(SPONSOR_COLUMNS)
+          .order('sort_order', { ascending: true })
+        if (active) setItems(error ? [] : liveSponsors((data ?? []) as SponsorRow[]))
+      } catch {
+        if (active) setItems([])
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
+  return items
+}
+
+interface PlacementRow {
+  id: string
+  sponsor_id: string
+  starts_at: string | null
+  ends_at: string | null
+  is_active: boolean | null
+}
+
+// Sponsors placed on one surface (e.g. 'bunfest'): the active placements for that
+// surface, joined client-side to their sponsors. null while loading, [] when none.
+export function usePlacements(surface: PlacementSurface): Sponsor[] | null {
+  const [items, setItems] = useState<Sponsor[] | null>(null)
+  useEffect(() => {
+    if (!isConfigured) {
+      setItems([])
+      return
+    }
+    let active = true
+    ;(async () => {
+      try {
+        const p = await supabase
+          .from('sponsor_placements')
+          .select('id,sponsor_id,starts_at,ends_at,is_active')
+          .eq('surface', surface)
+        const placements = p.error ? [] : ((p.data ?? []) as PlacementRow[])
+        const ids = Array.from(
+          new Set(
+            placements.filter((r) => r.is_active !== false && inTerm(r.starts_at, r.ends_at)).map((r) => r.sponsor_id),
+          ),
+        )
+        if (ids.length === 0) {
+          if (active) setItems([])
+          return
+        }
+        const s = await supabase.from('sponsors').select(SPONSOR_COLUMNS).in('id', ids)
+        if (active) setItems(s.error ? [] : liveSponsors((s.data ?? []) as SponsorRow[]))
+      } catch {
+        if (active) setItems([])
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [surface])
   return items
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useRaffleItems } from '../lib/data'
 import type { RaffleItem } from '../lib/types'
 import { PageHero, Section, btn, Card, Callout } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
 
 const EVENT_SLUG = 'midwest-bunfest-2026'
@@ -86,6 +87,7 @@ export default function SilentAuction() {
         title="Silent Auction"
         subtitle="A preview of the items that will be up for silent auction at Midwest BunFest 2026."
       />
+      <PresentedBy surface="silent-auction" />
       <Section>
         {intro && (
           <Callout className="mb-8">

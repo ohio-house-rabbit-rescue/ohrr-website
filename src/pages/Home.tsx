@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAnnouncements, useFeaturedRabbits } from '../lib/data'
 import { btn, RabbitCard, LiveNote, Section } from '../components/ui'
+import PresentedBy from '../components/PresentedBy'
 import { HomeHero, FeaturedStrip } from '../components/HomeHero'
 
 function Announcements() {
@@ -116,6 +117,7 @@ export default function Home() {
   return (
     <>
       <HomeHero />
+      <PresentedBy surface="home" className="mb-6 md:mb-8" />
       <FeaturedStrip />
       <Announcements />
       <Stats />
