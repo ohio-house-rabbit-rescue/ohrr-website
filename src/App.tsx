@@ -19,6 +19,7 @@ import News from './pages/News'
 import GetApp from './pages/GetApp'
 import Partners from './pages/Partners'
 import PartnerPerks from './pages/PartnerPerks'
+import Privacy from './pages/Privacy'
 // Staff / owner backend (same Supabase as the app)
 import { StaffProvider } from './lib/staff'
 import StaffShell from './components/StaffShell'
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/partners/perks" element={<PartnerPerks />} />
         <Route path="/news" element={<News />} />
         <Route path="/app" element={<GetApp />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<Home />} />
       </Route>
     </Routes>

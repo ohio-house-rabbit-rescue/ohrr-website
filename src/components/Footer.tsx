@@ -127,7 +127,10 @@ export default function Footer() {
       </div>
       <div className="border-t border-black/5 py-5 text-center text-xs text-slate-400">
         © Ohio House Rabbit Rescue · Columbus, Ohio · a modern preview on the same live system as the
-        app
+        app ·{' '}
+        <Link to="/privacy" className="font-semibold text-slate-500 hover:text-brand-blue">
+          Privacy
+        </Link>
       </div>
     </footer>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { PageHero, Section, btn, ext, H2, Card, Callout, IconTile } from '../components/ui'
 import { APP_URL } from '../lib/constants'
@@ -65,7 +66,14 @@ export default function GetApp() {
                 </li>
               ))}
             </ul>
-            <p className="mt-5 text-sm text-slate-500">App Store and Google Play versions are planned.</p>
+            <p className="mt-5 text-sm text-slate-500">
+              App Store and Google Play versions are planned. No account is needed, and anything you keep in My
+              Bunny stays on your phone — see our{' '}
+              <Link to="/privacy" className="font-semibold text-brand-blue">
+                privacy policy
+              </Link>
+              .
+            </p>
           </div>
 
           <div className="overflow-hidden rounded-3xl border-4 border-white shadow-2xl md:border-8">
