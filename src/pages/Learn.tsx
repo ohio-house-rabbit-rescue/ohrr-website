@@ -21,18 +21,21 @@ export default function Learn() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <LinkCard
             to="/learn/vets"
+            icon="phone"
             h="Find a rabbit-savvy vet"
             p="OHRR's list of vets for rabbit care across Ohio — Central Ohio, Cincinnati, Dayton, Toledo and Northeast Ohio — including 24/7 exotics emergency care and low-cost spay/neuter."
             cta="See the vet list →"
           />
           <LinkCard
             to="/learn/bunny-living-space"
+            icon="book"
             h="Bunny Living Space"
             p="Ready to adopt? What to include in your bunny's space, our housing requirements, and tips before you bring them home."
             cta="Read more →"
           />
           <LinkCard
             to="/learn/tips-for-catching-a-stray"
+            icon="book"
             h="Tips for Catching a Stray"
             p="Found a rabbit outdoors? How to tell if it is domestic, who to call, and how to catch it safely."
             cta="Read more →"
@@ -68,12 +71,14 @@ export default function Learn() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <LinkCard
               href={CHRS_SITE}
+              icon="book"
               h="Rabbit Care and Behavior Booklet"
               p='The Columbus House Rabbit Society has produced an excellent resource for the care of your rabbit. Go to the CHRS site, click on "Rabbit Care", and download the booklet.'
               cta="Visit columbusrabbit.org →"
             />
             <LinkCard
               href={HRS_SITE}
+              icon="book"
               h="House Rabbit Society Rabbit Care Guide"
               p="For additional information, go to the national House Rabbit Society's rabbit care guide."
               cta="Visit rabbit.org →"

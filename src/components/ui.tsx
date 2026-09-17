@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Rabbit } from '../lib/types'
 import type { Source } from '../lib/data'
 import { OHRR } from '../lib/constants'
+import { Icon, type IconName } from './icons'
 
 export const btn = {
   orange:
@@ -106,24 +107,56 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   )
 }
 
+// A fixed line icon on a brand-tinted tile, for cards that stand for a FUNCTION
+// (events, ways to give, volunteer, …) so the picture never changes and people learn
+// what it means. Photos are only for things that ARE content: real rabbits, auction
+// items, news artwork, the BunFest logo. 'fill' fills a card's 4:3 image slot.
+export function IconTile({
+  name,
+  tone = 'blue',
+  size = 'md',
+  className = '',
+}: {
+  name: IconName
+  tone?: 'blue' | 'orange'
+  size?: 'md' | 'lg' | 'fill'
+  className?: string
+}) {
+  const color = tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-dark' : 'bg-brand-blue-50 text-brand-blue'
+  const box = size === 'fill' ? 'aspect-[4/3] w-full' : size === 'lg' ? 'h-16 w-16 rounded-2xl' : 'h-12 w-12 rounded-xl'
+  return (
+    <div aria-hidden="true" className={`flex shrink-0 items-center justify-center ${color} ${box} ${className}`}>
+      {size === 'fill' ? (
+        <Icon name={name} size={64} className="h-[28%] w-[28%]" />
+      ) : (
+        <Icon name={name} size={size === 'lg' ? 32 : 26} />
+      )}
+    </div>
+  )
+}
+
 // A clickable card (as used for the home-page teasers): internal `to` or external `href`.
+// `icon` adds the card's fixed function icon (IconTile) above the heading.
 export function LinkCard({
   to,
   href,
   h,
   p,
   cta = 'Learn more →',
+  icon,
 }: {
   to?: string
   href?: string
   h: string
   p: string
   cta?: string
+  icon?: IconName
 }) {
   const cls =
     'group block rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
   const inner = (
     <>
+      {icon && <IconTile name={icon} className="mb-4" />}
       <h3 className="font-display text-lg font-extrabold text-brand-blue">{h}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p}</p>
       <span className="mt-2 inline-block text-sm font-bold text-brand-orange">{cta}</span>

@@ -78,6 +78,7 @@ export default function Partners() {
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           <LinkCard
             to="/partners/perks"
+            icon="ticket"
             h="Partner perks"
             p="Offers our partners extend to the OHRR community."
             cta="See partner perks →"

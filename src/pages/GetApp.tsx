@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { PageHero, Section, btn, ext, H2, Card, Callout } from '../components/ui'
+import { PageHero, Section, btn, ext, H2, Card, Callout, IconTile } from '../components/ui'
 import { APP_URL } from '../lib/constants'
 
 const FEATURES = [
@@ -69,7 +69,7 @@ export default function GetApp() {
           </div>
 
           <div className="overflow-hidden rounded-3xl border-4 border-white shadow-2xl md:border-8">
-            <img src="/img/bunny-grey-lop.jpg" alt="A grey lop rabbit" className="aspect-[4/3] w-full object-cover" />
+            <IconTile name="device" size="fill" />
           </div>
         </div>
 

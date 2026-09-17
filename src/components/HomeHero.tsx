@@ -2,7 +2,8 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { HeroSlide } from '../lib/types'
 import { useHeroSlides } from '../lib/data'
-import { btn, Section, ext } from './ui'
+import { slideVisual } from '../data/heroSlides'
+import { btn, Section, ext, IconTile } from './ui'
 import { DONATE } from '../lib/constants'
 
 // Internal links use the router; anything else opens in a new tab.
@@ -38,6 +39,25 @@ function Countdown({ to }: { to: string }) {
 
 const arrow =
   'flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-40'
+
+// The picture slot of a slide or card. An uploaded image always wins (staff choice);
+// an adopt card without one shows a real rabbit; every other card shows its fixed line
+// icon so the purpose is recognisable at a glance — photos are only for real content.
+function SlideVisual({ slide, lazy = false }: { slide: HeroSlide; lazy?: boolean }) {
+  const v = slideVisual(slide)
+  if (v && 'image' in v) {
+    return (
+      <img
+        src={v.image}
+        alt=""
+        loading={lazy ? 'lazy' : undefined}
+        className={`aspect-[4/3] w-full ${v.fit === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
+      />
+    )
+  }
+  if (v) return <IconTile name={v.icon} size="fill" />
+  return <div className="aspect-[4/3] w-full bg-slate-100" />
+}
 
 // The home-page hero: the same layout and styling as before, now fed by the shared
 // hero_slides table. Up to 3 slides, rotated manually (arrows, dots, swipe) — no auto-advance.
@@ -127,15 +147,7 @@ export function HomeHero() {
 
         <div className="relative">
           <div className="overflow-hidden rounded-3xl border-4 border-white bg-white shadow-2xl md:border-8">
-            {s.imageUrl ? (
-              <img
-                src={s.imageUrl}
-                alt=""
-                className={`aspect-[4/3] w-full ${s.imageFit === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
-              />
-            ) : (
-              <div className="aspect-[4/3] w-full bg-slate-100" />
-            )}
+            <SlideVisual slide={s} />
           </div>
           <div className="absolute -bottom-4 -left-2 rounded-2xl bg-white px-4 py-2.5 shadow-xl">
             <p className="font-display text-xl font-black text-brand-orange">Since 2009</p>
@@ -148,6 +160,8 @@ export function HomeHero() {
 }
 
 // 3–4 featured cards directly under the hero: a swipeable row on phones, a grid on desktop.
+// Function cards (events, ways to give, the auction) show their fixed icon; "Adoptable
+// rabbits" — real content — keeps a photo.
 export function FeaturedStrip() {
   const { featured } = useHeroSlides()
   if (featured.length === 0) return null
@@ -157,11 +171,7 @@ export function FeaturedStrip() {
         {featured.map((f) => {
           const inner = (
             <>
-              <div className="aspect-[4/3] w-full bg-slate-100">
-                {f.imageUrl ? (
-                  <img src={f.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-                ) : null}
-              </div>
+              <SlideVisual slide={f} lazy />
               <div className="p-4">
                 <h3 className="font-display text-lg font-extrabold text-brand-blue">{f.headline}</h3>
                 {f.subline && <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{f.subline}</p>}

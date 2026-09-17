@@ -1,3 +1,5 @@
+import type { IconName } from '../components/icons'
+
 export interface Rabbit {
   id: string
   name: string
@@ -107,6 +109,9 @@ export interface HeroSlide {
   countdownTo?: string | null
   // Seed-only: 'contain' for logo artwork so it is never cropped.
   imageFit?: 'cover' | 'contain' | null
+  // Seed-only: the fixed line icon shown in place of a photo on function cards
+  // (events, ways to give, …). Resolved by slideIcon() in data/heroSlides.ts.
+  icon?: IconName | null
 }
 
 // Shared with the OHRR app (Supabase `raffle_items`) — the Midwest BunFest silent auction.

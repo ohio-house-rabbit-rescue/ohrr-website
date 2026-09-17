@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { Icon } from '../../components/icons'
+import { slideVisual } from '../../data/heroSlides'
 
 // Home-page hero slides + featured cards (shared `hero_slides` table — the app's home
 // screen reads the same rows). Follows the Announcements manager pattern.
@@ -119,6 +121,9 @@ function ImageUploader({ url, userId, onChange }: { url: string; userId: string;
   return (
     <div>
       <span className="text-sm font-semibold text-slate-700">Image (a real photo)</span>
+      <p className="mt-0.5 text-xs text-slate-500">
+        Leave the image empty to show the standard icon for this link; upload a photo only for real content.
+      </p>
       {url && (
         <div className="relative mt-1.5 inline-block">
           <img src={url} alt="" className="h-24 w-32 rounded-xl object-cover ring-1 ring-slate-200" />
@@ -212,6 +217,19 @@ function Form({ initial, userId, submitLabel, onSubmit, onCancel }: { initial: D
         </button>
       </div>
     </form>
+  )
+}
+
+// What the site will show in the card's picture slot: the uploaded image, a rabbit
+// photo for an adopt link, otherwise the standard icon for the link.
+function RowPreview({ r }: { r: Row }) {
+  const v = slideVisual({ imageUrl: r.image_url, ctaUrl: r.cta_url })
+  if (!v) return null
+  if ('image' in v) return <img src={v.image} alt="" className="h-full w-full object-cover" />
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-brand-blue-50 text-brand-blue">
+      <Icon name={v.icon} size={30} />
+    </div>
   )
 }
 
@@ -330,7 +348,7 @@ export default function ManageHero() {
                     ) : (
                       <div key={r.id} className="flex gap-4 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
                         <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
-                          {r.image_url && <img src={r.image_url} alt="" className="h-full w-full object-cover" />}
+                          <RowPreview r={r} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">

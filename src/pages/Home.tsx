@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAnnouncements, useFeaturedRabbits } from '../lib/data'
-import { btn, RabbitCard, LiveNote, Section, NewsImage } from '../components/ui'
+import { btn, RabbitCard, LiveNote, Section, NewsImage, LinkCard } from '../components/ui'
+import type { IconName } from '../components/icons'
 import PresentedBy from '../components/PresentedBy'
 import { HomeHero, FeaturedStrip } from '../components/HomeHero'
 
@@ -82,26 +83,18 @@ function Featured() {
 }
 
 function Teasers() {
-  const cards = [
-    { to: '/events', h: 'Midwest BunFest & events', p: 'Our flagship festival is Sunday, October 25, 2026 in Hilliard — plus other OHRR hoppenings.' },
-    { to: '/learn', h: 'Learn rabbit care', p: 'Diet, litter training, bonding, toys, living space — and rabbit-savvy vets across Ohio.' },
-    { to: '/volunteer', h: 'Volunteer', p: 'Socialize bunnies, help with Buncare, drive vet runs, or rescue strays in the field.' },
-    { to: '/give', h: 'Ways to give', p: 'Donate, workplace matching, Kroger rewards, the wish list, merch, the license plate, and more.' },
+  const cards: { to: string; icon: IconName; h: string; p: string }[] = [
+    { to: '/events', icon: 'calendar', h: 'Midwest BunFest & events', p: 'Our flagship festival is Sunday, October 25, 2026 in Hilliard — plus other OHRR hoppenings.' },
+    { to: '/learn', icon: 'book', h: 'Learn rabbit care', p: 'Diet, litter training, bonding, toys, living space — and rabbit-savvy vets across Ohio.' },
+    { to: '/volunteer', icon: 'users', h: 'Volunteer', p: 'Socialize bunnies, help with Buncare, drive vet runs, or rescue strays in the field.' },
+    { to: '/give', icon: 'gift', h: 'Ways to give', p: 'Donate, workplace matching, Kroger rewards, the wish list, merch, the license plate, and more.' },
   ]
   return (
     <section className="bg-canvas">
       <Section className="!py-12 md:!py-16">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((c) => (
-            <Link
-              key={c.to}
-              to={c.to}
-              className="group rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <h3 className="font-display text-lg font-extrabold text-brand-blue">{c.h}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{c.p}</p>
-              <span className="mt-2 inline-block text-sm font-bold text-brand-orange">Explore →</span>
-            </Link>
+            <LinkCard key={c.to} to={c.to} icon={c.icon} h={c.h} p={c.p} cta="Explore →" />
           ))}
         </div>
       </Section>

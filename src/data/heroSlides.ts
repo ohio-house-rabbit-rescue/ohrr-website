@@ -1,8 +1,13 @@
 import type { HeroSlide } from '../lib/types'
+import type { IconName } from '../components/icons'
 
 // Fallback for the home-page hero and featured strip, used until OHRR manages
 // them in Staff → Homepage features (shared `hero_slides` table, which also drives
 // the app's home screen). Photos are the site's own; no hotlinked images.
+//
+// Sponsor rule: a card that stands for a FUNCTION (events, ways to give, the auction)
+// shows a fixed line icon so people see and remember its purpose. A photo is only for
+// things that ARE content — real rabbits, auction items, artwork, the BunFest logo.
 export const sampleHeroSlides: HeroSlide[] = [
   {
     id: 's-hero-bunfest',
@@ -34,11 +39,12 @@ export const sampleHeroSlides: HeroSlide[] = [
     sortOrder: 100,
     headline: 'Silent auction preview',
     subline: 'Preview the items that will be up for silent auction at Midwest BunFest 2026.',
-    imageUrl: '/img/bunny-spotted.jpg',
+    icon: 'award',
     ctaLabel: 'See the items',
     ctaUrl: '/bunfest/silent-auction',
   },
   {
+    // Real rabbits are content, so this card keeps a photo.
     id: 's-feat-adopt',
     placement: 'featured',
     sortOrder: 90,
@@ -54,7 +60,7 @@ export const sampleHeroSlides: HeroSlide[] = [
     sortOrder: 80,
     headline: 'Upcoming events',
     subline: 'OHRR hoppenings — Midwest BunFest and more.',
-    imageUrl: '/img/bunny-grey-lop.jpg',
+    icon: 'calendar',
     ctaLabel: 'See events',
     ctaUrl: '/events',
   },
@@ -64,8 +70,67 @@ export const sampleHeroSlides: HeroSlide[] = [
     sortOrder: 70,
     headline: 'Ways to give',
     subline: 'Donate, workplace matching, Kroger rewards, the wish list, merch and the license plate.',
-    imageUrl: '/img/bunny-silver.jpg',
+    icon: 'gift',
     ctaLabel: 'Support the bunnies',
     ctaUrl: '/give',
   },
 ]
+
+// The real-rabbit photo for an adopt card that has no uploaded image.
+export const ADOPT_PHOTO = '/img/bunny-lionhead-white.jpg'
+
+// The standard icon for each link — the same meanings the OHRR app uses. Ordered so
+// the longest matching route wins (/learn/vets → phone, any other /learn/… → book).
+const ROUTE_ICONS: [route: string, icon: IconName][] = [
+  ['/bunfest/silent-auction', 'award'],
+  ['/bunfest', 'calendar'],
+  ['/events', 'calendar'],
+  ['/give', 'gift'],
+  ['/volunteer', 'users'],
+  ['/learn/vets', 'phone'],
+  ['/learn', 'book'],
+  ['/surrender', 'mappin'],
+  ['/hop-shop', 'bag'],
+  ['/news', 'sparkles'],
+  ['/partners/perks', 'ticket'],
+  ['/partners', 'star'],
+  ['/contact', 'mail'],
+  ['/about', 'info'],
+  ['/app', 'device'],
+  // Only where no rabbit photo is appropriate — see slideVisual().
+  ['/adopt', 'heart'],
+]
+
+// The path of an internal link ('/events?x#y/' → '/events'); null for external URLs.
+function routeOf(url: string | null | undefined): string | null {
+  if (!url || /^https?:\/\//i.test(url)) return null
+  return url.split(/[?#]/)[0].replace(/\/+$/, '') || '/'
+}
+
+// The fixed icon for a slide: the seed's own `icon`, else the standard icon for its link.
+export function slideIcon(slide: Pick<HeroSlide, 'icon' | 'ctaUrl'>): IconName | null {
+  if (slide.icon) return slide.icon
+  const path = routeOf(slide.ctaUrl)
+  if (!path) return null
+  const hit = ROUTE_ICONS.find(([route]) => path === route || path.startsWith(`${route}/`))
+  return hit ? hit[1] : null
+}
+
+// Adopt cards are about real rabbits, so they get a rabbit photo rather than an icon.
+export function isAdoptSlide(slide: Pick<HeroSlide, 'ctaUrl'>): boolean {
+  const path = routeOf(slide.ctaUrl)
+  return path === '/adopt' || path?.startsWith('/adopt/') === true
+}
+
+export type SlideVisualSpec = { image: string; fit: 'cover' | 'contain' } | { icon: IconName }
+
+// What a slide shows in its picture slot, in order: an uploaded image (the staff
+// choice always wins), a real-rabbit photo for adopt cards, otherwise its fixed icon.
+export function slideVisual(
+  slide: Pick<HeroSlide, 'imageUrl' | 'imageFit' | 'icon' | 'ctaUrl'>,
+): SlideVisualSpec | null {
+  if (slide.imageUrl) return { image: slide.imageUrl, fit: slide.imageFit === 'contain' ? 'contain' : 'cover' }
+  if (isAdoptSlide(slide)) return { image: ADOPT_PHOTO, fit: 'cover' }
+  const icon = slideIcon(slide)
+  return icon ? { icon } : null
+}

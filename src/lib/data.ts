@@ -390,8 +390,9 @@ export function useHeroSlides(): { hero: HeroSlide[]; featured: HeroSlide[]; loa
           .order('sort_order', { ascending: false })
         const rows = (data ?? []) as HeroRow[]
         // Live rows usually have no photo yet (staff can add one later). Borrow the
-        // bundled artwork, fit and countdown from the seed slide for the same link so
-        // pictures never vanish when the live list replaces the seed.
+        // bundled artwork, fit, countdown and icon from the seed slide for the same link
+        // so pictures never vanish when the live list replaces the seed. An uploaded
+        // image always wins; a function card with no photo shows its fixed icon.
         const seedFor = (placement: string, cta: string | null | undefined) =>
           sampleHeroSlides.find((s) => s.placement === placement && s.ctaUrl === cta) ??
           sampleHeroSlides.find((s) => s.ctaUrl === cta)
@@ -408,6 +409,7 @@ export function useHeroSlides(): { hero: HeroSlide[]; featured: HeroSlide[]; loa
                 imageUrl: r.image_url || seed?.imageUrl || null,
                 imageFit: r.image_url ? null : (seed?.imageFit ?? null),
                 countdownTo: seed?.countdownTo ?? null,
+                icon: seed?.icon ?? null,
                 ctaLabel: r.cta_label,
                 ctaUrl: r.cta_url,
                 startsAt: r.starts_at,
