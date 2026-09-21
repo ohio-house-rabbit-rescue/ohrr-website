@@ -3,7 +3,7 @@ import { useHopShopProducts } from '../lib/data'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LiveNote } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
-import { OHRR, WISH_LIST_PAGE } from '../lib/constants'
+import { OHRR, AMAZON_WISH_LIST } from '../lib/constants'
 
 const PRODUCTS = [
   'Pellets',
@@ -93,8 +93,8 @@ export default function HopShop() {
                   Our wish list has the cleaning supplies, bunny supplies and toys the Adoption Center uses
                   every day.
                 </p>
-                <a href={WISH_LIST_PAGE} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
-                  See the wish list →
+                <a href={AMAZON_WISH_LIST} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
+                  Open the Amazon Wish List →
                 </a>
               </Card>
             </div>

@@ -61,9 +61,10 @@ const WAYS: Way[] = [
   {
     h: 'Amazon Wish List',
     p: 'Buy hay, litter, cleaning supplies, pens, litter boxes and bunny-safe toys from our wish list and have them shipped straight to the Adoption Center.',
-    href: WISH_LIST_PAGE,
-    cta: 'See the wish list',
-    secondary: { href: AMAZON_WISH_LIST, label: 'Open the Amazon list' },
+    // Opens Amazon itself — the rescue gets residuals from the visit (sponsor, 2026-09-21).
+    href: AMAZON_WISH_LIST,
+    cta: 'Open the Amazon Wish List',
+    secondary: { href: WISH_LIST_PAGE, label: 'The full list, and what to drop off' },
   },
   {
     h: 'OHRR merch store',
@@ -168,15 +169,20 @@ export default function Give() {
                     {w.cta}
                   </a>
                 )}
-                {w.secondary && (
-                  <a
-                    href={w.secondary.href}
-                    {...(w.secondary.href.startsWith('mailto:') ? {} : ext)}
-                    className={btn.outline}
-                  >
-                    {w.secondary.label}
-                  </a>
-                )}
+                {w.secondary &&
+                  (w.secondary.href.startsWith('/') ? (
+                    <Link to={w.secondary.href} className={btn.outline}>
+                      {w.secondary.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={w.secondary.href}
+                      {...(w.secondary.href.startsWith('mailto:') ? {} : ext)}
+                      className={btn.outline}
+                    >
+                      {w.secondary.label}
+                    </a>
+                  ))}
               </div>
             </Card>
           ))}
