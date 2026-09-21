@@ -33,6 +33,7 @@ import Team from './pages/staff/Team'
 import Items from './pages/staff/Items'
 import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
+import Posts from './pages/staff/Posts'
 import Book, { BookCancel } from './pages/Book'
 import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="team" element={<Team />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="bookings" element={<Bookings />} />
+        <Route path="posts" element={<Posts />} />
         <Route path="items" element={<Items />} />
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="*" element={<StaffDashboard />} />

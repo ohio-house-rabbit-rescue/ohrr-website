@@ -16,6 +16,11 @@ export default function StaffDashboard() {
       h: 'Bookings',
       p: 'Volunteer shifts and appointments: who’s coming, make times, set up what can be booked.',
     },
+    (can('announcements.post') || can('social.publish')) && {
+      to: '/staff/posts',
+      h: 'Posts & Share kit',
+      p: 'Ready-made social posts from rabbits, events and education messages; a queue one person releases.',
+    },
     can('announcements.post') && {
       to: '/staff/announcements',
       h: 'Announcements',

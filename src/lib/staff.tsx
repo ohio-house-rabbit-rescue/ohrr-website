@@ -30,6 +30,7 @@ export const CAPS = [
   'settings.manage',
   'inbox.manage',
   'bookings.manage',
+  'social.publish',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -59,6 +60,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'settings.manage', area: 'Staff', description: 'Change app settings and turn test features on/off' },
   { key: 'inbox.manage', area: 'Inbox', description: 'Read and handle requests sent from the app and website' },
   { key: 'bookings.manage', area: 'Bookings', description: 'Set up bookable shifts & appointments, see rosters, confirm and check in' },
+  { key: 'social.publish', area: 'Content', description: 'Release queued social-media posts (the one person who posts as OHRR)' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites.

@@ -1,0 +1,504 @@
+// Staff → Posts: the Share kit and the Post queue, desktop edition. Same
+// tables and card painter as the app. Drafting is comfortable here (typing,
+// uploading); releasing usually happens on the phone where Instagram lives —
+// but "Save image + copy caption" works from a computer too.
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useStaff, staffInput, Spinner } from '../../lib/staff'
+import { errMessage } from '../../lib/supabase'
+import { useRabbits, useEvents } from '../../lib/data'
+import { btn, Card } from '../../components/ui'
+import { Icon } from '../../components/icons'
+import { EDUCATION_CARDS, HASHTAGS, customPost, educationPost, eventPost, rabbitPost, suggestedEducation, type CardFormat, type CardPost } from '../../lib/share/templates'
+import { canvasToBlob, renderCard } from '../../lib/share/render'
+import { canShareFiles, copyText, savePng, sharePng } from '../../lib/share/share'
+import {
+  PLATFORMS,
+  createPost,
+  deletePost,
+  fetchImageBlob,
+  isReady,
+  listPosts,
+  setPostStatus,
+  updatePost,
+  uploadPostPhoto,
+  uploadPostPng,
+  whenLabel,
+  type Platform,
+  type PostDraft,
+  type SocialPost,
+} from '../../lib/share/queue'
+
+type View = 'queue' | 'kit' | 'new' | { edit: string } | { compose: CardPost }
+
+export default function Posts() {
+  const { membership, user, can } = useStaff()
+  const orgId = membership?.orgId ?? ''
+  const userId = user?.id ?? ''
+  const canDraft = can('announcements.post')
+  const canPublish = can('social.publish')
+  const [view, setView] = useState<View>('queue')
+  const [posts, setPosts] = useState<SocialPost[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      setPosts(await listPosts(orgId))
+    } catch (e) {
+      setError(errMessage(e))
+    }
+  }, [orgId])
+  useEffect(() => {
+    if (orgId) void load()
+  }, [orgId, load])
+
+  if (!canDraft && !canPublish) return <p className="text-slate-600">You don’t have access to posts.</p>
+
+  const editing = typeof view === 'object' && 'edit' in view ? (posts ?? []).find((p) => p.id === view.edit) ?? null : null
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-black text-ink">Posts</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Build posts here; {canPublish ? 'release them' : 'the person with posting rights releases them'} — usually from the phone, where Instagram, Facebook and TikTok are.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setView('queue')} className={view === 'queue' ? btn.blue : btn.outline}>
+            Queue
+          </button>
+          {canDraft && (
+            <>
+              <button type="button" onClick={() => setView('kit')} className={view === 'kit' || (typeof view === 'object' && 'compose' in view) ? btn.blue : btn.outline}>
+                Share kit
+              </button>
+              <button type="button" onClick={() => setView('new')} className={btn.orange}>
+                <Icon name="plus" size={16} /> New post
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
+
+      <div className="mt-6">
+        {view === 'queue' && <Queue posts={posts} canDraft={canDraft} canPublish={canPublish} onChanged={load} onEdit={(id) => setView({ edit: id })} />}
+        {view === 'kit' && <Kit onPick={(p) => setView({ compose: p })} />}
+        {typeof view === 'object' && 'compose' in view && (
+          <Composer
+            post={view.compose}
+            orgId={orgId}
+            userId={userId}
+            onBack={() => setView('kit')}
+            onQueued={async () => {
+              await load()
+              setView('queue')
+            }}
+          />
+        )}
+        {(view === 'new' || editing) && (
+          <Editor
+            orgId={orgId}
+            userId={userId}
+            initial={editing}
+            onDone={async () => {
+              await load()
+              setView('queue')
+            }}
+            onCancel={() => setView('queue')}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------- queue */
+
+function Queue({ posts, canDraft, canPublish, onChanged, onEdit }: { posts: SocialPost[] | null; canDraft: boolean; canPublish: boolean; onChanged: () => Promise<void>; onEdit: (id: string) => void }) {
+  const [error, setError] = useState<string | null>(null)
+  const groups = useMemo(() => {
+    const all = posts ?? []
+    return {
+      ready: all.filter((p) => isReady(p)),
+      scheduled: all.filter((p) => p.status === 'approved' && !isReady(p)),
+      drafts: all.filter((p) => p.status === 'draft'),
+      posted: all.filter((p) => p.status === 'posted').slice(0, 30),
+    }
+  }, [posts])
+  const act = async (p: SocialPost, status: SocialPost['status'], to?: Platform[]) => {
+    setError(null)
+    try {
+      await setPostStatus(p.id, status, to)
+      await onChanged()
+    } catch (e) {
+      setError(errMessage(e))
+    }
+  }
+  const remove = async (p: SocialPost) => {
+    if (!window.confirm(`Delete “${p.title}”?`)) return
+    try {
+      await deletePost(p.id)
+      await onChanged()
+    } catch (e) {
+      setError(errMessage(e))
+    }
+  }
+  if (posts === null) return <Spinner />
+  return (
+    <div className="space-y-8">
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {(
+        [
+          ['Ready to post', groups.ready, 'Nothing is ready right now.'],
+          ['Scheduled', groups.scheduled, 'No posts waiting for a date.'],
+          ['Drafts', groups.drafts, 'No drafts yet.'],
+          ['Posted', groups.posted, 'Nothing posted yet.'],
+        ] as [string, SocialPost[], string][]
+      ).map(([title, list, empty]) => (
+        <section key={title}>
+          <h2 className="font-display text-lg font-extrabold text-ink">
+            {title} <span className="text-sm font-bold text-slate-400">{list.length}</span>
+          </h2>
+          {list.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">{empty}</p>
+          ) : (
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {list.map((p) => (
+                <PostCard key={p.id} post={p} canDraft={canDraft} canPublish={canPublish} onStatus={act} onDelete={remove} onEdit={() => onEdit(p.id)} />
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function PostCard({ post, canDraft, canPublish, onStatus, onDelete, onEdit }: { post: SocialPost; canDraft: boolean; canPublish: boolean; onStatus: (p: SocialPost, s: SocialPost['status'], to?: Platform[]) => Promise<void>; onDelete: (p: SocialPost) => Promise<void>; onEdit: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [postedTo, setPostedTo] = useState<Platform[]>(post.platforms)
+  const [msg, setMsg] = useState<string | null>(null)
+  const release = async () => {
+    setMsg(null)
+    try {
+      if (post.image_url) {
+        const blob = await fetchImageBlob(post.image_url)
+        const out = await sharePng(blob, `ohrr-post-${post.id.slice(0, 8)}.png`, post.caption)
+        setMsg(out === 'shared' ? 'Sent to the share sheet.' : 'Image downloaded and caption copied — open the platform, add the picture, paste the caption.')
+      } else {
+        await copyText(post.caption)
+        setMsg('Caption copied.')
+      }
+      setConfirming(true)
+    } catch (e) {
+      setMsg(errMessage(e))
+    }
+  }
+  return (
+    <Card className={`flex flex-col ${isReady(post) ? 'border-brand-orange/40' : ''}`}>
+      <div className="flex gap-3">
+        {post.image_url ? <img src={post.image_url} alt={post.image_alt ?? ''} className="h-24 w-24 shrink-0 rounded-xl object-cover" /> : <span className="inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-brand-blue-50 text-brand-blue"><Icon name="mail" size={28} /></span>}
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-base font-extrabold text-ink">{post.title}</p>
+          <p className="text-xs text-slate-500">
+            {post.status === 'posted' ? `Posted ${post.posted_at ? new Date(post.posted_at).toLocaleDateString() : ''}${post.posted_to?.length ? ` · ${post.posted_to.join(', ')}` : ''}` : whenLabel(post)} · {post.platforms.join(', ')}
+          </p>
+          <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm text-slate-700">{post.caption}</p>
+          {post.notes && <p className="mt-1 text-xs text-slate-500">Note: {post.notes}</p>}
+        </div>
+      </div>
+      {msg && <p className="mt-2 text-xs font-semibold text-slate-600">{msg}</p>}
+      {confirming && post.status !== 'posted' && canPublish && (
+        <div className="mt-3 space-y-2 rounded-2xl bg-brand-orange-50/60 p-3">
+          <p className="text-sm font-bold text-ink">Posted it? Where?</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PLATFORMS.map((pl) => (
+              <button key={pl.value} type="button" onClick={() => setPostedTo((t) => (t.includes(pl.value) ? t.filter((x) => x !== pl.value) : [...t, pl.value]))} className={`rounded-full px-3 py-1.5 text-xs font-bold ${postedTo.includes(pl.value) ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>
+                {pl.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => void onStatus(post, 'posted', postedTo)} className={btn.blue}>
+            Mark as posted
+          </button>
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {post.status !== 'posted' && canPublish && (
+          <button type="button" onClick={() => void release()} className={btn.orange}>
+            {canShareFiles() ? 'Share now' : 'Save image + copy caption'}
+          </button>
+        )}
+        {post.status === 'draft' && canDraft && (
+          <button type="button" onClick={() => void onStatus(post, 'approved')} className={btn.blue}>
+            Approve
+          </button>
+        )}
+        {post.status === 'approved' && canDraft && (
+          <button type="button" onClick={() => void onStatus(post, 'draft')} className={btn.outline}>
+            Back to draft
+          </button>
+        )}
+        {post.status !== 'posted' && canDraft && (
+          <button type="button" onClick={onEdit} className={btn.outline}>
+            Edit
+          </button>
+        )}
+        {post.image_url && (
+          <button type="button" onClick={() => fetchImageBlob(post.image_url!).then((b) => savePng(b, `ohrr-post-${post.id.slice(0, 8)}.png`))} className={btn.outline}>
+            Save image
+          </button>
+        )}
+        <button type="button" onClick={() => copyText(post.caption).then(() => setMsg('Caption copied.'))} className={btn.outline}>
+          Copy caption
+        </button>
+        {post.status === 'posted' && canDraft && (
+          <button type="button" onClick={() => void onStatus(post, 'draft')} className={btn.outline}>
+            Post again
+          </button>
+        )}
+        {canDraft && (
+          <button type="button" onClick={() => void onDelete(post)} className="text-sm font-bold text-red-600">
+            Delete
+          </button>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------- share kit */
+
+function Kit({ onPick }: { onPick: (p: CardPost) => void }) {
+  const { rabbits, source } = useRabbits(60)
+  const { events } = useEvents()
+  const [custom, setCustom] = useState({ headline: '', subline: '' })
+  const seasonal = useMemo(() => suggestedEducation(), [])
+  const upcoming = useMemo(() => (events ?? []).filter((e) => new Date(e.endsAt ?? e.startsAt).getTime() > Date.now()).slice(0, 8), [events])
+  const row = (p: CardPost) => (
+    <button key={p.id} type="button" onClick={() => onPick(p)} className="flex w-full items-center gap-3 rounded-2xl border border-black/5 bg-white p-3 text-left shadow-sm transition hover:border-slate-300">
+      {p.card.photo ? <img src={p.card.photo} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover" /> : <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-blue-50 text-brand-blue"><Icon name={p.card.kind === 'event' ? 'calendar' : p.card.kind === 'education' ? 'book' : 'sparkles'} size={20} /></span>}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-[15px] font-extrabold text-ink">{p.label}</span>
+        <span className="block truncate text-xs text-slate-500">{p.when ?? p.card.kicker}</span>
+      </span>
+      <Icon name="chevron" size={16} className="text-slate-300" />
+    </button>
+  )
+  return (
+    <div className="grid gap-8 lg:grid-cols-3">
+      <section className="space-y-2">
+        <h2 className="font-display text-lg font-extrabold text-ink">Messages</h2>
+        <p className="text-xs text-slate-500">Education posts for the audiences OHRR most needs; this month’s first.</p>
+        {seasonal.map((c) => row(educationPost(c)))}
+        {EDUCATION_CARDS.length === 0 && <p className="text-sm text-slate-500">None.</p>}
+      </section>
+      <section className="space-y-2">
+        <h2 className="font-display text-lg font-extrabold text-ink">Rabbits</h2>
+        {source === 'sample' && <p className="text-xs text-slate-500">Sample listings until OHRR adds real rabbits.</p>}
+        {rabbits === null ? <Spinner /> : rabbits.map((r) => row(rabbitPost({ ...r, description: r.description ?? undefined, age: r.age ?? undefined, sex: r.sex ?? undefined, breed: r.breed ?? undefined })))}
+      </section>
+      <section className="space-y-2">
+        <h2 className="font-display text-lg font-extrabold text-ink">Events</h2>
+        {upcoming.length === 0 && <p className="text-sm text-slate-500">No upcoming events.</p>}
+        {upcoming.map((e) => row(eventPost({ ...e, venue: e.venue ?? undefined, city: e.city ?? undefined, summary: e.summary ?? undefined })))}
+        <h2 className="pt-4 font-display text-lg font-extrabold text-ink">Custom</h2>
+        <Card className="space-y-2">
+          <input className={staffInput} value={custom.headline} onChange={(e) => setCustom({ ...custom, headline: e.target.value })} placeholder="Big line" maxLength={80} />
+          <textarea className={staffInput} rows={2} value={custom.subline} onChange={(e) => setCustom({ ...custom, subline: e.target.value })} placeholder="Small line (optional)" maxLength={160} />
+          <button type="button" disabled={!custom.headline.trim()} onClick={() => onPick(customPost(custom.headline.trim(), custom.subline.trim()))} className={`${btn.orange} disabled:opacity-60`}>
+            Make the card
+          </button>
+        </Card>
+      </section>
+    </div>
+  )
+}
+
+function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; orgId: string; userId: string; onBack: () => void; onQueued: () => Promise<void> }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [format, setFormat] = useState<CardFormat>('square')
+  const [caption, setCaption] = useState(post.caption)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  useEffect(() => {
+    const c = canvasRef.current
+    if (!c) return
+    setBusy(true)
+    renderCard(c, post.card, format, { logoUrl: '/img/ohrr-mark.png' })
+      .catch((e) => setMsg(errMessage(e)))
+      .finally(() => setBusy(false))
+  }, [post, format])
+  const filename = `ohrr-${post.id.replace(/[^a-z0-9]+/gi, '-')}-${format}.png`
+  const queue = async () => {
+    const c = canvasRef.current
+    if (!c) return
+    setBusy(true)
+    try {
+      const url = await uploadPostPng(await canvasToBlob(c), orgId)
+      await createPost(orgId, userId, { title: post.label, caption, image_url: url, image_alt: post.card.headline, platforms: format === 'story' ? ['instagram'] : ['instagram', 'facebook'], scheduled_for: null, source: `kit:${post.id}` })
+      await onQueued()
+    } catch (e) {
+      setMsg(errMessage(e))
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="grid gap-6 md:grid-cols-[minmax(0,420px)_1fr]">
+      <div>
+        <button type="button" onClick={onBack} className="text-sm font-bold text-brand-blue">
+          ← Share kit
+        </button>
+        <div className="mt-3 flex gap-2">
+          {(['square', 'story'] as CardFormat[]).map((f) => (
+            <button key={f} type="button" onClick={() => setFormat(f)} className={format === f ? btn.blue : btn.outline}>
+              {f === 'square' ? 'Post (square)' : 'Story (tall)'}
+            </button>
+          ))}
+        </div>
+        <div className={`mt-3 overflow-hidden rounded-2xl bg-slate-100 shadow ${format === 'story' ? 'max-w-[260px]' : 'max-w-[420px]'}`}>
+          <canvas ref={canvasRef} className="block h-auto w-full" />
+        </div>
+      </div>
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-slate-700">
+          Caption
+          <textarea className={staffInput} rows={9} value={caption} onChange={(e) => setCaption(e.target.value)} />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void queue()} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+            Save to the post queue
+          </button>
+          <button type="button" onClick={() => canvasRef.current && canvasToBlob(canvasRef.current).then((b) => savePng(b, filename))} disabled={busy} className={btn.outline}>
+            Save image
+          </button>
+          <button type="button" onClick={() => copyText(caption).then(() => setMsg('Caption copied.'))} className={btn.outline}>
+            Copy caption
+          </button>
+        </div>
+        {msg && <p className="text-sm font-semibold text-slate-600">{msg}</p>}
+        <p className="text-xs text-slate-500">The phone app has a one-tap Share button for these; from a computer, save the image and paste the caption into the platform.</p>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------- editor */
+
+function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; userId: string; initial: SocialPost | null; onDone: () => Promise<void>; onCancel: () => void }) {
+  const [d, setD] = useState<PostDraft>(
+    initial
+      ? { title: initial.title, caption: initial.caption, image_url: initial.image_url, image_alt: initial.image_alt, platforms: initial.platforms, scheduled_for: initial.scheduled_for, notes: initial.notes ?? '' }
+      : { title: '', caption: '', image_url: null, platforms: ['instagram', 'facebook'], scheduled_for: null, notes: '' },
+  )
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setBusy(true)
+    try {
+      setD((x) => ({ ...x, image_url: null }))
+      const url = await uploadPostPhoto(f, orgId)
+      setD((x) => ({ ...x, image_url: url }))
+    } catch (err) {
+      setError(errMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const save = async (approve: boolean) => {
+    if (!d.title.trim()) return setError('Give the post a short name.')
+    if (!d.caption.trim() && !d.image_url) return setError('Add some words or a picture.')
+    setBusy(true)
+    setError(null)
+    try {
+      let id = initial?.id
+      if (initial) await updatePost(initial.id, d)
+      else id = (await createPost(orgId, userId, d)).id
+      if (approve && id) await setPostStatus(id, 'approved')
+      await onDone()
+    } catch (e) {
+      setError(errMessage(e))
+      setBusy(false)
+    }
+  }
+  return (
+    <form
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault()
+        void save(false)
+      }}
+      className="grid gap-6 md:grid-cols-2"
+    >
+      <Card className="space-y-3">
+        <p className="text-sm font-semibold text-slate-700">Picture</p>
+        {d.image_url ? <img src={d.image_url} alt="" className="w-full rounded-xl" /> : <div className="flex h-40 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400"><Icon name="camera" size={36} /></div>}
+        <div className="flex gap-2">
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className={btn.blue}>
+            Choose a picture
+          </button>
+          {d.image_url && (
+            <button type="button" onClick={() => setD((x) => ({ ...x, image_url: null }))} className="text-sm font-bold text-red-600">
+              Remove
+            </button>
+          )}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        <p className="text-xs text-slate-500">Or make a designed card in the Share kit and “Save to the post queue”.</p>
+      </Card>
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-slate-700">
+          Short name (for the queue)
+          <input className={staffInput} value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} maxLength={80} required />
+        </label>
+        <label className="block text-sm font-semibold text-slate-700">
+          Caption
+          <textarea className={staffInput} rows={7} value={d.caption} onChange={(e) => setD({ ...d, caption: e.target.value })} />
+        </label>
+        {!d.caption.includes('#') && (
+          <button type="button" onClick={() => setD({ ...d, caption: `${d.caption.trimEnd()}\n\n${HASHTAGS}` })} className="text-sm font-bold text-brand-blue">
+            + Add OHRR’s hashtags
+          </button>
+        )}
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Where it should go</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {PLATFORMS.map((pl) => (
+              <button key={pl.value} type="button" onClick={() => setD((x) => ({ ...x, platforms: x.platforms.includes(pl.value) ? x.platforms.filter((y) => y !== pl.value) : [...x.platforms, pl.value] }))} className={`rounded-full px-4 py-1.5 text-sm font-bold ${d.platforms.includes(pl.value) ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>
+                {pl.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm font-semibold text-slate-700">
+            Post on (optional)
+            <input type="date" className={staffInput} value={d.scheduled_for ?? ''} onChange={(e) => setD({ ...d, scheduled_for: e.target.value || null })} />
+          </label>
+          <label className="block text-sm font-semibold text-slate-700">
+            Note for the poster
+            <input className={staffInput} value={d.notes ?? ''} onChange={(e) => setD({ ...d, notes: e.target.value })} />
+          </label>
+        </div>
+        {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
+            Save draft
+          </button>
+          <button type="button" onClick={() => void save(true)} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+            Save & approve
+          </button>
+          <button type="button" onClick={onCancel} className="text-sm font-bold text-slate-500">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
