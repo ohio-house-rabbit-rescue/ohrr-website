@@ -167,6 +167,7 @@ export default function StaffShell() {
           </Link>
           <nav className="flex flex-wrap items-center gap-1.5">
             <NavLink to="/staff" end className={navClass}>Dashboard</NavLink>
+            {can('inbox.manage') && <NavLink to="/staff/inbox" className={navClass}>Inbox</NavLink>}
             {can('announcements.post') && <NavLink to="/staff/announcements" className={navClass}>Announcements</NavLink>}
             {can('announcements.post') && <NavLink to="/staff/homepage" className={navClass}>Homepage</NavLink>}
             {(can('adoptions.listings.create') || can('adoptions.listings.edit') || can('adoptions.status.change')) && (

@@ -6,6 +6,11 @@ export default function StaffDashboard() {
   const isAdmin = membership?.role === 'owner' || membership?.role === 'admin'
 
   const tiles = [
+    can('inbox.manage') && {
+      to: '/staff/inbox',
+      h: 'Inbox',
+      p: 'Appointments, sign-ups, surrender intakes, Happy Tails and messages from the website and the app.',
+    },
     can('announcements.post') && {
       to: '/staff/announcements',
       h: 'Announcements',
