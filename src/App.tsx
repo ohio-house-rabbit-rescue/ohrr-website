@@ -30,6 +30,8 @@ import ManageRabbits from './pages/staff/ManageRabbits'
 import ManageVolunteer from './pages/staff/ManageVolunteer'
 import ManageCare from './pages/staff/ManageCare'
 import Team from './pages/staff/Team'
+import Items from './pages/staff/Items'
+import PrintTags from './pages/staff/PrintTags'
 
 export default function App() {
   return (
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="volunteer" element={<ManageVolunteer />} />
         <Route path="care" element={<ManageCare />} />
         <Route path="team" element={<Team />} />
+        <Route path="items" element={<Items />} />
+        <Route path="items/tags" element={<PrintTags />} />
         <Route path="*" element={<StaffDashboard />} />
       </Route>
 

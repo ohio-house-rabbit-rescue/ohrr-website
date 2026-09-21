@@ -33,6 +33,11 @@ export default function StaffDashboard() {
       h: 'Care guides',
       p: 'Write and edit the Rabbit Care articles in Learn.',
     },
+    (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
+      to: '/staff/items',
+      h: 'Scanned items & tags',
+      p: 'Silent Auction, raffle prizes and Hop Shop stock scanned in the app. Print tag sheets here.',
+    },
     (can('staff.invite') || can('staff.permissions.manage')) && {
       to: '/staff/team',
       h: 'Team',
