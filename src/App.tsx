@@ -34,6 +34,7 @@ import Items from './pages/staff/Items'
 import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
 import Book, { BookCancel } from './pages/Book'
+import { AdoptApply, SurrenderIntake, MailingList as MailingListPage } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
 
 export default function App() {
@@ -69,6 +70,9 @@ export default function App() {
         <Route path="/book/:slug" element={<Book />} />
         <Route path="/adopt" element={<Adopt />} />
         <Route path="/adopt/policy" element={<AdoptPolicy />} />
+        <Route path="/adopt/apply" element={<AdoptApply />} />
+        <Route path="/surrender/form" element={<SurrenderIntake />} />
+        <Route path="/mailing-list" element={<MailingListPage />} />
         <Route path="/learn" element={<Learn />} />
         <Route path="/learn/vets" element={<Vets />} />
         <Route path="/learn/:slug" element={<LearnArticle />} />

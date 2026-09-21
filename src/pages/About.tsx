@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LinkCard } from '../components/ui'
 import { APPLY, BE_THE_VOICE_PDF, CAPITAL_PLEDGE_PDF, BUNFEST_SITE, OHRR } from '../lib/constants'
 
@@ -223,9 +224,9 @@ export default function About() {
         </div>
 
         <div className="mt-12">
-          <a href={APPLY} {...ext} className={btn.orange}>
+          <Link to={APPLY} className={btn.orange}>
             Adopt a rabbit
-          </a>
+          </Link>
         </div>
       </Section>
     </>

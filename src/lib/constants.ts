@@ -7,15 +7,15 @@ export const APP_URL = 'https://ohrr-app.pages.dev'
 export const STAFF_URL = `${APP_URL}/staff`
 export const LIVE_SITE = 'https://ohiohouserabbitrescue.org'
 
-// Live-site pages we hand off to (forms and payment stay on the current site).
+// Live-site pages we still hand off to (payment stays on the current site; forms are in-house now).
 export const DONATE = 'https://ohiohouserabbitrescue.org/support-ohrr/donate/'
-export const APPLY = 'https://www.ohiohouserabbitrescue.org/adopt/adoption-application/'
+export const APPLY = '/adopt/apply' // in-house; the old form: https://www.ohiohouserabbitrescue.org/adopt/adoption-application/
 export const ADOPTION_POLICY_PDF = 'https://www.ohrr.org/wp-content/uploads/2025/09/Adoption-Policy.pdf'
 export const PETFINDER = 'http://www.petfinder.com/pet-search?shelterid=OH975'
 export const ADOPT_A_PET =
   'http://www.adoptapet.com/animal-shelter-search?city_or_zip=43235&shelter_name=Ohio+House+Rabbit+Rescue&distance=50&adopts_out=all'
 export const BUNNY_DATES_ARTICLE = 'https://www.ohiohouserabbitrescue.org/bunny_dates_at_ohrr/'
-export const MAILING_LIST = 'https://ohiohouserabbitrescue.org/join-ohrr-mailing-list/'
+export const MAILING_LIST = '/mailing-list' // in-house; the old page: https://ohiohouserabbitrescue.org/join-ohrr-mailing-list/
 export const MERCH_STORE = 'https://www.bonfire.com/store/ohrr-shirt-store/'
 // Midwest BunFest's own Bonfire store (the "Bonfire Store" link on midwestbunfest.org).
 export const BUNFEST_MERCH = 'https://www.bonfire.com/midwest-bunfest-2026/'
@@ -34,10 +34,9 @@ export const ADMISSIONS_PAGE = 'https://ohiohouserabbitrescue.org/about-us/admis
 export const ADMISSIONS_POLICY_PDF = 'https://ohiohouserabbitrescue.org/wp-content/uploads/2013/06/Admissions-Policy.pdf'
 export const SURRENDER_POLICY_PDF =
   'https://ohiohouserabbitrescue.org/wp-content/uploads/2013/06/GSOwnerSurrenderrelinquishmentPolicy.pdf'
-export const GOOD_SAMARITAN_FORM =
-  'https://www.ohiohouserabbitrescue.org/about-us/admissions/good-samaritian-rescuesurrender-and-relinquishment-form/'
-export const OWNER_SURRENDER_FORM =
-  'https://www.ohiohouserabbitrescue.org/about-us/admissions/owner-surrender-and-relinquishment-form/'
+// In-house intake forms (the old ones lived at …/about-us/admissions/*-relinquishment-form/).
+export const GOOD_SAMARITAN_FORM = '/surrender/form?type=good-samaritan'
+export const OWNER_SURRENDER_FORM = '/surrender/form?type=owner'
 export const BE_THE_VOICE_PDF = 'https://www.ohiohouserabbitrescue.org/wp-content/uploads/2013/07/Be-the-Voice.pdf'
 export const CAPITAL_PLEDGE_PDF =
   'https://www.ohiohouserabbitrescue.org/wp-content/uploads/2013/07/Capital-Campaign-Pledge-Form.pdf'

@@ -124,9 +124,9 @@ export default function Events() {
             We keep things simple and only send the important stuff: updates, fundraisers, opportunities,
             Midwest BunFest information, and ways you can help rescue rabbits when it matters most.
           </p>
-          <a href={MAILING_LIST} {...ext} className={`${btn.blue} mt-4`}>
+          <Link to={MAILING_LIST} className={`${btn.blue} mt-4`}>
             Join the OHRR mailing list
-          </a>
+          </Link>
         </div>
       </Section>
     </>

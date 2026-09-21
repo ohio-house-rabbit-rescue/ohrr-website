@@ -61,12 +61,12 @@ export default function Surrender() {
               your situation.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <a href={GOOD_SAMARITAN_FORM} {...ext} className={btn.orange}>
+              <Link to={GOOD_SAMARITAN_FORM} className={btn.orange}>
                 Good Samaritan rescue/surrender form
-              </a>
-              <a href={OWNER_SURRENDER_FORM} {...ext} className={btn.orange}>
+              </Link>
+              <Link to={OWNER_SURRENDER_FORM} className={btn.orange}>
                 Owner surrender form
-              </a>
+              </Link>
             </div>
           </Card>
         </div>

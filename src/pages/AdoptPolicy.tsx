@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, PrintButton, ArticleBody } from '../components/ui'
 import { APPLY, ADOPTION_POLICY_PDF, OHRR } from '../lib/constants'
 
@@ -62,9 +63,9 @@ export default function AdoptPolicy() {
           <a href={ADOPTION_POLICY_PDF} {...ext} className={btn.blue}>
             Open the official PDF
           </a>
-          <a href={APPLY} {...ext} className={btn.orange}>
+          <Link to={APPLY} className={btn.orange}>
             Adoption application
-          </a>
+          </Link>
         </div>
         <p className="print-only font-display text-2xl font-black">Ohio House Rabbit Rescue — Adoption Policy (summary)</p>
         <div className="mt-8 max-w-3xl">

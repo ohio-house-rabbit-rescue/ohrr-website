@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, Card, ContactRow, H2 } from '../components/ui'
 import { OHRR, APPLY, MAILING_LIST } from '../lib/constants'
+import { ContactForm } from './Forms'
 
 export default function Contact() {
   return (
@@ -8,6 +9,10 @@ export default function Contact() {
       <PageHero title="Contact us" subtitle="The OHRR Adoption Center and Hop Shop in Columbus, Ohio." />
       <Section>
         <ContactRow />
+
+        <div className="mt-8 max-w-2xl">
+          <ContactForm />
+        </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Card>
@@ -28,9 +33,9 @@ export default function Contact() {
             <p className="mt-2 text-base font-semibold text-slate-700">{OHRR.hours}</p>
             <p className="mt-1 text-sm text-slate-600">{OHRR.hoursNote}</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <a href={APPLY} {...ext} className={btn.orange}>
+              <Link to={APPLY} className={btn.orange}>
                 Adoption application
-              </a>
+              </Link>
               <Link to="/hop-shop" className={btn.outline}>
                 About the Hop Shop
               </Link>
@@ -74,9 +79,9 @@ export default function Contact() {
           <a href={OHRR.instagram} {...ext} className={btn.blue}>
             Instagram
           </a>
-          <a href={MAILING_LIST} {...ext} className={btn.outline}>
+          <Link to={MAILING_LIST} className={btn.outline}>
             Join the OHRR mailing list
-          </a>
+          </Link>
         </div>
         <p className="mt-8 text-xs text-slate-400">
           Ohio House Rabbit Rescue is a 501(c)(3) nonprofit · EIN {OHRR.ein}

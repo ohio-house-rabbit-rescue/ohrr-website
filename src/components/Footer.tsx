@@ -105,9 +105,9 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <a href={MAILING_LIST} {...ext} className={link}>
+              <Link to={MAILING_LIST} className={link}>
                 Join the OHRR mailing list
-              </a>
+              </Link>
             </li>
             <li>
               <a href={OHRR.marketingEmailHref} className={link}>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAnnouncements } from '../lib/data'
 import { PageHero, Section, btn, ext, Card, LiveNote, NewsImage } from '../components/ui'
 import { formatShortDate } from '../lib/format'
@@ -59,9 +60,9 @@ export default function News() {
                 We only send the important stuff: updates, fundraisers, opportunities, Midwest BunFest
                 information, and ways you can help rescue rabbits when it matters most.
               </p>
-              <a href={MAILING_LIST} {...ext} className={`${btn.blue} mt-4`}>
+              <Link to={MAILING_LIST} className={`${btn.blue} mt-4`}>
                 Join the mailing list
-              </a>
+              </Link>
             </div>
             <Card>
               <h3 className="font-display text-base font-extrabold text-brand-blue">Follow OHRR</h3>

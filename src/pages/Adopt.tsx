@@ -89,9 +89,9 @@ export default function Adopt() {
             ))}
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
-            <a href={APPLY} {...ext} className={btn.orange}>
+            <Link to={APPLY} className={btn.orange}>
               Start an adoption application
-            </a>
+            </Link>
             <Link to="/adopt/policy" className={btn.blue}>
               Read the Adoption Policy
             </Link>
@@ -138,9 +138,9 @@ export default function Adopt() {
             ))}
           </ul>
           <div className="mt-5 flex flex-wrap gap-3">
-            <a href={APPLY} {...ext} className={btn.orange}>
+            <Link to={APPLY} className={btn.orange}>
               Start an adoption application
-            </a>
+            </Link>
             <a href={OHRR.phoneHref} className={btn.outline}>
               Call {OHRR.phone}
             </a>
