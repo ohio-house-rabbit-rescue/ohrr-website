@@ -20,13 +20,20 @@ export default function Learn() {
       />
       <PresentedBy surface="care-library" />
       <Section>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <LinkCard
             to="/learn/vets"
             icon="phone"
             h="Find a rabbit-savvy vet"
             p="OHRR's list of vets for rabbit care across Ohio — Central Ohio, Cincinnati, Dayton, Toledo and Northeast Ohio — including 24/7 exotics emergency care and low-cost spay/neuter."
             cta="See the vet list →"
+          />
+          <LinkCard
+            to="/learn/breeds"
+            icon="search"
+            h="What kind of bunny do I have?"
+            p="Ears, size, coat — three questions and the breeds that fit, with photos. Most rabbits are a mix, and that's fine."
+            cta="Find out →"
           />
           <LinkCard
             to="/learn/bunny-living-space"
