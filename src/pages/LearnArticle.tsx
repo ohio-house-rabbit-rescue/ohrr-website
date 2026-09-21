@@ -20,7 +20,7 @@ export default function LearnArticle() {
 
   const a = articles.find((x) => x.slug === slug)
   const section = a?.section ?? 'care'
-  const back = section === 'give' ? { to: '/give', label: '← Ways to give' } : section === 'adopt' ? { to: '/adopt', label: '← Adopt' } : section === 'about' ? { to: '/about', label: '← About' } : { to: '/learn', label: '← All care articles' }
+  const back = section === 'give' ? { to: '/give', label: '← Ways to give' } : section === 'adopt' ? { to: '/adopt', label: '← Adopt' } : section === 'about' ? { to: '/about', label: '← About' } : section === 'volunteer' ? { to: '/volunteer', label: '← Volunteer' } : { to: '/learn', label: '← All care articles' }
   if (!a) {
     return (
       <>

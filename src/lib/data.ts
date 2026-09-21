@@ -155,7 +155,7 @@ interface CareRow {
   summary: string
   body: string | null
   tip: string | null
-  section?: 'care' | 'give' | 'about' | 'adopt'
+  section?: 'care' | 'give' | 'about' | 'adopt' | 'volunteer'
 }
 
 // Care guides: live rows from the app's care_articles table merged with the

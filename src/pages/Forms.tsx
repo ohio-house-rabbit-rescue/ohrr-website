@@ -9,6 +9,7 @@ import { PageHero, Section, Card, btn, ext } from '../components/ui'
 import SchemaForm, { inputClass, type Values } from '../components/SchemaForm'
 import { applicationSections, applicationAgreement } from '../data/adoptionApplication'
 import { intakeConfig, type IntakeType } from '../data/surrenderForm'
+import { fosterSections, fosterAgreement } from '../data/fosterForm'
 import { OHRR, ADOPTION_POLICY_PDF } from '../lib/constants'
 import { submitRequest } from '../lib/requests'
 
@@ -298,6 +299,107 @@ export function BecomeSupporter() {
               {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
               <button type="submit" disabled={status === 'busy'} className={`${btn.orange} disabled:opacity-60`}>
                 {status === 'busy' ? 'Sending…' : 'Join OHRR'}
+              </button>
+            </Card>
+          </form>
+        )}
+      </Section>
+    </>
+  )
+}
+
+/** /volunteer/foster — foster interest (→ Inbox 'foster-application'). */
+export function FosterInterest() {
+  const [done, setDone] = useState<Values | null>(null)
+  if (done)
+    return (
+      <>
+        <PageHero title="Thank you!" />
+        <Done title={`Thank you, ${(done.name as string) || 'friend'}!`} to="/volunteer" label="Back to Volunteer">
+          OHRR will be in touch about fostering — what it supplies, what it expects, and which rabbit might suit your home.
+        </Done>
+      </>
+    )
+  return (
+    <>
+      <PageHero title="Foster a rabbit" subtitle="A few weeks with a rabbit in your home while they recover or wait for a family. Tell us a little about you and your space." />
+      <Section className="max-w-3xl">
+        <p className="mb-6 text-sm">
+          <Link to="/info/foster-a-rabbit" className="font-semibold text-brand-blue">
+            Not sure fostering is for you? Read what it involves →
+          </Link>
+        </p>
+        <SchemaForm
+          kind="foster-application"
+          sections={fosterSections}
+          agreement={{ statements: fosterAgreement }}
+          submitLabel="Send"
+          onDone={(v) => {
+            setDone(v)
+            window.scrollTo({ top: 0 })
+          }}
+        />
+      </Section>
+    </>
+  )
+}
+
+/** /volunteer/interest?role=… — a 30-second "tell OHRR about you" (→ Inbox 'volunteer-signup'). */
+export function VolunteerInterest() {
+  const [params] = useSearchParams()
+  const role = params.get('role') ?? 'General volunteer'
+  const [form, setForm] = useState({ name: '', email: '', phone: '', availability: '', notes: '' })
+  const [status, setStatus] = useState<'idle' | 'busy' | 'done'>('idle')
+  const [error, setError] = useState<string | null>(null)
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setStatus('busy')
+    setError(null)
+    try {
+      await submitRequest('volunteer-signup', { ...form, role })
+      setStatus('done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send that right now.')
+      setStatus('idle')
+    }
+  }
+  return (
+    <>
+      <PageHero title={role} subtitle="Tell OHRR a little about you and how you’d like to help. Someone will follow up." />
+      <Section className="max-w-2xl">
+        {status === 'done' ? (
+          <Done title={`Thanks, ${form.name}!`} to="/volunteer" label="Back to Volunteer">
+            OHRR will be in touch to get you started.
+          </Done>
+        ) : (
+          <form onSubmit={submit}>
+            <Card className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-semibold text-slate-700">
+                  Your name
+                  <input className={inputClass} required value={form.name} onChange={set('name')} autoComplete="name" />
+                </label>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Email
+                  <input className={inputClass} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
+                </label>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Phone (optional)
+                  <input className={inputClass} type="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
+                </label>
+                <label className="block text-sm font-semibold text-slate-700">
+                  When are you usually free?
+                  <input className={inputClass} value={form.availability} onChange={set('availability')} placeholder="Weekday evenings · weekends" />
+                </label>
+              </div>
+              <label className="block text-sm font-semibold text-slate-700">
+                Anything OHRR should know? {role.startsWith('Social') ? '(which platforms you use, any video or photo experience)' : ''}
+                <textarea className={inputClass} rows={3} value={form.notes} onChange={set('notes')} />
+              </label>
+              {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+              <button type="submit" disabled={status === 'busy'} className={`${btn.orange} disabled:opacity-60`}>
+                {status === 'busy' ? 'Sending…' : 'Send'}
               </button>
             </Card>
           </form>

@@ -34,8 +34,9 @@ import Items from './pages/staff/Items'
 import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
 import Posts from './pages/staff/Posts'
+import Flyers from './pages/staff/Flyers'
 import Book, { BookCancel } from './pages/Book'
-import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter } from './pages/Forms'
+import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest, VolunteerInterest } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
 
 export default function App() {
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="posts" element={<Posts />} />
+        <Route path="flyers" element={<Flyers />} />
         <Route path="items" element={<Items />} />
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="*" element={<StaffDashboard />} />
@@ -76,6 +78,8 @@ export default function App() {
         <Route path="/surrender/form" element={<SurrenderIntake />} />
         <Route path="/mailing-list" element={<MailingListPage />} />
         <Route path="/support/become-a-supporter" element={<BecomeSupporter />} />
+        <Route path="/volunteer/foster" element={<FosterInterest />} />
+        <Route path="/volunteer/interest" element={<VolunteerInterest />} />
         <Route path="/learn" element={<Learn />} />
         <Route path="/learn/vets" element={<Vets />} />
         <Route path="/learn/:slug" element={<LearnArticle />} />

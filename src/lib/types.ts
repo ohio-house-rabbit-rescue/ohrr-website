@@ -35,7 +35,7 @@ export interface CareArticle {
   icon: string
   summary: string
   /** 'care' (Learn) | 'give' | 'about' | 'adopt' — pages other than Learn live at /info/<slug> */
-  section?: 'care' | 'give' | 'about' | 'adopt'
+  section?: 'care' | 'give' | 'about' | 'adopt' | 'volunteer'
   body?: string | null
   tip?: string | null
   // Seed-only: articles the live site hosts elsewhere (we link, not copy).

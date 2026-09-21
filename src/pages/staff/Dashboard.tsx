@@ -22,6 +22,11 @@ export default function StaffDashboard() {
       p: 'Ready-made social posts from rabbits, events and education messages; a queue one person releases.',
     },
     can('announcements.post') && {
+      to: '/staff/flyers',
+      h: 'Flyers',
+      p: 'Printable posters with a QR code for the Hop Shop, vets, pet stores, libraries and campus boards.',
+    },
+    can('announcements.post') && {
       to: '/staff/announcements',
       h: 'Announcements',
       p: 'Post notices that show on the website home and the app.',

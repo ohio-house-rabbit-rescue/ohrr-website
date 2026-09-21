@@ -141,6 +141,37 @@ export default function Volunteer() {
         </div>
 
         <div className="mt-12">
+          <H2>Two more ways in</H2>
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <Card>
+              <h3 className="font-display text-lg font-extrabold text-brand-blue">Foster a rabbit</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                A few weeks with a rabbit in your home while they recover or wait for a family. Renters and students welcome — it is the easiest first step there is.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link to="/volunteer/foster" className={btn.orange}>
+                  I’m interested
+                </Link>
+                <Link to="/info/foster-a-rabbit" className={btn.outline}>
+                  What it involves
+                </Link>
+              </div>
+            </Card>
+            <Card>
+              <h3 className="font-display text-lg font-extrabold text-brand-blue">Help OHRR online</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                Good with Instagram, TikTok or short video? An hour a week posting from OHRR’s ready-made Share kit reaches the people the rescue is missing. Students: this counts as real experience.
+              </p>
+              <div className="mt-4">
+                <Link to="/volunteer/interest?role=Social%20media%20%26%20digital%20content" className={btn.blue}>
+                  Count me in
+                </Link>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        <div className="mt-12">
           <H2>Other volunteer needs</H2>
           <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {OTHER_NEEDS.map((n) => (

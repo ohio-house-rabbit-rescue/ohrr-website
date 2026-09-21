@@ -15,11 +15,12 @@ interface Article {
   sort_order: number
 }
 
-type Section = 'care' | 'give' | 'about' | 'adopt'
+type Section = 'care' | 'give' | 'about' | 'adopt' | 'volunteer'
 const SECTIONS: { value: Section; label: string }[] = [
   { value: 'care', label: 'Care guide (Learn)' },
   { value: 'give', label: 'Give page' },
   { value: 'adopt', label: 'Adopt page' },
+  { value: 'volunteer', label: 'Volunteer page' },
   { value: 'about', label: 'About page' },
 ]
 
