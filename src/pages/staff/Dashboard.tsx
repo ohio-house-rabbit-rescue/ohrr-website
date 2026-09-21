@@ -22,6 +22,11 @@ export default function StaffDashboard() {
       p: 'Ready-made social posts from rabbits, events and education messages; a queue one person releases.',
     },
     can('announcements.post') && {
+      to: '/staff/impact',
+      h: 'Impact numbers',
+      p: 'The year in numbers for donors and sponsors — published at /impact.',
+    },
+    can('announcements.post') && {
       to: '/staff/flyers',
       h: 'Flyers',
       p: 'Printable posters with a QR code for the Hop Shop, vets, pet stores, libraries and campus boards.',

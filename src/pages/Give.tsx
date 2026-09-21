@@ -112,6 +112,12 @@ const WAYS: Way[] = [
     secondary: { href: OHRR.emailHref, label: `Email ${OHRR.email}` },
   },
   {
+    h: 'See what your gift does',
+    p: 'Rabbits adopted, rabbits taken in, spays and neuters, vet bills paid, volunteer hours — the year in numbers, updated by OHRR.',
+    href: '/impact',
+    cta: 'Our impact',
+  },
+  {
     h: 'OHRR Legacy Fund',
     p: 'Help secure the long-term future of OHRR: name OHRR as a beneficiary in your will, trust, IRA, retirement plan or life insurance; give appreciated stock, bonds or mutual funds; or make a charitable distribution from your IRA. Planned gifts and annual gifts of $1,000 or more make you a Rescue Rabbit Guardian, with recognition on the OHRR website and at the Adoption Center.',
     href: LEGACY_FUND,
