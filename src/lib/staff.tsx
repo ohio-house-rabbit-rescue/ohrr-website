@@ -29,6 +29,7 @@ export const CAPS = [
   'audit.view',
   'settings.manage',
   'inbox.manage',
+  'bookings.manage',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -57,6 +58,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'audit.view', area: 'Staff', description: 'View the activity log' },
   { key: 'settings.manage', area: 'Staff', description: 'Change app settings and turn test features on/off' },
   { key: 'inbox.manage', area: 'Inbox', description: 'Read and handle requests sent from the app and website' },
+  { key: 'bookings.manage', area: 'Bookings', description: 'Set up bookable shifts & appointments, see rosters, confirm and check in' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites.
@@ -73,8 +75,9 @@ export const PRESETS: Record<string, Cap[]> = {
     'adoptions.listings.edit',
     'adoptions.status.change',
     'inbox.manage',
+    'bookings.manage',
   ],
-  'Volunteer Lead': ['volunteers.shifts.manage', 'volunteers.signups.approve', 'inbox.manage'],
+  'Volunteer Lead': ['volunteers.shifts.manage', 'volunteers.signups.approve', 'inbox.manage', 'bookings.manage'],
   'Content Editor': ['content.education.edit', 'announcements.post', 'events.bunfest.manage'],
 }
 

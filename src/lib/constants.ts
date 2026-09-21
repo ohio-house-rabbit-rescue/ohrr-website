@@ -47,9 +47,9 @@ export const HRS_SITE = 'http://www.rabbit.org'
 export const CHRS_TIPLINE = 'chrstipline@gmail.com'
 export const OHIO_WILDLIFE_CENTER = 'https://www.ohiowildlifecenter.org/wildlife-emergency/'
 
-// Volunteer sign-up buttons (URLs from the live Volunteer page).
-export const SIGNUP_SOCIALIZATION = 'http://signup.com/go/35ayZe'
-export const SIGNUP_BUNCARE = 'http://signup.com/go/WuT2xR'
+// Volunteer shifts are booked in-house now (/book/bunny-socialization, /book/buncare-shift).
+// The live site's SignUp.com links, for reference only:
+//   http://signup.com/go/35ayZe (Bunny Socialization) · http://signup.com/go/WuT2xR (Buncare)
 
 export const OHRR = {
   name: 'Ohio House Rabbit Rescue',

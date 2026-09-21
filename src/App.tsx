@@ -32,6 +32,8 @@ import ManageCare from './pages/staff/ManageCare'
 import Team from './pages/staff/Team'
 import Items from './pages/staff/Items'
 import Inbox from './pages/staff/Inbox'
+import Bookings from './pages/staff/Bookings'
+import Book, { BookCancel } from './pages/Book'
 import PrintTags from './pages/staff/PrintTags'
 
 export default function App() {
@@ -54,6 +56,7 @@ export default function App() {
         <Route path="care" element={<ManageCare />} />
         <Route path="team" element={<Team />} />
         <Route path="inbox" element={<Inbox />} />
+        <Route path="bookings" element={<Bookings />} />
         <Route path="items" element={<Items />} />
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="*" element={<StaffDashboard />} />
@@ -62,6 +65,8 @@ export default function App() {
       {/* Public site */}
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/book/cancel/:token" element={<BookCancel />} />
+        <Route path="/book/:slug" element={<Book />} />
         <Route path="/adopt" element={<Adopt />} />
         <Route path="/adopt/policy" element={<AdoptPolicy />} />
         <Route path="/learn" element={<Learn />} />

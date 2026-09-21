@@ -1,14 +1,15 @@
 import { useVolunteerOpps } from '../lib/data'
 import { PageHero, Section, LiveNote, btn, ext, H2, Card, Callout } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
-import { OHRR, CHRS_TIPLINE, SIGNUP_SOCIALIZATION, SIGNUP_BUNCARE } from '../lib/constants'
+import { Link } from 'react-router-dom'
+import { OHRR, CHRS_TIPLINE } from '../lib/constants'
 
 interface Position {
   title: string
   summary: string
   requirements: string[]
   location: string
-  signup: { label: string; href: string; external: boolean }
+  signup: { label: string; href: string; external: boolean; to?: string }
   note?: string
 }
 
@@ -24,7 +25,7 @@ const POSITIONS: Position[] = [
       'If you are a parent accompanying a child, you must sign up for a volunteer slot also.',
     ],
     location: 'OHRR Adoption Center',
-    signup: { label: 'Sign up for Bunny Socialization', href: SIGNUP_SOCIALIZATION, external: true },
+    signup: { label: 'Pick a socialization shift', href: '/book/bunny-socialization', to: '/book/bunny-socialization', external: false },
     note: `This opportunity is open to groups. To schedule a group visit, email ${OHRR.email}.`,
   },
   {
@@ -39,7 +40,7 @@ const POSITIONS: Position[] = [
       `Must have completed the 2-hour Buncare Orientation. To sign up for orientation, email Bev at ${OHRR.email}.`,
     ],
     location: 'OHRR Adoption Center',
-    signup: { label: 'Sign up for a Buncare shift', href: SIGNUP_BUNCARE, external: true },
+    signup: { label: 'Pick a Buncare shift', href: '/book/buncare-shift', to: '/book/buncare-shift', external: false },
     note: 'Please sign up at least two hours before your shift so we can make sure someone is at the Adoption Center to let you in.',
   },
   {
@@ -125,9 +126,15 @@ export default function Volunteer() {
               </p>
               {p.note && <p className="mt-2 text-sm text-slate-600">{p.note}</p>}
               <div className="mt-4">
-                <a href={p.signup.href} {...(p.signup.external ? ext : {})} className={btn.orange}>
-                  {p.signup.label}
-                </a>
+                {p.signup.to ? (
+                  <Link to={p.signup.to} className={btn.orange}>
+                    {p.signup.label}
+                  </Link>
+                ) : (
+                  <a href={p.signup.href} {...(p.signup.external ? ext : {})} className={btn.orange}>
+                    {p.signup.label}
+                  </a>
+                )}
               </div>
             </Card>
           ))}

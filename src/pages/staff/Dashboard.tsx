@@ -11,6 +11,11 @@ export default function StaffDashboard() {
       h: 'Inbox',
       p: 'Appointments, sign-ups, surrender intakes, Happy Tails and messages from the website and the app.',
     },
+    can('bookings.manage') && {
+      to: '/staff/bookings',
+      h: 'Bookings',
+      p: 'Volunteer shifts and appointments: who’s coming, make times, set up what can be booked.',
+    },
     can('announcements.post') && {
       to: '/staff/announcements',
       h: 'Announcements',
