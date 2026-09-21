@@ -79,13 +79,13 @@ export default function BunFest() {
 
         <Card className="mt-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h3 className="font-display text-lg font-extrabold text-brand-blue">Silent auction</h3>
+            <h3 className="font-display text-lg font-extrabold text-brand-blue">Silent auction &amp; raffle</h3>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              Preview the items that will be up for silent auction at Midwest BunFest 2026.
+              Preview the silent-auction items and raffle prizes for Midwest BunFest 2026.
             </p>
           </div>
           <Link to="/bunfest/silent-auction" className={btn.blue}>
-            Silent auction preview
+            Auction items &amp; raffle prizes
           </Link>
         </Card>
 

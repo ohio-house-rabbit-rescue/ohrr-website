@@ -35,6 +35,7 @@ import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
 import Posts from './pages/staff/Posts'
 import Flyers from './pages/staff/Flyers'
+import Outreach from './pages/staff/Outreach'
 import ManageImpact from './pages/staff/ManageImpact'
 import Impact from './pages/Impact'
 import Book, { BookCancel } from './pages/Book'
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="bookings" element={<Bookings />} />
         <Route path="posts" element={<Posts />} />
         <Route path="flyers" element={<Flyers />} />
+        <Route path="outreach" element={<Outreach />} />
         <Route path="impact" element={<ManageImpact />} />
         <Route path="items" element={<Items />} />
         <Route path="items/tags" element={<PrintTags />} />

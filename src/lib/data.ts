@@ -14,6 +14,7 @@ import type {
   Sponsor,
   SponsorTier,
   PlacementSurface,
+  RafflePrize,
 } from './types'
 import { sampleHeroSlides } from '../data/heroSlides'
 import { sampleRabbits } from '../data/sampleRabbits'
@@ -501,7 +502,9 @@ export function useRaffleItems(eventSlug = 'midwest-bunfest-2026'): {
   return { items, intro }
 }
 
-// Active Hop Shop products, if the public read is allowed. [] when not readable.
+// What is on the Hop Shop shelf: active products with photo, price and whether
+// any are left, via the public RPC `hopshop_public_products` (the app's
+// 20260921160000_public_shop.sql). [] until that function is pasted.
 export function useHopShopProducts(): HopShopProduct[] | null {
   const [items, setItems] = useState<HopShopProduct[] | null>(null)
   useEffect(() => {
@@ -510,18 +513,59 @@ export function useHopShopProducts(): HopShopProduct[] | null {
       return
     }
     let active = true
-    supabase
-      .from('hopshop_products')
-      .select('id,name,description,price_cents')
-      .eq('is_active', true)
-      .order('name', { ascending: true })
-      .then(({ data, error }) => {
-        if (active) setItems(error ? [] : ((data ?? []) as HopShopProduct[]))
-      })
+    supabase.rpc('hopshop_public_products').then(({ data, error }) => {
+      if (active) setItems(error ? [] : ((data ?? []) as HopShopProduct[]))
+    })
     return () => {
       active = false
     }
   }, [])
+  return items
+}
+
+// Published ticket-raffle prizes for one event (`raffle_prizes`, public read of
+// published rows). Available first, drawn last. [] when none / not readable.
+export function useRafflePrizes(eventSlug = 'midwest-bunfest-2026'): RafflePrize[] | null {
+  const [items, setItems] = useState<RafflePrize[] | null>(null)
+  useEffect(() => {
+    if (!isConfigured) {
+      setItems([])
+      return
+    }
+    let active = true
+    supabase
+      .from('raffle_prizes')
+      .select('id,title,description,donated_by,value_cents,photo_url,status')
+      .eq('event_slug', eventSlug)
+      .eq('is_published', true)
+      .order('sort_order', { ascending: true })
+      .order('title', { ascending: true })
+      .then(({ data, error }) => {
+        if (!active) return
+        const rows = (error ? [] : (data ?? [])) as {
+          id: string
+          title: string
+          description: string | null
+          donated_by: string | null
+          value_cents: number | null
+          photo_url: string | null
+          status: string
+        }[]
+        const mapped: RafflePrize[] = rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          donatedBy: r.donated_by,
+          valueCents: r.value_cents,
+          photoUrl: r.photo_url,
+          status: r.status,
+        }))
+        setItems([...mapped.filter((m) => m.status !== 'drawn'), ...mapped.filter((m) => m.status === 'drawn')])
+      })
+    return () => {
+      active = false
+    }
+  }, [eventSlug])
   return items
 }
 

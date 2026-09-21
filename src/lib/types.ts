@@ -93,6 +93,19 @@ export interface HopShopProduct {
   name: string
   description?: string | null
   price_cents: number
+  photo_url?: string | null
+  in_stock?: boolean
+}
+
+// Ticket-raffle prizes (Supabase `raffle_prizes`, scanned in by staff in the app).
+export interface RafflePrize {
+  id: string
+  title: string
+  description?: string | null
+  donatedBy?: string | null
+  valueCents?: number | null
+  photoUrl?: string | null
+  status: 'available' | 'drawn' | string
 }
 
 // Shared with the OHRR app (Supabase `hero_slides`) — the home-page hero and featured strip.

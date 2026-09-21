@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useRaffleItems } from '../lib/data'
-import type { RaffleItem } from '../lib/types'
+import { useRaffleItems, useRafflePrizes } from '../lib/data'
+import type { RaffleItem, RafflePrize } from '../lib/types'
 import { PageHero, Section, btn, Card, Callout } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
@@ -65,6 +65,51 @@ function ItemCard({ item }: { item: RaffleItem }) {
             </button>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+function PrizeCard({ prize }: { prize: RafflePrize }) {
+  const drawn = prize.status === 'drawn'
+  return (
+    <div className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 ${drawn ? 'opacity-60' : ''}`}>
+      <div className="aspect-square w-full bg-slate-100">
+        {prize.photoUrl ? (
+          <img src={prize.photoUrl} alt={prize.title} loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center font-display text-4xl font-black text-slate-300">{prize.title.slice(0, 1)}</div>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-display text-base font-extrabold text-ink">{prize.title}</h3>
+          {drawn && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">Drawn</span>}
+        </div>
+        {prize.donatedBy && <p className="mt-0.5 text-sm font-semibold text-slate-400">Donated by {prize.donatedBy}</p>}
+        {typeof prize.valueCents === 'number' && <p className="mt-1 text-sm text-slate-600">Value: {formatPrice(prize.valueCents)}</p>}
+        {prize.description && <p className="mt-1.5 text-sm text-slate-600">{prize.description}</p>}
+      </div>
+    </div>
+  )
+}
+
+// The ticket-raffle prizes staff scanned in (published raffle_prizes). Renders
+// nothing until there is at least one.
+function RafflePrizes() {
+  const prizes = useRafflePrizes(EVENT_SLUG)
+  if (!prizes || prizes.length === 0) return null
+  const left = prizes.filter((p) => p.status !== 'drawn').length
+  return (
+    <div className="mt-14">
+      <h2 className="font-display text-2xl font-black text-ink">Raffle prizes</h2>
+      <p className="mt-1 text-sm text-slate-600">
+        {left === prizes.length ? `${prizes.length} prize${prizes.length === 1 ? '' : 's'} to be drawn.` : `${left} of ${prizes.length} still to be drawn.`} Tickets are sold at the raffle table.
+      </p>
+      <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+        {prizes.map((p) => (
+          <PrizeCard key={p.id} prize={p} />
+        ))}
       </div>
     </div>
   )
@@ -140,6 +185,8 @@ export default function SilentAuction() {
             )}
           </>
         )}
+
+        <RafflePrizes />
 
         <div className="mt-10">
           <Link to="/bunfest" className="text-sm font-bold text-brand-blue hover:text-brand-blue-dark">

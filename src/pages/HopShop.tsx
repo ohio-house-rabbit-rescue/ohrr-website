@@ -49,16 +49,27 @@ export default function HopShop() {
 
             {products && products.length > 0 && (
               <div className="mt-12">
-                <H2>In the shop now</H2>
+                <H2>On the shelf now</H2>
                 <LiveNote source="live" />
+                <p className="mt-2 text-sm text-slate-500">Buy at the Adoption Center counter. Counts change as things sell.</p>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   {products.map((p) => (
-                    <Card key={p.id}>
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <h3 className="font-display text-base font-extrabold text-ink">{p.name}</h3>
-                        <span className="text-sm font-bold text-brand-orange-dark">{formatPrice(p.price_cents)}</span>
+                    <Card key={p.id} className={`flex gap-4 ${p.in_stock === false ? 'opacity-60' : ''}`}>
+                      {p.photo_url ? (
+                        <img src={p.photo_url} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-xl bg-slate-100 object-cover" />
+                      ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-brand-blue-50 font-display text-2xl font-black text-brand-blue">
+                          {p.name.slice(0, 1)}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <h3 className="font-display text-base font-extrabold text-ink">{p.name}</h3>
+                          {p.price_cents > 0 && <span className="text-sm font-bold text-brand-orange-dark">{formatPrice(p.price_cents)}</span>}
+                        </div>
+                        {p.description && <p className="mt-1.5 text-sm text-slate-600">{p.description}</p>}
+                        {p.in_stock === false && <p className="mt-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Sold out — ask at the counter</p>}
                       </div>
-                      {p.description && <p className="mt-1.5 text-sm text-slate-600">{p.description}</p>}
                     </Card>
                   ))}
                 </div>

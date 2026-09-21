@@ -32,6 +32,11 @@ export default function StaffDashboard() {
       p: 'Printable posters with a QR code for the Hop Shop, vets, pet stores, libraries and campus boards.',
     },
     can('announcements.post') && {
+      to: '/staff/outreach',
+      h: 'Outreach letters',
+      p: 'Ready-to-send emails to campus offices, vet clinics, pet stores, schools, apartments and local media.',
+    },
+    can('announcements.post') && {
       to: '/staff/announcements',
       h: 'Announcements',
       p: 'Post notices that show on the website home and the app.',

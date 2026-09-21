@@ -71,7 +71,7 @@ export default function Flyers() {
   const [pick, setPick] = useState<Flyer>(FLYERS[0])
   const [qr, setQr] = useState<string>('')
   useEffect(() => {
-    QRCode.toDataURL(utm(pick.path, pick.campaign), { errorCorrectionLevel: 'M', margin: 1, width: 600 }).then(setQr)
+    QRCode.toDataURL(utm(pick.path, pick.campaign, 'print'), { errorCorrectionLevel: 'M', margin: 1, width: 600 }).then(setQr)
   }, [pick])
   const accent = pick.accent === 'orange' ? '#eb891c' : '#0669ac'
 
