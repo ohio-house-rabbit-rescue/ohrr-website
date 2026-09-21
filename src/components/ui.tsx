@@ -259,15 +259,32 @@ export function ArticleBody({ body }: { body: string }) {
           return (
             <ul key={i} className="list-disc space-y-1.5 pl-5">
               {b.items.map((it, j) => (
-                <li key={j}>{it}</li>
+                <li key={j}>{linkify(it)}</li>
               ))}
             </ul>
           )
         }
-        return <p key={i}>{b.text}</p>
+        return <p key={i}>{linkify(b.text)}</p>
       })}
     </div>
   )
+}
+
+// Bare URLs and email addresses in article text become links.
+const LINK_RE = /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"’”)]|[\w.+-]+@[\w-]+\.[\w.-]+\w)/g
+function linkify(text: string): ReactNode {
+  const parts = text.split(LINK_RE)
+  if (parts.length === 1) return text
+  return parts.map((part, i) => {
+    if (!LINK_RE.test(part)) return part
+    LINK_RE.lastIndex = 0
+    const isEmail = !part.startsWith('http')
+    return (
+      <a key={i} href={isEmail ? `mailto:${part}` : part} {...(isEmail ? {} : ext)} className="break-all font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-2">
+        {isEmail ? part : part.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+      </a>
+    )
+  })
 }
 
 // A sponsor's real logo, or a neutral block with its initial when there isn't one.

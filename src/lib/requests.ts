@@ -11,6 +11,7 @@ export type RequestKind =
   | 'volunteer-signup'
   | 'appointment-request'
   | 'happy-tail'
+  | 'supporter'
 
 export interface RequestFields {
   name?: string
@@ -24,6 +25,8 @@ function summarize(kind: RequestKind, f: RequestFields): string {
   switch (kind) {
     case 'mailing-list':
       return 'Join the mailing list'
+    case 'supporter':
+      return 'Become a supporter'
     case 'adoption-application':
       return pick('rabbit') || 'Adoption application'
     case 'surrender-intake':

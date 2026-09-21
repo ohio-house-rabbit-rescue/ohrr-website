@@ -8,7 +8,9 @@ import { CARE_DISCLAIMER } from '../data/careArticles'
 const FEATURED = new Set(['bunny-living-space', 'tips-for-catching-a-stray'])
 
 export default function Learn() {
-  const { articles, source } = useCareArticles()
+  const { articles: all, source } = useCareArticles()
+  // Learn shows care guides; the Give / Adopt / About pages live at /info/<slug>.
+  const articles = all && all.filter((a) => (a.section ?? 'care') === 'care')
 
   return (
     <>

@@ -153,9 +153,15 @@ export default function Give() {
               <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{w.p}</p>
               {w.extra && <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{w.extra}</p>}
               <div className="mt-4 flex flex-wrap gap-2 pt-1">
-                <a href={w.href} {...(w.href.startsWith('mailto:') ? {} : ext)} className={btn.orange}>
-                  {w.cta}
-                </a>
+                {w.href.startsWith('/') ? (
+                  <Link to={w.href} className={btn.orange}>
+                    {w.cta}
+                  </Link>
+                ) : (
+                  <a href={w.href} {...(w.href.startsWith('mailto:') ? {} : ext)} className={btn.orange}>
+                    {w.cta}
+                  </a>
+                )}
                 {w.secondary && (
                   <a
                     href={w.secondary.href}

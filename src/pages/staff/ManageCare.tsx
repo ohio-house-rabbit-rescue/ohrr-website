@@ -5,6 +5,7 @@ import { btn } from '../../components/ui'
 
 interface Article {
   id: string
+  section?: Section
   slug: string
   title: string
   summary: string
@@ -14,7 +15,16 @@ interface Article {
   sort_order: number
 }
 
+type Section = 'care' | 'give' | 'about' | 'adopt'
+const SECTIONS: { value: Section; label: string }[] = [
+  { value: 'care', label: 'Care guide (Learn)' },
+  { value: 'give', label: 'Give page' },
+  { value: 'adopt', label: 'Adopt page' },
+  { value: 'about', label: 'About page' },
+]
+
 interface Draft {
+  section: Section
   slug: string
   title: string
   summary: string
@@ -23,7 +33,7 @@ interface Draft {
   is_published: boolean
 }
 
-const empty: Draft = { slug: '', title: '', summary: '', body: '', tip: '', is_published: true }
+const empty: Draft = { section: 'care', slug: '', title: '', summary: '', body: '', tip: '', is_published: true }
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
@@ -56,6 +66,16 @@ function Form({
   }
   return (
     <form onSubmit={submit} className="space-y-3">
+      <label className="block text-sm font-semibold text-slate-700">
+        Where it shows
+        <select className={staffInput} value={d.section} onChange={(e) => setD({ ...d, section: e.target.value as Section })}>
+          {SECTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="block text-sm font-semibold text-slate-700">
         Title
         <input
@@ -126,7 +146,7 @@ export default function ManageCare() {
     setError(null)
     const { data, error } = await supabase
       .from('care_articles')
-      .select('id,slug,title,summary,body,tip,is_published,sort_order')
+      .select('id,slug,title,summary,body,tip,is_published,sort_order,section')
       .eq('org_id', orgId)
       .order('sort_order', { ascending: true })
       .order('title', { ascending: true })
@@ -140,6 +160,7 @@ export default function ManageCare() {
   }, [load])
 
   const toRow = (d: Draft) => ({
+    section: d.section,
     slug: d.slug,
     title: d.title.trim(),
     summary: d.summary.trim(),
@@ -176,10 +197,10 @@ export default function ManageCare() {
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Care guides</h1>
+        <h1 className="font-display text-2xl font-black text-ink">Care guides &amp; pages</h1>
         {!creating && <button onClick={() => setCreating(true)} className={btn.orange}>New guide</button>}
       </div>
-      <p className="mt-1 text-sm text-slate-600">The Rabbit Care articles shown in Learn — on the website and the app.</p>
+      <p className="mt-1 text-sm text-slate-600">The Rabbit Care articles in Learn, plus the Give / Adopt / About pages — on the website and the app.</p>
 
       {creating && (
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -199,7 +220,7 @@ export default function ManageCare() {
             editingId === a.id ? (
               <div key={a.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <Form
-                  initial={{ slug: a.slug, title: a.title, summary: a.summary, body: a.body, tip: a.tip ?? '', is_published: a.is_published }}
+                  initial={{ section: a.section ?? 'care', slug: a.slug, title: a.title, summary: a.summary, body: a.body, tip: a.tip ?? '', is_published: a.is_published }}
                   submitLabel="Save"
                   onSubmit={saveEdit(a.id)}
                   onCancel={() => setEditingId(null)}
@@ -210,7 +231,7 @@ export default function ManageCare() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="font-display text-base font-extrabold text-ink">{a.title}</h3>
-                    <code className="text-[11px] text-slate-400">/learn/{a.slug}</code>
+                    <code className="text-[11px] text-slate-400">{(a.section ?? 'care') === 'care' ? '/learn/' : '/info/'}{a.slug}</code>
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${a.is_published ? 'bg-brand-blue-50 text-brand-blue' : 'bg-slate-100 text-slate-500'}`}>
                     {a.is_published ? 'Live' : 'Draft'}

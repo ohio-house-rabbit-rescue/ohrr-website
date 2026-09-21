@@ -19,10 +19,12 @@ export default function LearnArticle() {
   }
 
   const a = articles.find((x) => x.slug === slug)
+  const section = a?.section ?? 'care'
+  const back = section === 'give' ? { to: '/give', label: '← Ways to give' } : section === 'adopt' ? { to: '/adopt', label: '← Adopt' } : section === 'about' ? { to: '/about', label: '← About' } : { to: '/learn', label: '← All care articles' }
   if (!a) {
     return (
       <>
-        <PageHero title="Article not found" subtitle="That care article isn't here — it may have been renamed." />
+        <PageHero title="Page not found" subtitle="That page isn't here — it may have been renamed." />
         <Section>
           <Link to="/learn" className={btn.blue}>
             Back to rabbit care
@@ -37,10 +39,10 @@ export default function LearnArticle() {
       <PageHero title={a.title} subtitle={a.summary} />
       <Section className="print-urls">
         <div className="no-print flex flex-wrap items-center gap-3">
-          <Link to="/learn" className={btn.outline}>
-            ← All care articles
+          <Link to={back.to} className={btn.outline}>
+            {back.label}
           </Link>
-          <PrintButton label="Print this article" />
+          <PrintButton label="Print this page" />
         </div>
         <LiveNote source={source} />
         <p className="print-only font-display text-2xl font-black">{a.title}</p>

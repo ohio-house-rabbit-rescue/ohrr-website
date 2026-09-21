@@ -40,8 +40,8 @@ export default function StaffDashboard() {
     },
     can('content.education.edit') && {
       to: '/staff/care',
-      h: 'Care guides',
-      p: 'Write and edit the Rabbit Care articles in Learn.',
+      h: 'Care guides & pages',
+      p: 'Rabbit Care articles in Learn, plus the Give / Adopt / About pages.',
     },
     (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
       to: '/staff/items',

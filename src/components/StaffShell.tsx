@@ -175,7 +175,7 @@ export default function StaffShell() {
               <NavLink to="/staff/rabbits" className={navClass}>Rabbits</NavLink>
             )}
             {can('volunteers.shifts.manage') && <NavLink to="/staff/volunteer" className={navClass}>Volunteer</NavLink>}
-            {can('content.education.edit') && <NavLink to="/staff/care" className={navClass}>Care guides</NavLink>}
+            {can('content.education.edit') && <NavLink to="/staff/care" className={navClass}>Care guides &amp; pages</NavLink>}
             {(can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && <NavLink to="/staff/items" className={navClass}>Items</NavLink>}
             {(can('staff.invite') || can('staff.permissions.manage')) && <NavLink to="/staff/team" className={navClass}>Team</NavLink>}
           </nav>

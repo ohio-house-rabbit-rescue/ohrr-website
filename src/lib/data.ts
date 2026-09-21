@@ -155,6 +155,7 @@ interface CareRow {
   summary: string
   body: string | null
   tip: string | null
+  section?: 'care' | 'give' | 'about' | 'adopt'
 }
 
 // Care guides: live rows from the app's care_articles table merged with the
@@ -170,7 +171,7 @@ export function useCareArticles(): { articles: CareArticle[] | null; source: Sou
       if (isConfigured) {
         const { data, error } = await supabase
           .from('care_articles')
-          .select('id,slug,title,icon,summary,body,tip')
+          .select('*')
           .eq('is_published', true)
           .order('sort_order', { ascending: true })
         if (!error && data) live = data as CareRow[]

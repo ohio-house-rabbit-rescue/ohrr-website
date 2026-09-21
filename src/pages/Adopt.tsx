@@ -120,9 +120,9 @@ export default function Adopt() {
               Want a friend for your current rabbit? Bring your bunny to the Adoption Center for a
               "bunny date" with up to three adoptable rabbits. Plan on 1–2 hours; our bonding expert
               runs the dates and coaches you on continuing the bonding at home.{' '}
-              <a href={BUNNY_DATES_ARTICLE} {...ext} className="font-semibold text-brand-blue">
+              <Link to={BUNNY_DATES_ARTICLE} className="font-semibold text-brand-blue">
                 What to expect at a bonding date
-              </a>
+              </Link>
               .
             </p>
           </Card>

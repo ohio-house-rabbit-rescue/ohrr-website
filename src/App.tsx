@@ -34,7 +34,7 @@ import Items from './pages/staff/Items'
 import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
 import Book, { BookCancel } from './pages/Book'
-import { AdoptApply, SurrenderIntake, MailingList as MailingListPage } from './pages/Forms'
+import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
 
 export default function App() {
@@ -73,9 +73,12 @@ export default function App() {
         <Route path="/adopt/apply" element={<AdoptApply />} />
         <Route path="/surrender/form" element={<SurrenderIntake />} />
         <Route path="/mailing-list" element={<MailingListPage />} />
+        <Route path="/support/become-a-supporter" element={<BecomeSupporter />} />
         <Route path="/learn" element={<Learn />} />
         <Route path="/learn/vets" element={<Vets />} />
         <Route path="/learn/:slug" element={<LearnArticle />} />
+        {/* Give / Adopt / About pages brought in from the old site — same table, other sections */}
+        <Route path="/info/:slug" element={<LearnArticle />} />
         <Route path="/volunteer" element={<Volunteer />} />
         <Route path="/bunfest" element={<BunFest />} />
         <Route path="/bunfest/silent-auction" element={<SilentAuction />} />

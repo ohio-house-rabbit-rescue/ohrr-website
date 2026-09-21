@@ -3,7 +3,6 @@ import { PageHero, Section, btn, ext, H2, Card, Callout } from '../components/ui
 import {
   OHRR,
   CHRS_TIPLINE,
-  ADMISSIONS_PAGE,
   ADMISSIONS_POLICY_PDF,
   SURRENDER_POLICY_PDF,
   GOOD_SAMARITAN_FORM,
@@ -102,9 +101,6 @@ export default function Surrender() {
           </a>
           <a href={SURRENDER_POLICY_PDF} {...ext} className={btn.blue}>
             Good Samaritan/Owner Surrender &amp; Relinquishment Policy (PDF)
-          </a>
-          <a href={ADMISSIONS_PAGE} {...ext} className={btn.outline}>
-            Admissions page on ohiohouserabbitrescue.org
           </a>
         </div>
 
