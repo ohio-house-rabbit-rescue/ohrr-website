@@ -68,6 +68,11 @@ export default function StaffDashboard() {
       h: 'Scanned items & tags',
       p: 'Silent Auction, raffle prizes and Hop Shop stock scanned in the app. Print tag sheets here.',
     },
+    can('events.bunfest.manage') && {
+      to: '/staff/raffle-tickets',
+      h: 'Raffle tickets',
+      p: 'The raffle table: reservations from the app, mark paid, sell at the table, draw winners.',
+    },
     (can('staff.invite') || can('staff.permissions.manage')) && {
       to: '/staff/team',
       h: 'Team',
