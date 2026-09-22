@@ -68,6 +68,11 @@ export default function StaffDashboard() {
       h: 'Scanned items & tags',
       p: 'Silent Auction, raffle prizes and Hop Shop stock scanned in the app. Print tag sheets here.',
     },
+    (can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && {
+      to: '/staff/hopshop',
+      h: 'Hop Shop',
+      p: 'Stock cards with photos, codes and prices; the reorder list by supplier; the supplier and vendor list.',
+    },
     can('events.bunfest.manage') && {
       to: '/staff/raffle-tickets',
       h: 'Raffle tickets',

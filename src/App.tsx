@@ -32,6 +32,7 @@ import ManageVolunteer from './pages/staff/ManageVolunteer'
 import ManageCare from './pages/staff/ManageCare'
 import Team from './pages/staff/Team'
 import Items from './pages/staff/Items'
+import StaffHopShop from './pages/staff/HopShop'
 import RaffleTicketsDesk from './pages/staff/RaffleTickets'
 import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
@@ -70,6 +71,9 @@ export default function App() {
         <Route path="outreach" element={<Outreach />} />
         <Route path="impact" element={<ManageImpact />} />
         <Route path="items" element={<Items />} />
+        <Route path="hopshop" element={<StaffHopShop />} />
+        <Route path="hopshop/reorder" element={<StaffHopShop />} />
+        <Route path="hopshop/suppliers" element={<StaffHopShop />} />
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="*" element={<StaffDashboard />} />

@@ -24,7 +24,51 @@ export interface BookingType {
   attest_text: string | null
   is_published: boolean
   sort_order: number
+  /** Standing weekly schedule; the database keeps `auto_weeks` weeks of times filled from it. */
+  weekly: WeeklyRule[]
+  auto_weeks: number
 }
+
+/** One line of a weekly schedule: "Sat + Sun, 1:30–2:30 pm, 4 people". `days`: 0 = Sunday. */
+export interface WeeklyRule {
+  days: number[]
+  start: string
+  end: string
+  capacity?: number | null
+  label?: string | null
+}
+
+export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export function fmtClock(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  if (!Number.isFinite(h)) return hhmm
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 === 0 ? 12 : h % 12
+  return `${hour}:${String(m || 0).padStart(2, '0')} ${suffix}`
+}
+
+export function fmtDays(days: number[]): string {
+  const d = [...new Set(days)].filter((x) => x >= 0 && x <= 6).sort((a, b) => a - b)
+  if (d.length === 0) return '—'
+  if (d.length === 7) return 'Every day'
+  const consecutive = d.every((x, i) => i === 0 || x === d[i - 1] + 1)
+  if (consecutive && d.length >= 3) return `${WEEKDAY_SHORT[d[0]]}–${WEEKDAY_SHORT[d[d.length - 1]]}`
+  return d.map((x) => WEEKDAY_SHORT[x]).join(d.length === 2 ? ' + ' : ', ')
+}
+
+export function fmtWeekly(rules: WeeklyRule[]): string[] {
+  return rules
+    .filter((r) => r && Array.isArray(r.days) && r.start && r.end)
+    .map((r) => `${fmtDays(r.days)} ${fmtClock(r.start)}–${fmtClock(r.end)}${r.label ? ` · ${r.label}` : ''}`)
+}
+
+// Rows from before the weekly-schedule migration have no `weekly` column yet.
+function asType(row: Record<string, unknown>): BookingType {
+  const weekly = Array.isArray(row.weekly) ? (row.weekly as WeeklyRule[]) : []
+  return { ...(row as unknown as BookingType), weekly, auto_weeks: typeof row.auto_weeks === 'number' ? row.auto_weeks : 8 }
+}
+
 export interface OpenSlot {
   slot_id: string
   starts_at: string
@@ -89,12 +133,19 @@ export const statusLabel = (s: BookingStatus) =>
 export async function getBookingType(slug: string): Promise<BookingType | null> {
   const { data, error } = await supabase.from('booking_types').select('*').eq('slug', slug).maybeSingle()
   if (error) throw error
-  return (data as BookingType | null) ?? null
+  return data ? asType(data as Record<string, unknown>) : null
 }
 export async function listBookingTypes(orgId: string): Promise<BookingType[]> {
   const { data, error } = await supabase.from('booking_types').select('*').eq('org_id', orgId).order('sort_order')
   if (error) throw error
-  return (data ?? []) as BookingType[]
+  return ((data ?? []) as Record<string, unknown>[]).map(asType)
+}
+
+/** Fill the next weeks of times from the type's weekly schedule (staff; also prunes rules that were removed). */
+export async function fillSlots(typeId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fill_booking_slots', { p_type_id: typeId, p_force: true })
+  if (error) throw error
+  return (data as number) ?? 0
 }
 export async function openSlots(slug: string, days = 60): Promise<OpenSlot[]> {
   const { data, error } = await supabase.rpc('booking_slots_open', {
@@ -133,8 +184,10 @@ export async function cancelBooking(token: string): Promise<BookingReceipt | nul
 
 /* staff */
 export async function saveBookingType(t: Partial<BookingType> & { org_id: string; slug: string; name: string }): Promise<void> {
-  const { error } = await supabase.from('booking_types').upsert(t, { onConflict: 'org_id,slug' })
+  const { data, error } = await supabase.from('booking_types').upsert(t, { onConflict: 'org_id,slug' }).select('id').single()
   if (error) throw error
+  // Keep the next weeks of times in step with the schedule straight away.
+  if (t.weekly && data?.id) await fillSlots(data.id as string).catch(() => undefined)
 }
 export async function generateSlots(i: { typeId: string; from: string; to: string; weekdays: number[]; start: string; end: string; capacity: number | null; note: string | null }): Promise<number> {
   const { data, error } = await supabase.rpc('generate_booking_slots', {

@@ -21,6 +21,7 @@ import {
   getBookingType,
   googleCalendarUrl,
   openSlots,
+  fmtWeekly,
   statusLabel,
   type BookingReceipt,
   type BookingType,
@@ -108,6 +109,11 @@ export default function Book() {
               <span className="font-bold text-ink">{durationLabel(type.duration_min)}</span>
               {type.location ? ` · ${type.location}` : ''}
             </p>
+            {type.weekly.length > 0 && (
+              <p className="mt-2 text-sm text-slate-700">
+                <span className="font-bold text-ink">Usual times:</span> {fmtWeekly(type.weekly).join(' · ')}
+              </p>
+            )}
             {type.max_per_month && (
               <p className="mt-2 text-sm text-slate-700">
                 Up to <strong>{type.max_per_month}</strong> per month per person.
