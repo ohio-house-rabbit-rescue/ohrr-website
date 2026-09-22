@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../lib/staff'
 import { btn } from './ui'
+import { buildLabel } from '../lib/version'
 
 function SignIn() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -200,6 +201,8 @@ export default function StaffShell() {
       <main className="mx-auto max-w-5xl px-5 py-8">
         <Outlet />
       </main>
+      {/* Which update this is — so a volunteer can report "rev 5" and mean it. */}
+      <p className="pb-6 text-center text-xs text-slate-400">OHRR staff tools · {buildLabel}</p>
     </div>
   )
 }
