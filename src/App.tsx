@@ -77,6 +77,7 @@ export default function App() {
         <Route path="hopshop/reorder" element={<StaffHopShop />} />
         <Route path="hopshop/suppliers" element={<StaffHopShop />} />
         <Route path="bunfest" element={<BunFestContent />} />
+        <Route path="bunfest/pages" element={<BunFestContent />} />
         <Route path="bunfest/vendors" element={<BunFestContent />} />
         <Route path="bunfest/partners" element={<BunFestContent />} />
         <Route path="tails" element={<HappyTails />} />

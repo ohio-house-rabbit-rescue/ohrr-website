@@ -34,6 +34,8 @@ export interface Supplier {
   vendor_tables: number
   vendor_published: boolean
   vendor_sort: number
+  /** The years this company had a BunFest table; empty means not tagged yet. */
+  vendor_years: number[]
   created_by: string | null
   created_at: string
   updated_at: string
