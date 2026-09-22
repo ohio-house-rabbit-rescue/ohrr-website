@@ -33,6 +33,8 @@ import ManageCare from './pages/staff/ManageCare'
 import Team from './pages/staff/Team'
 import Items from './pages/staff/Items'
 import StaffHopShop from './pages/staff/HopShop'
+import BunFestContent from './pages/staff/BunFestContent'
+import HappyTails from './pages/staff/HappyTails'
 import RaffleTicketsDesk from './pages/staff/RaffleTickets'
 import Inbox from './pages/staff/Inbox'
 import Bookings from './pages/staff/Bookings'
@@ -74,6 +76,10 @@ export default function App() {
         <Route path="hopshop" element={<StaffHopShop />} />
         <Route path="hopshop/reorder" element={<StaffHopShop />} />
         <Route path="hopshop/suppliers" element={<StaffHopShop />} />
+        <Route path="bunfest" element={<BunFestContent />} />
+        <Route path="bunfest/vendors" element={<BunFestContent />} />
+        <Route path="bunfest/partners" element={<BunFestContent />} />
+        <Route path="tails" element={<HappyTails />} />
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="*" element={<StaffDashboard />} />

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, Card, ContactRow, H2 } from '../components/ui'
 import { OHRR, APPLY, MAILING_LIST } from '../lib/constants'
+import { telHref, useOrgProfile } from '../lib/orgProfile'
 import { ContactForm } from './Forms'
 
 export default function Contact() {
+  const org = useOrgProfile()
   return (
     <>
       <PageHero title="Contact us" subtitle="The OHRR Adoption Center and Hop Shop in Columbus, Ohio." />
@@ -30,7 +32,10 @@ export default function Contact() {
 
           <Card>
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Hop Shop hours</h3>
-            <p className="mt-2 text-base font-semibold text-slate-700">{OHRR.hours}</p>
+            {org.notice && (
+              <p className="mt-2 rounded-xl bg-brand-orange-50 px-3 py-2 text-sm font-bold text-brand-orange-dark">{org.notice}</p>
+            )}
+            <p className="mt-2 text-base font-semibold text-slate-700">{org.hopshop_hours}</p>
             <p className="mt-1 text-sm text-slate-600">{OHRR.hoursNote}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link to={APPLY} className={btn.orange}>
@@ -46,8 +51,8 @@ export default function Contact() {
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Contact information</h3>
             <p className="mt-2 text-sm text-slate-600">Phone</p>
             <p className="text-base">
-              <a href={OHRR.phoneHref} className="font-bold text-brand-blue">
-                {OHRR.phone}
+              <a href={telHref(org.phone)} className="font-bold text-brand-blue">
+                {org.phone}
               </a>
             </p>
             <p className="mt-3 text-sm text-slate-600">Email (adoptions, surrenders, volunteering, group visits)</p>

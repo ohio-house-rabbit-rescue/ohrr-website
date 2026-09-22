@@ -74,6 +74,16 @@ export default function StaffDashboard() {
       p: 'Stock cards with photos, codes and prices; the reorder list by supplier; the supplier and vendor list.',
     },
     can('events.bunfest.manage') && {
+      to: '/staff/bunfest',
+      h: 'BunFest content',
+      p: 'The education schedule, vendor booths and the rescue-partner directory shown in the app.',
+    },
+    (can('content.education.edit') || can('inbox.manage')) && {
+      to: '/staff/tails',
+      h: 'Happy Tails',
+      p: 'Adoption stories: publish one from the Inbox, then edit, reorder or hide it here.',
+    },
+    can('events.bunfest.manage') && {
       to: '/staff/raffle-tickets',
       h: 'Raffle tickets',
       p: 'The raffle table: reservations from the app, mark paid, sell at the table, draw winners.',

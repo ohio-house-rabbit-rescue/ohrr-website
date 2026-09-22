@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import type { ReactNode } from 'react'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
+import { bccMailto, exportCsv, toCsv } from '../../lib/exportFile'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
@@ -166,6 +167,34 @@ function Roster({ orgId }: { orgId: string }) {
       {rows && grouped.length === 0 && (
         <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">No bookings in this range.</p>
       )}
+      {rows && rows.length > 0 && (
+        <button
+          type="button"
+          onClick={() =>
+            exportCsv(
+              `ohrr-bookings-${new Date().toISOString().slice(0, 10)}.csv`,
+              toCsv(
+                ['Date', 'Time', 'What', 'Name', 'Email', 'Phone', 'People', 'Status', 'Answer', 'Notes'],
+                rows.map((r) => [
+                  fmtDayShort(r.starts_at),
+                  fmtRange(r.starts_at, r.ends_at),
+                  r.type_name,
+                  r.name,
+                  r.email,
+                  r.phone ?? '',
+                  r.party_size,
+                  r.status,
+                  r.answer ?? '',
+                  r.notes ?? '',
+                ]),
+              ),
+            )
+          }
+          className={btn.outline}
+        >
+          Export this list (CSV)
+        </button>
+      )}
       {grouped.map(([day, slots]) => (
         <section key={day} className="space-y-2">
           <p className="font-display text-[15px] font-extrabold text-ink">{fmtDay([...slots.values()][0][0].starts_at)}</p>
@@ -174,12 +203,25 @@ function Roster({ orgId }: { orgId: string }) {
             const taken = list.filter((r) => r.status !== 'no_show').reduce((n, r) => n + r.party_size, 0)
             return (
               <Card key={first.slot_id} className="space-y-2">
-                <p className="text-sm font-bold text-slate-700">
-                  {fmtRange(first.starts_at, first.ends_at)} · {first.type_name}{' '}
-                  <span className="font-semibold text-slate-400">
-                    {taken}/{first.capacity}
-                  </span>
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-slate-700">
+                    {fmtRange(first.starts_at, first.ends_at)} · {first.type_name}{' '}
+                    <span className="font-semibold text-slate-400">
+                      {taken}/{first.capacity}
+                    </span>
+                  </p>
+                  {/* One message to a whole shift — everyone in BCC, so nobody
+                      sees anyone else's address. */}
+                  <a
+                    href={bccMailto(
+                      list.filter((r) => r.status !== 'cancelled').map((r) => r.email),
+                      `OHRR — ${first.type_name}, ${fmtDayShort(first.starts_at)}`,
+                    )}
+                    className="rounded-full bg-brand-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue"
+                  >
+                    Email everyone
+                  </a>
+                </div>
                 <ul className="divide-y divide-slate-100">
                   {list.map((r) => (
                     <li key={r.booking_id} className="space-y-1.5 py-2">

@@ -26,6 +26,14 @@ export interface Supplier {
   min_order: string | null
   notes: string | null
   is_active: boolean
+  // The BunFest booth (supabase/migrations/20260922120000_bunfest_content.sql)
+  vendor_category: string | null
+  vendor_blurb: string | null
+  vendor_booth: string | null
+  vendor_room: 'burgundy' | 'emerald' | null
+  vendor_tables: number
+  vendor_published: boolean
+  vendor_sort: number
   created_by: string | null
   created_at: string
   updated_at: string

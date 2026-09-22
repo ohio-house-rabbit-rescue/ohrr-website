@@ -19,7 +19,7 @@ import { APP_URL, LIVE_SITE, OHRR } from '../lib/constants'
 //   - notifications: local, scheduled on the device (@capacitor/local-notifications);
 //     no push server;
 //   - staff can delete their own account in the app (`delete_own_account`).
-const UPDATED = 'September 21, 2026'
+const UPDATED = 'September 22, 2026'
 const APP_HOST = APP_URL.replace('https://', '')
 const SITE_HOST = 'ohrr-website.pages.dev'
 
@@ -118,7 +118,8 @@ export default function Privacy() {
             <li>
               <strong>Bookings.</strong> When you book a volunteer shift, an adoption visit, a bonding session or a
               clinic time we store your name, email, phone number, party size, your answers to that booking's
-              questions and whether you attended. The confirmation email contains a private link that lets you cancel.
+              questions and whether you attended. Your booking is confirmed on screen and kept on your own device, with a
+              private link that lets you cancel; we do not send confirmation emails.
               Volunteer check-ins are counted toward a volunteer's service hours, and OHRR can print a service-hours
               letter for that volunteer on request.
             </li>

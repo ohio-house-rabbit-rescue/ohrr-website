@@ -182,7 +182,9 @@ export default function StaffShell() {
             {can('content.education.edit') && <NavLink to="/staff/care" className={navClass}>Care guides &amp; pages</NavLink>}
             {(can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && <NavLink to="/staff/items" className={navClass}>Items</NavLink>}
             {(can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && <NavLink to="/staff/hopshop" className={navClass}>Hop Shop</NavLink>}
+            {can('events.bunfest.manage') && <NavLink to="/staff/bunfest" className={navClass}>BunFest</NavLink>}
             {can('events.bunfest.manage') && <NavLink to="/staff/raffle-tickets" className={navClass}>Raffle tickets</NavLink>}
+            {(can('content.education.edit') || can('inbox.manage')) && <NavLink to="/staff/tails" className={navClass}>Happy Tails</NavLink>}
             {(can('staff.invite') || can('staff.permissions.manage')) && <NavLink to="/staff/team" className={navClass}>Team</NavLink>}
           </nav>
           <div className="flex items-center gap-2">
