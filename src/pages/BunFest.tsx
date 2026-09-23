@@ -3,7 +3,7 @@ import { useBunFestEvent } from '../lib/data'
 import { PageHero, Section, btn, ext, LiveNote, ArticleBody, Card } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { formatDate, formatTimeRange } from '../lib/format'
-import { BUNFEST_SITE } from '../lib/constants'
+import { BUNFEST_SAMPLE, BUNFEST_SITE } from '../lib/constants'
 import { EventWhenWhere } from './Events'
 
 // What's at Midwest BunFest — from the live announcement post.
@@ -58,13 +58,20 @@ export default function BunFest() {
             )}
             <LiveNote source={source} />
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href={event?.url ?? BUNFEST_SITE} {...ext} className={btn.blue}>
-                midwestbunfest.org
+              <a href={BUNFEST_SAMPLE} {...ext} className={btn.blue}>
+                The BunFest website
               </a>
               <Link to="/app" className={btn.outline}>
                 BunFest in the app
               </Link>
             </div>
+            <p className="mt-3 text-sm text-slate-600">
+              The schedule, the map, the rabbit rules and everyone who's coming. The current official site is{' '}
+              <a href={event?.url ?? BUNFEST_SITE} {...ext} className="font-semibold text-brand-blue">
+                midwestbunfest.org
+              </a>
+              .
+            </p>
           </div>
         </div>
 

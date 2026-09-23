@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LinkCard } from '../components/ui'
-import { APPLY, BE_THE_VOICE_PDF, CAPITAL_PLEDGE_PDF, BUNFEST_SITE, OHRR } from '../lib/constants'
+import { APPLY, BE_THE_VOICE_PDF, CAPITAL_PLEDGE_PDF, BUNFEST_SAMPLE, OHRR } from '../lib/constants'
 
 // Text from the live About Us pages: Mission and Vision, Background, Volunteer Family,
 // and the Ohio House Rabbit Adoption Center (captured 2026-09-17).
@@ -126,7 +126,7 @@ export default function About() {
                     {g.includes('Midwest BunFest') ? (
                       <>
                         Host and sponsor the annual{' '}
-                        <a href={BUNFEST_SITE} {...ext} className="font-semibold text-brand-blue">
+                        <a href={BUNFEST_SAMPLE} {...ext} className="font-semibold text-brand-blue">
                           Midwest BunFest
                         </a>{' '}
                         in Columbus, Ohio – a multi-state educational exposition and fundraiser.

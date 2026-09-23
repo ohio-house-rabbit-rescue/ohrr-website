@@ -39,6 +39,9 @@ export const OWNER_SURRENDER_FORM = '/surrender/form?type=owner'
 export const BE_THE_VOICE_PDF = '/docs/OHRR-Be-the-Voice.pdf'
 export const CAPITAL_PLEDGE_PDF = '/docs/OHRR-Capital-Campaign-Pledge-Form.pdf'
 export const BUNFEST_SITE = 'https://www.midwestbunfest.org/'
+// The BunFest sample site (ohrr-bunfest repo) — the festival's own front door,
+// reading the same database as this site and the app. A board sample, like this one.
+export const BUNFEST_SAMPLE = 'https://ohrr-bunfest.pages.dev'
 export const CHRS_SITE = 'http://www.columbusrabbit.org/'
 export const HRS_SITE = 'http://www.rabbit.org'
 export const CHRS_TIPLINE = 'chrstipline@gmail.com'
