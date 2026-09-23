@@ -141,8 +141,8 @@ export default function Adopt() {
             <Link to={APPLY} className={btn.orange}>
               Start an adoption application
             </Link>
-            <a href={OHRR.phoneHref} className={btn.outline}>
-              Call {OHRR.phone}
+            <a href={OHRR.emailHref} className={btn.outline}>
+              Email a question
             </a>
           </div>
         </Callout>

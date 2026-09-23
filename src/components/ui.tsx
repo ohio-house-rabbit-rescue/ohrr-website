@@ -187,12 +187,6 @@ export function ContactRow({ className = '' }: { className?: string }) {
   return (
     <p className={`flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600 ${className}`}>
       <span>
-        Call{' '}
-        <a href={OHRR.phoneHref} className={link}>
-          {OHRR.phone}
-        </a>
-      </span>
-      <span>
         Email{' '}
         <a href={OHRR.emailHref} className={link}>
           {OHRR.email}

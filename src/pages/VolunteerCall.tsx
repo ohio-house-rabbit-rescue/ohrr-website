@@ -99,8 +99,8 @@ export default function VolunteerCall() {
             Questions? Email{' '}
             <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
               {OHRR.email}
-            </a>{' '}
-            or call {OHRR.phone}.
+            </a>
+            .
           </p>
         </div>
 

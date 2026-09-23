@@ -118,8 +118,8 @@ export default function HopShop() {
                 <a href={OHRR.mapsHref} {...ext} className={btn.blue}>
                   Get directions
                 </a>
-                <a href={OHRR.phoneHref} className={btn.outline}>
-                  Call {OHRR.phone}
+                <a href={OHRR.emailHref} className={btn.outline}>
+                  Email OHRR
                 </a>
               </div>
             </Callout>

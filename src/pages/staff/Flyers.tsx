@@ -141,7 +141,7 @@ function FlyerSheet({ f, qr, accent, preview = false }: { f: Flyer; qr: string; 
           <p className="font-display font-extrabold text-ink">{f.cta}</p>
           <p className="text-slate-600">ohrr-website.pages.dev{f.path === '/' ? '' : f.path}</p>
           <p className="mt-2 text-slate-500">
-            {OHRR.address} · {OHRR.phone}
+            {OHRR.address} · {OHRR.email}
           </p>
         </div>
         {qr && <img src={qr} alt="QR code" className={preview ? 'h-24 w-24' : 'h-56 w-56'} />}

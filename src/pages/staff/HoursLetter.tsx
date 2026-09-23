@@ -285,7 +285,7 @@ export default function HoursLetter() {
               <img src="/img/ohrr-mark.png" alt="" className="h-14 w-14" />
               <div>
                 <p className="font-display text-xl font-black text-brand-blue">{org.name}</p>
-                <p className="text-sm text-slate-600">{[org.address, org.phone, org.email].filter(Boolean).join(' · ')}</p>
+                <p className="text-sm text-slate-600">{[org.address, org.email].filter(Boolean).join(' · ')}</p>
               </div>
             </div>
             <p className="mt-6 text-sm text-slate-600">{today}</p>

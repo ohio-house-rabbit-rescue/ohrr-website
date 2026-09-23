@@ -214,10 +214,6 @@ export default function Privacy() {
             Ohio House Rabbit Rescue, {OHRR.address} ·{' '}
             <a href={OHRR.emailHref} className={a}>
               {OHRR.email}
-            </a>{' '}
-            ·{' '}
-            <a href={OHRR.phoneHref} className={a}>
-              {OHRR.phone}
             </a>
           </P>
           <p className="no-print mt-8 text-sm text-slate-500">

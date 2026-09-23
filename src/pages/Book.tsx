@@ -89,7 +89,7 @@ export default function Book() {
               <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
                 {OHRR.email}
               </a>{' '}
-              or call {OHRR.phone} and OHRR will help.
+              and OHRR will help.
             </p>
           </Card>
         </Section>

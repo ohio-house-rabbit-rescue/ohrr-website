@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, Card, ContactRow, H2 } from '../components/ui'
 import { OHRR, APPLY, MAILING_LIST } from '../lib/constants'
-import { telHref, useOrgProfile } from '../lib/orgProfile'
+import { useOrgProfile } from '../lib/orgProfile'
 import { ContactForm } from './Forms'
 
 export default function Contact() {
@@ -49,11 +49,8 @@ export default function Contact() {
 
           <Card>
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Contact information</h3>
-            <p className="mt-2 text-sm text-slate-600">Phone</p>
-            <p className="text-base">
-              <a href={telHref(org.phone)} className="font-bold text-brand-blue">
-                {org.phone}
-              </a>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              OHRR is run entirely by volunteers, so email is the way to reach us — someone will reply as soon as they can.
             </p>
             <p className="mt-3 text-sm text-slate-600">Email (adoptions, surrenders, volunteering, group visits)</p>
             <p className="text-base">
