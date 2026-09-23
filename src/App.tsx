@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Adopt from './pages/Adopt'
+import AdoptRabbit from './pages/AdoptRabbit'
 import AdoptPolicy from './pages/AdoptPolicy'
 import Learn from './pages/Learn'
 import LearnArticle from './pages/LearnArticle'
@@ -105,6 +106,7 @@ export default function App() {
         <Route path="/adopt" element={<Adopt />} />
         <Route path="/adopt/policy" element={<AdoptPolicy />} />
         <Route path="/adopt/apply" element={<AdoptApply />} />
+        <Route path="/adopt/rabbit/:id" element={<AdoptRabbit />} />
         <Route path="/surrender/form" element={<SurrenderIntake />} />
         <Route path="/mailing-list" element={<MailingListPage />} />
         <Route path="/impact" element={<Impact />} />

@@ -60,7 +60,10 @@ export function LiveNote({ source }: { source: Source }) {
 export function RabbitCard({ r }: { r: Rabbit }) {
   const meta = [r.age, r.sex, r.breed].filter(Boolean).join(' · ')
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link
+      to={`/adopt/rabbit/${r.id}`}
+      className="block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md"
+    >
       <div className="aspect-[4/3] w-full bg-slate-100">
         {r.photo ? (
           <img src={r.photo} alt={r.name} loading="lazy" className="h-full w-full object-cover" />
@@ -84,10 +87,11 @@ export function RabbitCard({ r }: { r: Rabbit }) {
             </span>
           )}
         </div>
-        {meta && <p className="mt-0.5 text-sm font-semibold text-slate-400">{meta}</p>}
+        {meta && <p className="mt-0.5 text-sm font-semibold text-slate-500">{meta}</p>}
         {r.description && <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">{r.description}</p>}
+        <span className="mt-2 inline-block text-sm font-bold text-brand-orange">Meet {r.name} →</span>
       </div>
-    </div>
+    </Link>
   )
 }
 

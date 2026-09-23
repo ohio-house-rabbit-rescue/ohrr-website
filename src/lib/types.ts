@@ -12,6 +12,10 @@ export interface Rabbit {
   description?: string | null
   photo?: string
   photos?: string[]
+  spayedNeutered?: boolean
+  houseTrained?: boolean
+  /** Staff notes such as "Special needs" or "Adopted together with Pierce". */
+  tags?: string[]
 }
 
 export interface Announcement {

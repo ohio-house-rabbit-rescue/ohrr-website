@@ -41,10 +41,28 @@ interface RabbitRow {
   bonded: boolean
   description: string | null
   photos: string[] | null
+  spayed_neutered: boolean
+  house_trained: boolean
+  tags: string[] | null
 }
 
 function mapRabbit(r: RabbitRow): Rabbit {
-  return { ...r, photos: r.photos ?? [], photo: r.photos?.[0] }
+  return {
+    id: r.id,
+    name: r.name,
+    status: r.status,
+    sex: r.sex,
+    age: r.age,
+    breed: r.breed,
+    size: r.size,
+    bonded: r.bonded,
+    description: r.description,
+    photos: r.photos ?? [],
+    photo: r.photos?.[0],
+    spayedNeutered: r.spayed_neutered,
+    houseTrained: r.house_trained,
+    tags: r.tags ?? [],
+  }
 }
 
 // Adoptable rabbits from the SAME Supabase the app uses; falls back to samples.
@@ -57,7 +75,7 @@ export function useRabbits(limit = 60): { rabbits: Rabbit[] | null; source: Sour
       if (isConfigured) {
         const { data } = await supabase
           .from('rabbits')
-          .select('id,name,status,sex,age,breed,size,bonded,description,photos')
+          .select('id,name,status,sex,age,breed,size,bonded,description,photos,spayed_neutered,house_trained,tags')
           .eq('is_published', true)
           .order('sort_order', { ascending: true })
           .limit(limit)
