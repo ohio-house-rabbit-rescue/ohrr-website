@@ -55,11 +55,6 @@ export default function Footer() {
             {OHRR.hoursNote}
           </p>
           <p className="mt-2 text-sm">
-            <a href={OHRR.phoneHref} className="font-semibold text-brand-blue">
-              {OHRR.phone}
-            </a>
-          </p>
-          <p className="mt-1 text-sm">
             <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
               {OHRR.email}
             </a>

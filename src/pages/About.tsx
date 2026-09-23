@@ -194,9 +194,11 @@ export default function About() {
                   Directions
                 </a>
               </p>
-              <p className="mt-4 text-xs text-slate-400">501(c)(3) nonprofit · EIN {OHRR.ein}</p>
+              <p className="mt-4 text-xs text-slate-400">
+                501(c)(3) nonprofit · EIN {OHRR.ein} · {OHRR.phone}
+              </p>
             </Callout>
-            <LinkCard to="/contact" icon="mail" h="Contact us" p="Address, hours, email, phone, social media and media inquiries." cta="Contact →" />
+            <LinkCard to="/contact" icon="mail" h="Contact us" p="Address, hours, email, social media and media inquiries." cta="Contact →" />
             <LinkCard to="/hop-shop" icon="bag" h="Hop Shop" p="Rabbit food, supplies and toys at the Adoption Center. Profits support OHRR." cta="Hop Shop →" />
             <LinkCard to="/partners" icon="star" h="Partners" p="The businesses and organizations that support OHRR and Midwest BunFest." cta="Partners →" />
             <LinkCard to="/surrender" icon="mappin" h="Found a rabbit? Need to surrender?" p="Our admissions policy, the surrender forms, and how field rescues work." cta="Admissions →" />
