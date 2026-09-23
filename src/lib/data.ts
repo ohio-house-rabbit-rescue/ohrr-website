@@ -304,6 +304,8 @@ interface VetRow {
   notes: string | null
   is_emergency: boolean
   is_low_cost_spay: boolean
+  gives_rhdv2?: boolean | null
+  rhdv2_note?: string | null
 }
 
 function mapVet(r: VetRow): Vet {
@@ -321,6 +323,8 @@ function mapVet(r: VetRow): Vet {
     notes: r.notes,
     isEmergency: r.is_emergency,
     isLowCostSpay: r.is_low_cost_spay,
+    givesRhdv2: !!r.gives_rhdv2,
+    rhdv2Note: r.rhdv2_note ?? null,
   }
 }
 
@@ -334,7 +338,7 @@ export function useVets(): { vets: Vet[] | null; source: Source } {
       if (isConfigured) {
         const { data, error } = await supabase
           .from('vets')
-          .select('id,name,doctors,address,city,region,phone,phone2,email,website,notes,is_emergency,is_low_cost_spay')
+          .select('id,name,doctors,address,city,region,phone,phone2,email,website,notes,is_emergency,is_low_cost_spay,gives_rhdv2,rhdv2_note')
           .eq('is_published', true)
           .order('sort_order', { ascending: true })
         const rows = (data ?? []) as VetRow[]

@@ -182,12 +182,14 @@ export default function StaffShell() {
             )}
             {can('volunteers.shifts.manage') && <NavLink to="/staff/volunteer" className={navClass}>Volunteer</NavLink>}
             {can('content.education.edit') && <NavLink to="/staff/care" className={navClass}>Care guides &amp; pages</NavLink>}
+            {can('content.education.edit') && <NavLink to="/staff/vets" className={navClass}>Vets</NavLink>}
             {(can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && <NavLink to="/staff/items" className={navClass}>Items</NavLink>}
             {(can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && <NavLink to="/staff/hopshop" className={navClass}>Hop Shop</NavLink>}
             {can('events.bunfest.manage') && <NavLink to="/staff/bunfest" className={navClass}>BunFest</NavLink>}
             {can('events.bunfest.manage') && <NavLink to="/staff/raffle-tickets" className={navClass}>Raffle tickets</NavLink>}
             {(can('content.education.edit') || can('inbox.manage')) && <NavLink to="/staff/tails" className={navClass}>Happy Tails</NavLink>}
             {(can('staff.invite') || can('staff.permissions.manage')) && <NavLink to="/staff/team" className={navClass}>Team</NavLink>}
+            {can('settings.manage') && <NavLink to="/staff/details" className={navClass}>OHRR details</NavLink>}
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/" className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50">

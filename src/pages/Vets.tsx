@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { useVets } from '../lib/data'
 import type { Vet } from '../lib/types'
 import { PageHero, Section, LiveNote, ext, PrintButton, H2 } from '../components/ui'
@@ -44,9 +45,15 @@ function VetCard({ v }: { v: Vet }) {
             Low-cost spay/neuter
           </span>
         )}
+        {v.givesRhdv2 && (
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-800">
+            RHDV2 vaccine
+          </span>
+        )}
       </div>
       {v.doctors && <p className="mt-1 text-sm font-semibold text-slate-500">{v.doctors}</p>}
       {v.notes && <p className="mt-1.5 text-sm text-slate-600">{v.notes}</p>}
+      {v.givesRhdv2 && v.rhdv2Note && <p className="mt-1.5 text-sm text-slate-600">RHDV2 vaccine: {v.rhdv2Note}</p>}
       {(v.address || v.city) && (
         <p className="mt-2 text-sm text-slate-700">
           {v.address}
@@ -94,8 +101,12 @@ function VetCard({ v }: { v: Vet }) {
 
 export default function Vets() {
   const { vets, source } = useVets()
-  const list = vets ?? []
-  const medvet = list.find((v) => /medvet hilliard/i.test(v.name))
+  const [params, setParams] = useSearchParams()
+  const onlyRhdv2 = params.get('rhdv2') === '1'
+  const all = vets ?? []
+  const rhdv2Count = all.filter((v) => v.givesRhdv2).length
+  const list = onlyRhdv2 ? all.filter((v) => v.givesRhdv2) : all
+  const medvet = all.find((v) => /medvet hilliard/i.test(v.name))
   const regions = [
     ...VET_REGIONS.filter((r) => list.some((v) => v.region === r)),
     ...Array.from(new Set(list.map((v) => v.region))).filter((r) => !(VET_REGIONS as readonly string[]).includes(r)),
@@ -111,6 +122,18 @@ export default function Vets() {
       <Section>
         <div className="no-print flex flex-wrap items-center gap-3">
           <PrintButton label="Print the vet list" />
+          {rhdv2Count > 0 && (
+            <button
+              type="button"
+              aria-pressed={onlyRhdv2}
+              onClick={() => setParams(onlyRhdv2 ? {} : { rhdv2: '1' }, { replace: true })}
+              className={`rounded-full px-4 py-2.5 text-sm font-bold transition ${
+                onlyRhdv2 ? 'bg-emerald-700 text-white' : 'border border-emerald-700/40 text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              {onlyRhdv2 ? 'Showing vets that give the RHDV2 vaccine — show all' : `Vets that give the RHDV2 vaccine (${rhdv2Count})`}
+            </button>
+          )}
         </div>
         <p className="print-only font-display text-2xl font-black">Ohio House Rabbit Rescue — Vets for rabbit care</p>
 

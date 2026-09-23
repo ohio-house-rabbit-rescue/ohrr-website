@@ -42,6 +42,8 @@ import Posts from './pages/staff/Posts'
 import Flyers from './pages/staff/Flyers'
 import Outreach from './pages/staff/Outreach'
 import ManageImpact from './pages/staff/ManageImpact'
+import ManageVets from './pages/staff/ManageVets'
+import OrgDetails from './pages/staff/OrgDetails'
 import Impact from './pages/Impact'
 import Book, { BookCancel } from './pages/Book'
 import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest, VolunteerInterest } from './pages/Forms'
@@ -68,6 +70,8 @@ export default function App() {
         <Route path="rabbits" element={<ManageRabbits />} />
         <Route path="volunteer" element={<ManageVolunteer />} />
         <Route path="care" element={<ManageCare />} />
+        <Route path="vets" element={<ManageVets />} />
+        <Route path="details" element={<OrgDetails />} />
         <Route path="team" element={<Team />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="bookings" element={<Bookings />} />

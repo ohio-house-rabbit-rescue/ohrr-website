@@ -86,6 +86,9 @@ export interface Vet {
   notes?: string | null
   isEmergency: boolean
   isLowCostSpay: boolean
+  /** Gives the RHDV2 vaccine — BunFest's rabbit rule points people to these. */
+  givesRhdv2?: boolean
+  rhdv2Note?: string | null
 }
 
 export interface HopShopProduct {

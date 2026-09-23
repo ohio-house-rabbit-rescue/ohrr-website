@@ -68,6 +68,11 @@ export default function StaffDashboard() {
       h: 'Care guides & pages',
       p: 'Rabbit Care articles in Learn, plus the Give / Adopt / About pages.',
     },
+    can('content.education.edit') && {
+      to: '/staff/vets',
+      h: 'Vets',
+      p: 'The rabbit-savvy vet list, emergency and low-cost badges, and which practices give the RHDV2 vaccine.',
+    },
     (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
       to: '/staff/items',
       h: 'Scanned items & tags',
@@ -97,6 +102,11 @@ export default function StaffDashboard() {
       to: '/staff/team',
       h: 'Team',
       p: 'Invite staff and choose what each person can do.',
+    },
+    can('settings.manage') && {
+      to: '/staff/details',
+      h: 'OHRR details',
+      p: 'Hours, a holiday notice, the email and address, and who signs volunteer-hours letters.',
     },
   ].filter(Boolean) as { to: string; h: string; p: string }[]
 
