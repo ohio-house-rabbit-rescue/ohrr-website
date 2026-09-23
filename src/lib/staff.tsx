@@ -33,6 +33,7 @@ export const CAPS = [
   'inbox.manage',
   'bookings.manage',
   'social.publish',
+  'counter.use',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -63,6 +64,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'inbox.manage', area: 'Inbox', description: 'Read and handle requests sent from the app and website' },
   { key: 'bookings.manage', area: 'Bookings', description: 'Set up bookable shifts & appointments, see rosters, confirm and check in' },
   { key: 'social.publish', area: 'Content', description: 'Release queued social-media posts (the one person who posts as OHRR)' },
+  { key: 'counter.use', area: 'Counter', description: 'The Counter (in the app): add items, ring up sales, take tickets at the door, sell raffle tickets' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites.
@@ -83,6 +85,8 @@ export const PRESETS: Record<string, Cap[]> = {
   ],
   'Volunteer Lead': ['volunteers.shifts.manage', 'volunteers.signups.approve', 'inbox.manage', 'bookings.manage'],
   'Content Editor': ['content.education.edit', 'announcements.post', 'events.bunfest.manage'],
+  // The till and the door only (the Counter lives in the app, on a phone).
+  'Counter volunteer': ['counter.use'],
 }
 
 export interface Membership {
