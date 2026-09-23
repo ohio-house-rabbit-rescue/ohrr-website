@@ -46,6 +46,9 @@ import Impact from './pages/Impact'
 import Book, { BookCancel } from './pages/Book'
 import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest, VolunteerInterest } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
+import VolunteerCalls, { VolunteerCallRoute } from './pages/staff/VolunteerCalls'
+import HoursLetter from './pages/staff/HoursLetter'
+import VolunteerCall from './pages/VolunteerCall'
 
 export default function App() {
   return (
@@ -68,6 +71,9 @@ export default function App() {
         <Route path="team" element={<Team />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="bookings" element={<Bookings />} />
+        <Route path="calls" element={<VolunteerCalls />} />
+        <Route path="calls/:id" element={<VolunteerCallRoute />} />
+        <Route path="hours-letter" element={<HoursLetter />} />
         <Route path="posts" element={<Posts />} />
         <Route path="flyers" element={<Flyers />} />
         <Route path="outreach" element={<Outreach />} />
@@ -109,6 +115,7 @@ export default function App() {
         {/* Give / Adopt / About pages brought in from the old site — same table, other sections */}
         <Route path="/info/:slug" element={<LearnArticle />} />
         <Route path="/volunteer" element={<Volunteer />} />
+        <Route path="/volunteer/call/:slug" element={<VolunteerCall />} />
         <Route path="/bunfest" element={<BunFest />} />
         <Route path="/bunfest/silent-auction" element={<SilentAuction />} />
         <Route path="/events" element={<Events />} />

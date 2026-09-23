@@ -3,6 +3,10 @@ import { PageHero, Section, LiveNote, btn, ext, H2, Card, Callout } from '../com
 import PresentedBy from '../components/PresentedBy'
 import { Link } from 'react-router-dom'
 import { OHRR, CHRS_TIPLINE } from '../lib/constants'
+import { useEffect, useState } from 'react'
+import { isSupabaseConfigured } from '../lib/supabase'
+import { listOpenCalls, type OpenCall } from '../lib/volunteers/callsApi'
+import { fmtClock, fmtDay } from '../lib/volunteers/calls'
 
 interface Position {
   title: string
@@ -105,6 +109,8 @@ export default function Volunteer() {
           Some volunteers come to us knowing everything about bunnies and some start off knowing nothing at
           all. We truly are one big, happy volunteer family and we would love to have you join us.
         </p>
+
+        <OpenCalls />
 
         <H2 className="mt-10">Available volunteer positions</H2>
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -227,5 +233,42 @@ export default function Volunteer() {
         </Callout>
       </Section>
     </>
+  )
+}
+
+/** Volunteer calls still taking people — what's needed right now, first. */
+function OpenCalls() {
+  const [calls, setCalls] = useState<OpenCall[]>([])
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    listOpenCalls()
+      .then(setCalls)
+      .catch(() => setCalls([]))
+  }, [])
+  if (calls.length === 0) return null
+  return (
+    <div className="mt-10">
+      <H2>Help needed now</H2>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        {calls.map((c) => {
+          const left = Math.max(0, c.places - c.taken)
+          return (
+            <Link key={c.slug} to={`/volunteer/call/${c.slug}`} className="block">
+              <Card className="h-full border-brand-orange/40 transition hover:shadow-md">
+                <h3 className="font-display text-lg font-extrabold text-brand-blue">{c.title}</h3>
+                <p className="mt-1 text-base text-slate-700">
+                  {fmtDay(c.on_date)} · {fmtClock(c.starts_at)}–{fmtClock(c.ends_at)}
+                </p>
+                {c.location && <p className="text-sm text-slate-500">{c.location}</p>}
+                {c.summary && <p className="mt-1.5 text-sm text-slate-600">{c.summary}</p>}
+                <p className="mt-3 text-base font-bold text-brand-orange-dark">
+                  {left > 0 ? `${left} ${left === 1 ? 'place' : 'places'} left — sign up` : 'Full — thank you!'}
+                </p>
+              </Card>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
   )
 }

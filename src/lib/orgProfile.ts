@@ -16,6 +16,10 @@ export interface OrgProfile {
   phone: string
   email: string
   address: string
+  /** Who signs volunteer-hours letters. Blank until staff set it in the app. */
+  letter_signer_name: string
+  letter_signer_title: string
+  ein: string
 }
 
 const FALLBACK: OrgProfile = {
@@ -26,6 +30,9 @@ const FALLBACK: OrgProfile = {
   phone: OHRR.phone,
   email: OHRR.email,
   address: `${OHRR.address}`,
+  letter_signer_name: '',
+  letter_signer_title: '',
+  ein: '',
 }
 
 export function useOrgProfile(): OrgProfile {
@@ -54,6 +61,9 @@ export function useOrgProfile(): OrgProfile {
           phone: pick('phone'),
           email: pick('email'),
           address: pick('address'),
+          letter_signer_name: pick('letter_signer_name'),
+          letter_signer_title: pick('letter_signer_title'),
+          ein: pick('ein'),
         })
       })
     return () => {

@@ -170,6 +170,7 @@ export default function StaffShell() {
             <NavLink to="/staff" end className={navClass}>Dashboard</NavLink>
             {can('inbox.manage') && <NavLink to="/staff/inbox" className={navClass}>Inbox</NavLink>}
             {can('bookings.manage') && <NavLink to="/staff/bookings" className={navClass}>Bookings</NavLink>}
+            {(can('volunteers.shifts.manage') || can('bookings.manage')) && <NavLink to="/staff/calls" className={navClass}>Volunteer calls</NavLink>}
             {(can('announcements.post') || can('social.publish')) && <NavLink to="/staff/posts" className={navClass}>Posts</NavLink>}
             {can('announcements.post') && <NavLink to="/staff/flyers" className={navClass}>Flyers</NavLink>}
             {can('announcements.post') && <NavLink to="/staff/outreach" className={navClass}>Outreach</NavLink>}

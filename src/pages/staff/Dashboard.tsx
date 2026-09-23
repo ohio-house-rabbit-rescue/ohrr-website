@@ -53,6 +53,11 @@ export default function StaffDashboard() {
       h: 'Adoptable rabbits',
       p: 'Add rabbits with photos and set their adoption status.',
     },
+    (can('volunteers.shifts.manage') || can('bookings.manage')) && {
+      to: '/staff/calls',
+      h: 'Volunteer calls',
+      p: 'Put out a need, share it everywhere, check people in on the day, thank them — and write their hours letters.',
+    },
     can('volunteers.shifts.manage') && {
       to: '/staff/volunteer',
       h: 'Volunteer opportunities',
