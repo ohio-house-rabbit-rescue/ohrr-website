@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
-import { useStaff, staffInput, Spinner } from '../lib/staff'
+import { useStaff, staffInput, Spinner, PasswordInput } from '../lib/staff'
 import { btn } from './ui'
 import { buildLabel } from '../lib/version'
 
@@ -61,7 +61,7 @@ function SignIn() {
             </label>
             <label className="block text-sm font-semibold text-slate-700">
               Password
-              <input className={staffInput} type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <PasswordInput autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
             {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
             <button type="submit" disabled={status === 'working'} className={`${btn.orange} w-full disabled:opacity-60`}>

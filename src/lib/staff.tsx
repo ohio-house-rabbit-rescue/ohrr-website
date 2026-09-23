@@ -4,10 +4,12 @@ import {
   useContext,
   useEffect,
   useState,
+  type InputHTMLAttributes,
   type ReactNode,
 } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, isConfigured } from './supabase'
+import { Icon } from '../components/icons'
 
 // Capability keys (mirror the app / DB seed). Owners & admins implicitly hold all.
 export const CAPS = [
@@ -207,5 +209,29 @@ export function Spinner({ label = 'Loading…' }: { label?: string }) {
       <span className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-brand-blue" />
       <span className="text-sm font-semibold">{label}</span>
     </div>
+  )
+}
+
+/**
+ * A password box with a Show / Hide button inside it, so people can check
+ * what they typed — easy to get wrong on a phone keyboard. Takes the same
+ * props as an <input>, apart from `type`.
+ */
+export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'className'>) {
+  const [show, setShow] = useState(false)
+  return (
+    <span className="relative mt-1 block">
+      <input {...props} type={show ? 'text' : 'password'} autoCapitalize="none" autoCorrect="off" spellCheck={false} className={`${staffInput} !mt-0 pr-24`} />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-pressed={show}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        className="absolute inset-y-0 right-0 flex min-w-[44px] items-center gap-1.5 rounded-r-xl px-3 text-sm font-bold text-brand-blue hover:text-brand-blue-dark"
+      >
+        <Icon name={show ? 'eyeOff' : 'eye'} size={18} />
+        {show ? 'Hide' : 'Show'}
+      </button>
+    </span>
   )
 }
