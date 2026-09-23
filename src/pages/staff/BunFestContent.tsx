@@ -15,6 +15,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
+import BunFestFloor from './BunFestFloor'
+import BunFestSpeakers from './BunFestSpeakers'
 import { Icon } from '../../components/icons'
 import { listSuppliers, saveSupplier, type Supplier } from '../../lib/hopshop'
 import {
@@ -38,6 +40,8 @@ import {
   sectionsToForm,
   startBunfestYear,
   PAGE_ICONS,
+  listPresenters,
+  type PresenterRow,
   type PageRow,
   type PageSection,
   type PartnerRow,
@@ -56,12 +60,13 @@ function FormError({ children }: { children?: ReactNode }) {
   return children ? <p className="text-sm font-semibold text-red-600">{children}</p> : null
 }
 
-type Tab = 'schedule' | 'vendors' | 'partners' | 'pages'
+type Tab = 'schedule' | 'vendors' | 'partners' | 'pages' | 'floor'
 const TABS: [Tab, string][] = [
   ['schedule', 'Schedule'],
   ['pages', 'Pages'],
   ['vendors', 'Vendors'],
   ['partners', 'Rescues'],
+  ['floor', 'Floor plan'],
 ]
 
 // The two tracks the festival runs. Free text, so a third one next year needs
@@ -108,11 +113,6 @@ function YearChips({ value, onChange }: { value: number[]; onChange: (years: num
     </div>
   )
 }
-const ROOMS: { value: 'burgundy' | 'emerald' | ''; label: string }[] = [
-  { value: '', label: 'Not placed yet' },
-  { value: 'burgundy', label: 'Burgundy Room' },
-  { value: 'emerald', label: 'Emerald Room' },
-]
 
 export default function StaffBunfest() {
   const { membership } = useStaff()
@@ -125,17 +125,20 @@ export default function StaffBunfest() {
       ? 'partners'
       : pathname.endsWith('/pages')
         ? 'pages'
-        : 'schedule'
+        : pathname.endsWith('/floor')
+          ? 'floor'
+          : 'schedule'
 
   return (
     <Screen className="space-y-4">
       <div className="pt-1">
         <h1 className="font-display text-2xl font-black text-ink">Midwest BunFest</h1>
         <p className="mt-1 text-sm text-slate-600">
-          The programme, the vendor tables and the rescue directory — what visitors see in the app and on the website.
+          The programme and speakers, the activity pages, the vendors and rescues, and the floor plan —
+          what visitors see in the app and on the website.
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {TABS.map(([t, label]) => (
           <button
             key={t}
@@ -153,6 +156,7 @@ export default function StaffBunfest() {
       {tab === 'pages' && <PagesTab orgId={orgId} />}
       {tab === 'vendors' && <VendorsTab orgId={orgId} />}
       {tab === 'partners' && <PartnersTab orgId={orgId} />}
+      {tab === 'floor' && <BunFestFloor orgId={orgId} />}
     </Screen>
   )
 }
@@ -160,10 +164,39 @@ export default function StaffBunfest() {
 /* ============================================================== schedule */
 
 function ScheduleTab({ orgId }: { orgId: string }) {
+  const [view, setView] = useState<'sessions' | 'speakers'>('sessions')
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        {(
+          [
+            ['sessions', 'Sessions'],
+            ['speakers', 'Speakers'],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            className={`min-h-[40px] flex-1 rounded-full text-sm font-bold ${
+              view === v ? 'bg-ink text-white' : 'border border-slate-200 bg-white text-slate-600'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {view === 'sessions' ? <SessionsList orgId={orgId} /> : <BunFestSpeakers orgId={orgId} />}
+    </div>
+  )
+}
+
+function SessionsList({ orgId }: { orgId: string }) {
   const thisYear = new Date().getFullYear()
   const [year, setYear] = useState(thisYear)
   const [years, setYears] = useState<number[]>([])
   const [rows, setRows] = useState<SessionRow[] | null>(null)
+  const [presenters, setPresenters] = useState<PresenterRow[]>([])
   const [editing, setEditing] = useState<string | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -171,8 +204,9 @@ function ScheduleTab({ orgId }: { orgId: string }) {
   const load = useCallback(async () => {
     if (!orgId) return
     try {
-      const [list, ys] = await Promise.all([listSessions(orgId, year), sessionYears(orgId)])
+      const [list, ys, ps] = await Promise.all([listSessions(orgId, year), sessionYears(orgId), listPresenters(orgId)])
       setRows(list)
+      setPresenters(ps)
       setYears([...new Set([thisYear, ...ys])].sort((a, b) => b - a))
     } catch (e) {
       setError(errMessage(e))
@@ -238,6 +272,7 @@ function ScheduleTab({ orgId }: { orgId: string }) {
             <SessionForm
               orgId={orgId}
               year={year}
+              presenters={presenters}
               initial={r}
               onDone={async () => {
                 setEditing(null)
@@ -274,6 +309,7 @@ function ScheduleTab({ orgId }: { orgId: string }) {
           <SessionForm
             orgId={orgId}
             year={year}
+            presenters={presenters}
             initial={null}
             onDone={async () => {
               setEditing(null)
@@ -294,11 +330,13 @@ function SessionForm({
   orgId,
   year,
   initial,
+  presenters,
   onDone,
 }: {
   orgId: string
   year: number
   initial: SessionRow | null
+  presenters: PresenterRow[]
   onDone: () => Promise<void>
 }) {
   const [d, setD] = useState({
@@ -311,7 +349,13 @@ function SessionForm({
     track: initial?.track ?? TRACKS[0],
     kind: initial?.kind ?? ('session' as SessionRow['kind']),
     is_published: initial?.is_published ?? true,
+    presenter_ids: initial?.presenter_ids ?? ([] as string[]),
   })
+  const togglePresenter = (id: string) =>
+    setD((cur) => ({
+      ...cur,
+      presenter_ids: cur.presenter_ids.includes(id) ? cur.presenter_ids.filter((x) => x !== id) : [...cur.presenter_ids, id],
+    }))
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -329,10 +373,19 @@ function SessionForm({
         start_time: toTime(d.start_time),
         end_time: d.end_time ? toTime(d.end_time) : null,
         title: d.title.trim(),
-        presenter: d.presenter.trim() || null,
+        // Picked the speakers but left the line blank? Write it from them.
+        presenter:
+          d.presenter.trim() ||
+          d.presenter_ids
+            .map((id) => presenters.find((p) => p.id === id))
+            .filter((p): p is PresenterRow => !!p)
+            .map((p) => (p.credentials ? `${p.name}, ${p.credentials}` : p.name))
+            .join(' and ') ||
+          null,
         description: d.description.trim() || null,
         room: d.room.trim() || null,
         track: d.track.trim() || TRACKS[0],
+        presenter_ids: d.presenter_ids,
         kind: d.kind,
         is_published: d.is_published,
       })
@@ -363,6 +416,32 @@ function SessionForm({
         Who’s presenting
         <input className={staffInput} value={d.presenter} onChange={txt('presenter')} placeholder="Emily Fagundo, DVM · MedVet Hilliard" />
       </label>
+      {presenters.length > 0 && (
+        <div>
+          <span className="block text-sm font-semibold text-slate-700">Link to their bios</span>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {presenters.map((p) => {
+              const on = d.presenter_ids.includes(p.id)
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => togglePresenter(p.id)}
+                  aria-pressed={on}
+                  className={`min-h-[40px] rounded-full px-3 text-sm font-bold ${
+                    on ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  {p.name}
+                </button>
+              )
+            })}
+          </div>
+          <span className="mt-1 block text-xs text-slate-500">
+            Their names on the schedule then open the Speakers page. Add people under Speakers.
+          </span>
+        </div>
+      )}
       <label className="block text-sm font-semibold text-slate-700">
         What it covers
         <textarea className={staffInput} rows={2} value={d.description} onChange={txt('description')} />
@@ -588,32 +667,14 @@ function VendorForm({ orgId, initial, onDone }: { orgId: string; initial: Suppli
         About them (visitors read this)
         <textarea className={staffInput} rows={2} value={d.blurb} onChange={txt('blurb')} placeholder="Handmade bunny-themed jewelry, home decor and ornaments." />
       </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-sm font-semibold text-slate-700">
-          Room
-          <select className={staffInput} value={d.room} onChange={txt('room')}>
-            {ROOMS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-semibold text-slate-700">
-          Booth
-          <input className={staffInput} value={d.booth} onChange={txt('booth')} placeholder="B7" />
-        </label>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-sm font-semibold text-slate-700">
-          Tables
-          <input inputMode="numeric" className={staffInput} value={d.tables} onChange={(e) => setD({ ...d, tables: e.target.value.replace(/[^0-9]/g, '') })} />
-        </label>
-        <label className="block text-sm font-semibold text-slate-700">
-          Order in the list
-          <input inputMode="numeric" className={staffInput} value={d.sort} onChange={(e) => setD({ ...d, sort: e.target.value.replace(/[^0-9]/g, '') })} />
-        </label>
-      </div>
+      <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+        Their table numbers are set on the <strong>Floor plan</strong> tab, beside everyone else’s,
+        so two stands can’t be given the same table.
+      </p>
+      <label className="block text-sm font-semibold text-slate-700">
+        Order in the list
+        <input inputMode="numeric" className={staffInput} value={d.sort} onChange={(e) => setD({ ...d, sort: e.target.value.replace(/[^0-9]/g, '') })} />
+      </label>
       <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
         <input
           type="checkbox"

@@ -16,6 +16,8 @@ export interface SessionRow {
   room: string | null
   /** "Education Sessions" / "Special Interest Sessions" — tracks run at once. */
   track: string
+  /** Who gives it — bunfest_presenters ids. */
+  presenter_ids: string[]
   kind: 'session' | 'break' | 'activity'
   is_published: boolean
   sort_order: number
@@ -103,6 +105,7 @@ export async function copySessions(orgId: string, from: number, to: number): Pro
     description: r.description,
     room: r.room,
     track: r.track,
+    presenter_ids: r.presenter_ids,
     kind: r.kind,
     is_published: false, // a copy starts hidden — it's last year's until checked
     sort_order: r.sort_order,
@@ -273,6 +276,8 @@ export interface YearCopy {
   pages: number
   vendors: number
   partners: number
+  venue?: number
+  tables?: number
 }
 
 /**
@@ -291,3 +296,96 @@ export const PAGE_ICONS = [
   'star', 'book', 'sparkles', 'camera', 'ticket', 'gift', 'heart', 'bag', 'users',
   'calendar', 'mappin', 'clock', 'award', 'store', 'gavel', 'info',
 ]
+
+/* ---------------------------------------------------- the floor plan */
+// Mirrors ohrr-app/src/features/bunfest/api.ts.
+
+export interface TableRecord {
+  id: string
+  org_id: string
+  year: number
+  table_no: number
+  supplier_id: string | null
+  partner_id: string | null
+  label: string | null
+}
+
+/** A year's venue as saved, or null if nobody has designed one yet. */
+export async function loadVenue(orgId: string, year: number): Promise<{ name: string; layout: unknown } | null> {
+  const { data, error } = await supabase
+    .from('bunfest_venues')
+    .select('name, layout')
+    .eq('org_id', orgId)
+    .eq('year', year)
+    .maybeSingle()
+  if (error) throw error
+  const row = data as { name: string | null; layout: unknown } | null
+  return row ? { name: row.name ?? '', layout: row.layout } : null
+}
+
+/** Years that have a venue, newest first. */
+export async function venueYears(orgId: string): Promise<number[]> {
+  const { data, error } = await supabase.from('bunfest_venues').select('year').eq('org_id', orgId)
+  if (error) throw error
+  return ((data ?? []) as { year: number }[]).map((r) => r.year).sort((a, b) => b - a)
+}
+
+/** Save the whole design at once. */
+export async function saveVenue(orgId: string, year: number, name: string, layout: unknown): Promise<void> {
+  const { error } = await supabase.rpc('save_bunfest_venue', { p_org: orgId, p_year: year, p_name: name || null, p_layout: layout })
+  if (error) throw error
+}
+
+export async function listTables(orgId: string, year: number): Promise<TableRecord[]> {
+  const { data, error } = await supabase.from('bunfest_tables').select('*').eq('org_id', orgId).eq('year', year).order('table_no')
+  if (error) throw error
+  return (data ?? []) as TableRecord[]
+}
+
+export type TableHolderRef = { kind: 'vendor'; id: string } | { kind: 'rescue'; id: string } | { kind: 'other'; label: string }
+
+/** Give one stand its tables for the year — an empty list takes them away. */
+export async function setTables(orgId: string, year: number, who: TableHolderRef, numbers: number[]): Promise<void> {
+  const { error } = await supabase.rpc('set_bunfest_tables', {
+    p_org: orgId,
+    p_year: year,
+    p_tables: numbers,
+    p_supplier: who.kind === 'vendor' ? who.id : null,
+    p_partner: who.kind === 'rescue' ? who.id : null,
+    p_label: who.kind === 'other' ? who.label : null,
+  })
+  if (error) throw error
+}
+
+/* ------------------------------------------------------------ speakers */
+
+export interface PresenterRow {
+  id: string
+  org_id: string
+  name: string
+  credentials: string | null
+  affiliation: string | null
+  bio: string | null
+  photo_url: string | null
+  website: string | null
+  is_published: boolean
+  sort_order: number
+}
+export type PresenterInput = Omit<Partial<PresenterRow>, 'org_id' | 'name'> & { org_id: string; name: string }
+
+export async function listPresenters(orgId: string): Promise<PresenterRow[]> {
+  const { data, error } = await supabase.from('bunfest_presenters').select('*').eq('org_id', orgId).order('sort_order').order('name')
+  if (error) throw error
+  return (data ?? []) as PresenterRow[]
+}
+
+export async function savePresenter(p: PresenterInput): Promise<PresenterRow> {
+  const { data, error } = await supabase.from('bunfest_presenters').upsert(p, { onConflict: 'id' }).select('*').single()
+  if (error) throw error
+  return data as PresenterRow
+}
+
+export async function deletePresenter(id: string): Promise<void> {
+  const { error } = await supabase.from('bunfest_presenters').delete().eq('id', id)
+  if (error) throw error
+}
