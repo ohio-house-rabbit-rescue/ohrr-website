@@ -281,8 +281,7 @@ export function Callout({ children, className = '' }: { children: ReactNode; cla
   return <div className={`rounded-3xl bg-brand-blue-50 p-6 sm:p-8 ${className}`}>{children}</div>
 }
 
-// Email as tappable text, shown in the footer. No street address or directions:
-// see OHRR in lib/constants.
+// Email as tappable text, across the top of the footer.
 export function ContactRow({ className = '' }: { className?: string }) {
   const link = 'font-semibold text-brand-blue hover:text-brand-blue-dark'
   return (
@@ -298,18 +297,17 @@ export function ContactRow({ className = '' }: { className?: string }) {
 }
 
 /**
- * Where OHRR is, without the street address — the address goes out with an
- * appointment or a volunteer shift.
+ * Visiting, pointing people to email rather than the door. The street address
+ * itself is in the footer and on the Hop Shop page (see OHRR in lib/constants).
  */
 export function VisitNote({ className = '' }: { className?: string }) {
   return (
     <p className={`text-base leading-relaxed text-slate-700 ${className}`}>
-      The Adoption Center is in {OHRR.place}. Visits are by appointment, and we send the address with your
-      appointment or volunteer shift. For anything else,{' '}
+      The Adoption Center is in {OHRR.place}. Visits are by appointment, so please{' '}
       <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
         email us
       </a>{' '}
-      first.
+      before you come.
     </p>
   )
 }

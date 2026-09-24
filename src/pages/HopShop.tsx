@@ -115,12 +115,24 @@ export default function HopShop() {
               )}
               <p className="mt-3 text-base font-semibold text-slate-700">{org.hopshop_hours}</p>
               <p className="mt-1 text-sm text-slate-600">{OHRR.hoursNote}</p>
-              <p className="mt-4 text-sm leading-relaxed text-slate-700">
-                The Hop Shop is inside the Adoption Center in {OHRR.place}. Email us and we’ll send directions.
+              {/* One of the two places the street address appears (see OHRR in lib/constants) */}
+              <h2 className="mt-5 font-display text-lg font-extrabold text-brand-blue">Address</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                OHRR Adoption Center and Hop Shop
+                <br />
+                {OHRR.street}
+                <br />
+                {OHRR.cityStateZip}
               </p>
-              <a href={OHRR.emailHref} className={`${btn.outline} mt-3`}>
-                Email OHRR
-              </a>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{OHRR.landmark}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={OHRR.mapsHref} {...ext} className={btn.blue}>
+                  Get directions
+                </a>
+                <a href={OHRR.emailHref} className={btn.outline}>
+                  Email OHRR
+                </a>
+              </div>
             </Callout>
           </aside>
         </div>
