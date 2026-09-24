@@ -13,6 +13,17 @@ import { TEXT_SIZES, stepTextSize, useTextSize } from '../lib/textSize'
 // on a laptop (nothing opens on hover), the phone menu is a labelled button,
 // targets are 44px, and text size is one tap away on every screen.
 
+// Everything else OHRR does — the footer's list, repeated in the phone menu,
+// because on a phone the footer is a long way down.
+const MORE = [
+  { to: '/events', label: 'Events' },
+  { to: '/bunfest', label: 'Midwest BunFest' },
+  { to: '/hop-shop', label: 'Hop Shop' },
+  { to: '/news', label: 'News' },
+  { to: '/tails', label: 'Happy Tails' },
+  { to: '/contact', label: 'Contact us' },
+]
+
 const NAV = [
   { to: '/adopt', label: 'Adopt' },
   { to: '/help', label: 'Bunny Help' },
@@ -70,7 +81,13 @@ export default function Header() {
       <div className="border-b border-slate-100 bg-canvas">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-1.5 sm:px-5">
           <TextSizeControl />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link
+              to="/contact"
+              className="hidden min-h-11 items-center rounded-full px-3 text-base font-bold text-slate-700 hover:bg-white sm:inline-flex"
+            >
+              Contact
+            </Link>
             <Link
               to="/search"
               aria-label="Search the site"
@@ -138,7 +155,20 @@ export default function Header() {
       {open && (
         <nav id="site-menu" aria-label="Main" className="border-t border-slate-100 bg-white px-4 py-3 lg:hidden">
           <div className="grid gap-1">
+            <NavLink to="/" end className={linkClass}>
+              Home
+            </NavLink>
             {NAV.map((n) => (
+              <NavLink key={n.to} to={n.to} className={linkClass}>
+                {n.label}
+              </NavLink>
+            ))}
+          </div>
+          <p className="mt-3 border-t border-slate-100 px-3 pt-3 text-sm font-extrabold uppercase tracking-wider text-slate-600">
+            Also at OHRR
+          </p>
+          <div className="mt-1 grid grid-cols-2 gap-1">
+            {MORE.map((n) => (
               <NavLink key={n.to} to={n.to} className={linkClass}>
                 {n.label}
               </NavLink>

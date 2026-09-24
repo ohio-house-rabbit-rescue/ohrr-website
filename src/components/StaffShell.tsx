@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
 import { useStaff, staffInput, Spinner, PasswordInput } from '../lib/staff'
 import { btn } from './ui'
@@ -86,9 +86,120 @@ function SignIn() {
 }
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-full px-3.5 py-1.5 text-sm font-bold transition ${
-    isActive ? 'bg-brand-blue text-white' : 'text-slate-600 hover:bg-slate-100'
+  `flex min-h-11 items-center rounded-lg px-3 text-base font-semibold transition ${
+    isActive ? 'bg-brand-blue text-white' : 'text-slate-700 hover:bg-slate-100'
   }`
+
+// The way back to the public site, in the same place on every staff screen.
+function BackToSite() {
+  return (
+    <Link
+      to="/"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-brand-blue/60 bg-white px-4 text-base font-bold text-brand-blue hover:bg-brand-blue-50"
+    >
+      <span aria-hidden="true">←</span> Back to the website
+    </Link>
+  )
+}
+
+type Can = (cap: Parameters<ReturnType<typeof useStaff>['can']>[0]) => boolean
+interface NavItem {
+  to: string
+  label: string
+  show: boolean
+  end?: boolean
+}
+
+/**
+ * The staff menu, in groups — thirty tools in one row of buttons was too much
+ * to scan. Each group only appears when the person can use something in it.
+ */
+function staffGroups(can: Can): { title: string; items: NavItem[] }[] {
+  const shop = can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
+  return [
+    {
+      title: 'Every day',
+      items: [
+        { to: '/staff', label: 'Dashboard', show: true, end: true },
+        { to: '/staff/inbox', label: 'Inbox', show: can('inbox.manage') },
+        { to: '/staff/bookings', label: 'Bookings', show: can('bookings.manage') },
+      ],
+    },
+    {
+      title: 'Rabbits & care',
+      items: [
+        { to: '/staff/rabbits', label: 'Adoptable rabbits', show: can('adoptions.listings.create') || can('adoptions.listings.edit') || can('adoptions.status.change') },
+        { to: '/staff/tails', label: 'Happy Tails', show: can('content.education.edit') || can('inbox.manage') },
+        { to: '/staff/care', label: 'Care guides & pages', show: can('content.education.edit') },
+        { to: '/staff/bunny-help', label: 'Bunny Help topics', show: can('content.education.edit') },
+        { to: '/staff/vets', label: 'Vets', show: can('content.education.edit') },
+      ],
+    },
+    {
+      title: 'Volunteers',
+      items: [
+        { to: '/staff/calls', label: 'Volunteer calls', show: can('volunteers.shifts.manage') || can('bookings.manage') },
+        { to: '/staff/volunteer', label: 'Volunteer opportunities', show: can('volunteers.shifts.manage') },
+        { to: '/staff/volunteers', label: 'Volunteer roster & hours', show: can('volunteers.shifts.manage') || can('bookings.manage') },
+      ],
+    },
+    {
+      title: 'Website & outreach',
+      items: [
+        { to: '/staff/homepage', label: 'Homepage', show: can('announcements.post') },
+        { to: '/staff/announcements', label: 'Announcements', show: can('announcements.post') },
+        { to: '/staff/posts', label: 'Posts & Share kit', show: can('announcements.post') || can('social.publish') },
+        { to: '/staff/flyers', label: 'Flyers', show: can('announcements.post') },
+        { to: '/staff/outreach', label: 'Outreach letters', show: can('announcements.post') },
+        { to: '/staff/impact', label: 'Impact numbers', show: can('announcements.post') },
+      ],
+    },
+    {
+      title: 'Hop Shop & BunFest',
+      items: [
+        { to: '/staff/hopshop', label: 'Hop Shop', show: shop || can('hopshop.orders.view') },
+        { to: '/staff/items', label: 'Scanned items & tags', show: can('events.bunfest.manage') || shop },
+        { to: '/staff/bunfest', label: 'BunFest', show: can('events.bunfest.manage') },
+        { to: '/staff/events', label: 'Events', show: can('events.bunfest.manage') },
+        { to: '/staff/sponsors', label: 'Sponsors', show: can('events.bunfest.manage') },
+        { to: '/staff/raffle-tickets', label: 'Raffle tickets', show: can('events.bunfest.manage') },
+        { to: '/staff/auction', label: 'Silent auction', show: can('events.bunfest.manage') },
+      ],
+    },
+    {
+      title: 'Settings',
+      items: [
+        { to: '/staff/team', label: 'Team', show: can('staff.invite') || can('staff.permissions.manage') },
+        { to: '/staff/details', label: 'OHRR details', show: can('settings.manage') },
+        { to: '/staff/features', label: 'Features', show: can('settings.manage') },
+        { to: '/staff/activity', label: 'Activity', show: can('audit.view') },
+      ],
+    },
+  ]
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.show) }))
+    .filter((g) => g.items.length > 0)
+}
+
+function StaffMenu({ can }: { can: Can }) {
+  return (
+    <nav aria-label="Staff tools" className="space-y-5">
+      {staffGroups(can).map((g) => (
+        <div key={g.title}>
+          <p className="px-3 text-sm font-extrabold uppercase tracking-wider text-slate-600">{g.title}</p>
+          <ul className="mt-1 space-y-0.5">
+            {g.items.map((i) => (
+              <li key={i.to}>
+                <NavLink to={i.to} end={i.end} className={navClass}>
+                  {i.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  )
+}
 
 function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
   const [code, setCode] = useState('')
@@ -135,6 +246,9 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
 
 export default function StaffShell() {
   const { configured, loading, user, membership, can, signOut, refresh } = useStaff()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+  useEffect(() => setMenuOpen(false), [pathname])
 
   if (!configured)
     return <div className="mx-auto max-w-md px-5 py-16 text-center text-slate-600">Backend not configured.</div>
@@ -150,7 +264,10 @@ export default function StaffShell() {
           Enter the invite code an owner gave you — or the owner's setup code.
         </p>
         <JoinByCode onJoined={refresh} />
-        <button onClick={signOut} className={`${btn.outline} mt-4`}>Sign out</button>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <BackToSite />
+          <button onClick={signOut} className={btn.outline}>Sign out</button>
+        </div>
       </div>
     )
   }
@@ -159,60 +276,63 @@ export default function StaffShell() {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3">
+      <header className="border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:z-40">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
           <Link to="/staff" className="flex items-center gap-2.5">
-            <img src="/img/ohrr-mark.png" alt="OHRR" className="h-9 w-9 object-contain" />
+            <img src="/img/ohrr-mark.png" alt="" className="h-10 w-10 object-contain" />
             <span className="leading-tight">
-              <span className="block font-display text-sm font-extrabold text-ink">OHRR Staff</span>
-              <span className="block text-xs font-semibold text-slate-600">{role}</span>
+              <span className="block font-display text-lg font-extrabold text-ink">OHRR Staff</span>
+              <span className="block text-sm font-semibold text-slate-600">{role}</span>
             </span>
           </Link>
-          <nav className="flex flex-wrap items-center gap-1.5">
-            <NavLink to="/staff" end className={navClass}>Dashboard</NavLink>
-            {can('inbox.manage') && <NavLink to="/staff/inbox" className={navClass}>Inbox</NavLink>}
-            {can('bookings.manage') && <NavLink to="/staff/bookings" className={navClass}>Bookings</NavLink>}
-            {(can('volunteers.shifts.manage') || can('bookings.manage')) && <NavLink to="/staff/calls" className={navClass}>Volunteer calls</NavLink>}
-            {(can('announcements.post') || can('social.publish')) && <NavLink to="/staff/posts" className={navClass}>Posts</NavLink>}
-            {can('announcements.post') && <NavLink to="/staff/flyers" className={navClass}>Flyers</NavLink>}
-            {can('announcements.post') && <NavLink to="/staff/outreach" className={navClass}>Outreach</NavLink>}
-            {can('announcements.post') && <NavLink to="/staff/impact" className={navClass}>Impact</NavLink>}
-            {can('announcements.post') && <NavLink to="/staff/announcements" className={navClass}>Announcements</NavLink>}
-            {can('announcements.post') && <NavLink to="/staff/homepage" className={navClass}>Homepage</NavLink>}
-            {(can('adoptions.listings.create') || can('adoptions.listings.edit') || can('adoptions.status.change')) && (
-              <NavLink to="/staff/rabbits" className={navClass}>Rabbits</NavLink>
-            )}
-            {can('volunteers.shifts.manage') && <NavLink to="/staff/volunteer" className={navClass}>Volunteer</NavLink>}
-            {can('content.education.edit') && <NavLink to="/staff/care" className={navClass}>Care guides &amp; pages</NavLink>}
-            {can('content.education.edit') && <NavLink to="/staff/vets" className={navClass}>Vets</NavLink>}
-            {can('content.education.edit') && <NavLink to="/staff/bunny-help" className={navClass}>Bunny Help</NavLink>}
-            {can('events.bunfest.manage') && <NavLink to="/staff/events" className={navClass}>Events</NavLink>}
-            {can('events.bunfest.manage') && <NavLink to="/staff/sponsors" className={navClass}>Sponsors</NavLink>}
-            {(can('volunteers.shifts.manage') || can('bookings.manage')) && <NavLink to="/staff/volunteers" className={navClass}>Volunteers</NavLink>}
-            {(can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && <NavLink to="/staff/items" className={navClass}>Items</NavLink>}
-            {(can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && <NavLink to="/staff/hopshop" className={navClass}>Hop Shop</NavLink>}
-            {can('events.bunfest.manage') && <NavLink to="/staff/bunfest" className={navClass}>BunFest</NavLink>}
-            {can('events.bunfest.manage') && <NavLink to="/staff/raffle-tickets" className={navClass}>Raffle tickets</NavLink>}
-            {can('events.bunfest.manage') && <NavLink to="/staff/auction" className={navClass}>Silent auction</NavLink>}
-            {(can('content.education.edit') || can('inbox.manage')) && <NavLink to="/staff/tails" className={navClass}>Happy Tails</NavLink>}
-            {(can('staff.invite') || can('staff.permissions.manage')) && <NavLink to="/staff/team" className={navClass}>Team</NavLink>}
-            {can('settings.manage') && <NavLink to="/staff/details" className={navClass}>OHRR details</NavLink>}
-            {can('settings.manage') && <NavLink to="/staff/features" className={navClass}>Features</NavLink>}
-            {can('audit.view') && <NavLink to="/staff/activity" className={navClass}>Activity</NavLink>}
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link to="/" className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50">
-              View site
-            </Link>
-            <button onClick={signOut} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="hidden lg:inline-flex">
+              <BackToSite />
+            </span>
+            <button
+              onClick={signOut}
+              className="inline-flex min-h-11 items-center rounded-full border-2 border-slate-300 px-4 text-base font-bold text-slate-700 hover:bg-slate-50"
+            >
               Sign out
             </button>
           </div>
         </div>
+        {/* Phone and tablet: the staff menu opens from one labelled button */}
+        <div className="border-t border-slate-100 px-4 py-2 lg:hidden">
+          <div className="flex flex-wrap items-center gap-2">
+            <BackToSite />
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-expanded={menuOpen}
+            aria-controls="staff-menu"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border-2 border-slate-300 px-3 text-base font-bold text-ink"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+              {menuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+            </svg>
+            {menuOpen ? 'Close menu' : 'Staff menu'}
+          </button>
+          </div>
+          {menuOpen && (
+            <div id="staff-menu" className="max-h-[70vh] overflow-y-auto py-3">
+              <StaffMenu can={can} />
+            </div>
+          )}
+        </div>
       </header>
-      <main className="mx-auto max-w-5xl px-5 py-8">
-        <Outlet />
-      </main>
+
+      <div className="mx-auto flex max-w-7xl gap-8 px-4 sm:px-5">
+        {/* Laptop: the grouped menu stays in view down the left */}
+        <aside className="hidden w-60 shrink-0 lg:block">
+          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto py-6">
+            <StaffMenu can={can} />
+          </div>
+        </aside>
+        <main className="min-w-0 flex-1 py-8">
+          <Outlet />
+        </main>
+      </div>
       {/* Which update this is — so a volunteer can report "rev 5" and mean it. */}
       <p className="pb-6 text-center text-xs text-slate-600">OHRR staff tools · {buildLabel}</p>
     </div>
