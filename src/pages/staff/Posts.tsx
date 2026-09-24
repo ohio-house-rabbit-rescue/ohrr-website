@@ -1,8 +1,11 @@
 // Staff → Posts: the Share kit and the Post queue, desktop edition. Same
 // tables and card painter as the app. Drafting is comfortable here (typing,
 // uploading); releasing usually happens on the phone where Instagram lives —
-// but "Save image + copy caption" works from a computer too.
+// but "Save image + copy caption" works from a computer too. Since update 26 a
+// post needs a second person: the writer sends it for approval, someone else
+// with "Approve social posts" approves it or sends it back with a note.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { useRabbits, useEvents } from '../../lib/data'
@@ -12,19 +15,25 @@ import { EDUCATION_CARDS, HASHTAGS, customPost, educationPost, eventPost, rabbit
 import { canvasToBlob, renderCard } from '../../lib/share/render'
 import { canShareFiles, copyText, savePng, sharePng } from '../../lib/share/share'
 import {
+  APPROVE_CAP,
   PLATFORMS,
+  STATUS_LABEL,
+  countPostsToApprove,
   createPost,
   deletePost,
   fetchImageBlob,
   isReady,
   listPosts,
+  loadStaffNames,
   setPostStatus,
+  shortDate,
   updatePost,
   uploadPostPhoto,
   uploadPostPng,
   whenLabel,
   type Platform,
   type PostDraft,
+  type PostStatus,
   type SocialPost,
 } from '../../lib/share/queue'
 
@@ -36,8 +45,10 @@ export default function Posts() {
   const userId = user?.id ?? ''
   const canDraft = can('announcements.post')
   const canPublish = can('social.publish')
+  const canApprove = can(APPROVE_CAP)
   const [view, setView] = useState<View>('queue')
   const [posts, setPosts] = useState<SocialPost[] | null>(null)
+  const [names, setNames] = useState<Map<string, string>>(() => new Map())
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -50,8 +61,19 @@ export default function Posts() {
   useEffect(() => {
     if (orgId) void load()
   }, [orgId, load])
+  // Who approved a post — nice to have; the queue works without it.
+  useEffect(() => {
+    if (!orgId) return
+    let alive = true
+    void loadStaffNames(orgId).then((m) => {
+      if (alive) setNames(m)
+    })
+    return () => {
+      alive = false
+    }
+  }, [orgId])
 
-  if (!canDraft && !canPublish) return <p className="text-slate-600">You don’t have access to posts.</p>
+  if (!canDraft && !canPublish && !canApprove) return <p className="text-slate-600">You don’t have access to posts.</p>
 
   const editing = typeof view === 'object' && 'edit' in view ? (posts ?? []).find((p) => p.id === view.edit) ?? null : null
 
@@ -61,11 +83,18 @@ export default function Posts() {
         <div>
           <h1 className="font-display text-2xl font-black text-ink">Posts</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Build posts here; {canPublish ? 'release them' : 'the person with posting rights releases them'} — usually from the phone, where Instagram, Facebook and TikTok are.
+            Build posts here and send them for approval. Someone other than the writer approves them, then {canPublish ? 'you release them' : 'the person with posting rights releases them'} — usually from the phone, where Instagram, Facebook and TikTok are.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setView('queue')} className={view === 'queue' ? btn.blue : btn.outline}>
+          <button
+            type="button"
+            onClick={() => {
+              void load()
+              setView('queue')
+            }}
+            className={view === 'queue' ? btn.blue : btn.outline}
+          >
             Queue
           </button>
           {canDraft && (
@@ -83,7 +112,7 @@ export default function Posts() {
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
 
       <div className="mt-6">
-        {view === 'queue' && <Queue posts={posts} canDraft={canDraft} canPublish={canPublish} onChanged={load} onEdit={(id) => setView({ edit: id })} />}
+        {view === 'queue' && <Queue posts={posts} me={userId} names={names} canDraft={canDraft} canPublish={canPublish} canApprove={canApprove} onChanged={load} onEdit={(id) => setView({ edit: id })} />}
         {view === 'kit' && <Kit onPick={(p) => setView({ compose: p })} />}
         {typeof view === 'object' && 'compose' in view && (
           <Composer
@@ -91,14 +120,16 @@ export default function Posts() {
             orgId={orgId}
             userId={userId}
             onBack={() => setView('kit')}
-            onQueued={async () => {
+            onQueued={async (warning) => {
               await load()
               setView('queue')
+              setError(warning ?? null)
             }}
           />
         )}
         {(view === 'new' || editing) && (
           <Editor
+            key={editing?.id ?? 'new'}
             orgId={orgId}
             userId={userId}
             initial={editing}
@@ -106,7 +137,10 @@ export default function Posts() {
               await load()
               setView('queue')
             }}
-            onCancel={() => setView('queue')}
+            onCancel={() => {
+              void load()
+              setView('queue')
+            }}
           />
         )}
       </div>
@@ -116,24 +150,48 @@ export default function Posts() {
 
 /* ------------------------------------------------------------- queue */
 
-function Queue({ posts, canDraft, canPublish, onChanged, onEdit }: { posts: SocialPost[] | null; canDraft: boolean; canPublish: boolean; onChanged: () => Promise<void>; onEdit: (id: string) => void }) {
+/** Resolves to the error text, or null when it worked (the list has reloaded). */
+type OnStatus = (p: SocialPost, s: PostStatus, opts?: { postedTo?: Platform[]; note?: string }) => Promise<string | null>
+
+function Queue({
+  posts,
+  me,
+  names,
+  canDraft,
+  canPublish,
+  canApprove,
+  onChanged,
+  onEdit,
+}: {
+  posts: SocialPost[] | null
+  me: string
+  names: Map<string, string>
+  canDraft: boolean
+  canPublish: boolean
+  canApprove: boolean
+  onChanged: () => Promise<void>
+  onEdit: (id: string) => void
+}) {
   const [error, setError] = useState<string | null>(null)
   const groups = useMemo(() => {
     const all = posts ?? []
     return {
+      // Other people's posts first: those are the ones an approver can act on.
+      waiting: all.filter((p) => p.status === 'submitted').sort((a, b) => Number(a.created_by === me) - Number(b.created_by === me)),
       ready: all.filter((p) => isReady(p)),
       scheduled: all.filter((p) => p.status === 'approved' && !isReady(p)),
       drafts: all.filter((p) => p.status === 'draft'),
       posted: all.filter((p) => p.status === 'posted').slice(0, 30),
     }
-  }, [posts])
-  const act = async (p: SocialPost, status: SocialPost['status'], to?: Platform[]) => {
+  }, [posts, me])
+  const act: OnStatus = async (p, status, opts) => {
     setError(null)
     try {
-      await setPostStatus(p.id, status, to)
+      await setPostStatus(p.id, status, opts?.postedTo, opts?.note)
       await onChanged()
+      return null
     } catch (e) {
-      setError(errMessage(e))
+      return errMessage(e)
     }
   }
   const remove = async (p: SocialPost) => {
@@ -146,17 +204,20 @@ function Queue({ posts, canDraft, canPublish, onChanged, onEdit }: { posts: Soci
     }
   }
   if (posts === null) return <Spinner />
+  // Approvers see what's waiting for them first.
+  const waiting: [string, SocialPost[], string] = ['Waiting for approval', groups.waiting, 'Nothing is waiting for approval.']
+  const sections: [string, SocialPost[], string][] = [
+    ...(canApprove ? [waiting] : []),
+    ['Ready to post', groups.ready, 'Nothing is ready right now.'],
+    ['Scheduled', groups.scheduled, 'No posts waiting for a date.'],
+    ...(canApprove ? [] : [waiting]),
+    ['Drafts', groups.drafts, 'No drafts yet.'],
+    ['Posted', groups.posted, 'Nothing posted yet.'],
+  ]
   return (
     <div className="space-y-8">
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-      {(
-        [
-          ['Ready to post', groups.ready, 'Nothing is ready right now.'],
-          ['Scheduled', groups.scheduled, 'No posts waiting for a date.'],
-          ['Drafts', groups.drafts, 'No drafts yet.'],
-          ['Posted', groups.posted, 'Nothing posted yet.'],
-        ] as [string, SocialPost[], string][]
-      ).map(([title, list, empty]) => (
+      {sections.map(([title, list, empty]) => (
         <section key={title}>
           <h2 className="font-display text-lg font-extrabold text-ink">
             {title} <span className="text-sm font-bold text-slate-400">{list.length}</span>
@@ -166,7 +227,7 @@ function Queue({ posts, canDraft, canPublish, onChanged, onEdit }: { posts: Soci
           ) : (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {list.map((p) => (
-                <PostCard key={p.id} post={p} canDraft={canDraft} canPublish={canPublish} onStatus={act} onDelete={remove} onEdit={() => onEdit(p.id)} />
+                <PostCard key={p.id} post={p} me={me} names={names} canDraft={canDraft} canPublish={canPublish} canApprove={canApprove} onStatus={act} onDelete={remove} onEdit={() => onEdit(p.id)} />
               ))}
             </div>
           )}
@@ -176,10 +237,52 @@ function Queue({ posts, canDraft, canPublish, onChanged, onEdit }: { posts: Soci
   )
 }
 
-function PostCard({ post, canDraft, canPublish, onStatus, onDelete, onEdit }: { post: SocialPost; canDraft: boolean; canPublish: boolean; onStatus: (p: SocialPost, s: SocialPost['status'], to?: Platform[]) => Promise<void>; onDelete: (p: SocialPost) => Promise<void>; onEdit: () => void }) {
+function PostCard({
+  post,
+  me,
+  names,
+  canDraft,
+  canPublish,
+  canApprove,
+  onStatus,
+  onDelete,
+  onEdit,
+}: {
+  post: SocialPost
+  me: string
+  names: Map<string, string>
+  canDraft: boolean
+  canPublish: boolean
+  canApprove: boolean
+  onStatus: OnStatus
+  onDelete: (p: SocialPost) => Promise<void>
+  onEdit: () => void
+}) {
   const [confirming, setConfirming] = useState(false)
   const [postedTo, setPostedTo] = useState<Platform[]>(post.platforms)
   const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [sendingBack, setSendingBack] = useState(false)
+  const [note, setNote] = useState('')
+
+  const mine = Boolean(me) && post.created_by === me
+  const who = (id: string | null | undefined) => (!id ? null : id === me ? 'you' : (names.get(id) ?? null))
+  const sentBack = post.status === 'draft' && Boolean(post.review_note)
+  const approver = who(post.approved_by)
+  const sender = who(post.submitted_by)
+
+  const run = async (status: PostStatus, opts?: { postedTo?: Platform[]; note?: string }) => {
+    setBusy(true)
+    setMsg(null)
+    const err = await onStatus(post, status, opts)
+    setBusy(false)
+    if (err) setMsg(err)
+    else {
+      setSendingBack(false)
+      setNote('')
+      setConfirming(false)
+    }
+  }
   const release = async () => {
     setMsg(null)
     try {
@@ -203,14 +306,72 @@ function PostCard({ post, canDraft, canPublish, onStatus, onDelete, onEdit }: { 
         <div className="min-w-0 flex-1">
           <p className="font-display text-base font-extrabold text-ink">{post.title}</p>
           <p className="text-xs text-slate-500">
-            {post.status === 'posted' ? `Posted ${post.posted_at ? new Date(post.posted_at).toLocaleDateString() : ''}${post.posted_to?.length ? ` · ${post.posted_to.join(', ')}` : ''}` : whenLabel(post)} · {post.platforms.join(', ')}
+            <span className={`font-bold ${post.status === 'approved' ? 'text-brand-blue' : 'text-ink'}`}>{sentBack ? 'Sent back' : (STATUS_LABEL[post.status] ?? post.status)}</span> ·{' '}
+            {post.status === 'posted' ? `${shortDate(post.posted_at)}${post.posted_to?.length ? ` · ${post.posted_to.join(', ')}` : ''}` : whenLabel(post)} · {post.platforms.join(', ')}
           </p>
           <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm text-slate-700">{post.caption}</p>
           {post.notes && <p className="mt-1 text-xs text-slate-500">Note: {post.notes}</p>}
+          {post.status === 'submitted' && post.submitted_at && (
+            <p className="mt-1 text-xs text-slate-500">
+              Sent for approval {shortDate(post.submitted_at)}
+              {sender ? ` by ${sender}` : ''}
+            </p>
+          )}
+          {(post.status === 'approved' || post.status === 'posted') && post.approved_at && (
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              Approved {shortDate(post.approved_at)}
+              {approver ? ` by ${approver}` : ''}
+            </p>
+          )}
         </div>
       </div>
+      {sentBack && (
+        <div className="mt-3 rounded-xl border border-brand-orange/40 bg-brand-orange-50 px-3 py-2">
+          <p className="text-xs font-bold text-ink">Sent back for changes</p>
+          <p className="whitespace-pre-wrap text-sm text-slate-700">{post.review_note}</p>
+        </div>
+      )}
+      {post.status === 'submitted' &&
+        (canApprove && !mine ? (
+          <div className="mt-3 space-y-2 rounded-2xl bg-brand-blue-50/60 p-3">
+            {!sendingBack ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => void run('approved')} disabled={busy} className={`${btn.blue} disabled:opacity-60`}>
+                  <Icon name="check" size={16} /> Approve
+                </button>
+                <button type="button" onClick={() => setSendingBack(true)} disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
+                  Send back
+                </button>
+              </div>
+            ) : (
+              <>
+                <label className="block text-sm font-semibold text-slate-700">
+                  What should change? The writer sees this.
+                  <textarea className={staffInput} rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Use the other photo · spell her name the same both times" />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void run('draft', { note })} disabled={busy || !note.trim()} className={`${btn.orange} disabled:opacity-60`}>
+                    Send back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSendingBack(false)
+                      setNote('')
+                    }}
+                    className={btn.outline}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">{mine ? 'Waiting for someone else to approve' : 'Waiting for approval'}</p>
+        ))}
       {msg && <p className="mt-2 text-xs font-semibold text-slate-600">{msg}</p>}
-      {confirming && post.status !== 'posted' && canPublish && (
+      {confirming && post.status === 'approved' && canPublish && (
         <div className="mt-3 space-y-2 rounded-2xl bg-brand-orange-50/60 p-3">
           <p className="text-sm font-bold text-ink">Posted it? Where?</p>
           <div className="flex flex-wrap gap-1.5">
@@ -220,28 +381,28 @@ function PostCard({ post, canDraft, canPublish, onStatus, onDelete, onEdit }: { 
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => void onStatus(post, 'posted', postedTo)} className={btn.blue}>
+          <button type="button" onClick={() => void run('posted', { postedTo })} disabled={busy} className={`${btn.blue} disabled:opacity-60`}>
             Mark as posted
           </button>
         </div>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {post.status !== 'posted' && canPublish && (
+        {post.status === 'approved' && canPublish && (
           <button type="button" onClick={() => void release()} className={btn.orange}>
             {canShareFiles() ? 'Share now' : 'Save image + copy caption'}
           </button>
         )}
         {post.status === 'draft' && canDraft && (
-          <button type="button" onClick={() => void onStatus(post, 'approved')} className={btn.blue}>
-            Approve
+          <button type="button" onClick={() => void run('submitted')} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+            Send for approval
           </button>
         )}
-        {post.status === 'approved' && canDraft && (
-          <button type="button" onClick={() => void onStatus(post, 'draft')} className={btn.outline}>
+        {(post.status === 'approved' || (post.status === 'submitted' && mine)) && canDraft && (
+          <button type="button" onClick={() => void run('draft')} disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
             Back to draft
           </button>
         )}
-        {post.status !== 'posted' && canDraft && (
+        {post.status !== 'posted' && (canDraft || canApprove) && (
           <button type="button" onClick={onEdit} className={btn.outline}>
             Edit
           </button>
@@ -255,7 +416,7 @@ function PostCard({ post, canDraft, canPublish, onStatus, onDelete, onEdit }: { 
           Copy caption
         </button>
         {post.status === 'posted' && canDraft && (
-          <button type="button" onClick={() => void onStatus(post, 'draft')} className={btn.outline}>
+          <button type="button" onClick={() => void run('draft')} disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
             Post again
           </button>
         )}
@@ -317,7 +478,7 @@ function Kit({ onPick }: { onPick: (p: CardPost) => void }) {
   )
 }
 
-function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; orgId: string; userId: string; onBack: () => void; onQueued: () => Promise<void> }) {
+function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; orgId: string; userId: string; onBack: () => void; onQueued: (warning?: string) => Promise<void> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [format, setFormat] = useState<CardFormat>('square')
   const [caption, setCaption] = useState(post.caption)
@@ -332,18 +493,30 @@ function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; o
       .finally(() => setBusy(false))
   }, [post, format])
   const filename = `ohrr-${post.id.replace(/[^a-z0-9]+/gi, '-')}-${format}.png`
-  const queue = async () => {
+  // Into the post queue as a draft, or straight on to "Waiting for approval".
+  const queue = async (send: boolean) => {
     const c = canvasRef.current
     if (!c) return
     setBusy(true)
+    let created: SocialPost
     try {
       const url = await uploadPostPng(await canvasToBlob(c), orgId)
-      await createPost(orgId, userId, { title: post.label, caption, image_url: url, image_alt: post.card.headline, platforms: format === 'story' ? ['instagram'] : ['instagram', 'facebook'], scheduled_for: null, source: `kit:${post.id}` })
-      await onQueued()
+      created = await createPost(orgId, userId, { title: post.label, caption, image_url: url, image_alt: post.card.headline, platforms: format === 'story' ? ['instagram'] : ['instagram', 'facebook'], scheduled_for: null, source: `kit:${post.id}` })
     } catch (e) {
       setMsg(errMessage(e))
       setBusy(false)
+      return
     }
+    let warning: string | undefined
+    if (send) {
+      try {
+        await setPostStatus(created.id, 'submitted')
+      } catch (e) {
+        // Saved either way; say why it's still a draft.
+        warning = `“${created.title}” is saved as a draft, but not sent for approval: ${errMessage(e)}`
+      }
+    }
+    await onQueued(warning)
   }
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,420px)_1fr]">
@@ -368,8 +541,11 @@ function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; o
           <textarea className={staffInput} rows={9} value={caption} onChange={(e) => setCaption(e.target.value)} />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => void queue()} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
-            Save to the post queue
+          <button type="button" onClick={() => void queue(false)} disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
+            Save draft
+          </button>
+          <button type="button" onClick={() => void queue(true)} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+            Send for approval
           </button>
           <button type="button" onClick={() => canvasRef.current && canvasToBlob(canvasRef.current).then((b) => savePng(b, filename))} disabled={busy} className={btn.outline}>
             Save image
@@ -379,6 +555,7 @@ function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; o
           </button>
         </div>
         {msg && <p className="text-sm font-semibold text-slate-600">{msg}</p>}
+        <p className="text-xs text-slate-500">Either way it goes into the post queue. Someone other than you approves it before it’s posted.</p>
         <p className="text-xs text-slate-500">The phone app has a one-tap Share button for these; from a computer, save the image and paste the caption into the platform.</p>
       </div>
     </div>
@@ -387,12 +564,17 @@ function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; o
 
 /* ------------------------------------------------------------- editor */
 
+// Change these on an approved post and the database sends it back for approval.
+const wordsKey = (d: Pick<PostDraft, 'title' | 'caption' | 'image_url' | 'platforms'>) => JSON.stringify([d.title.trim(), d.caption, d.image_url, d.platforms])
+
 function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; userId: string; initial: SocialPost | null; onDone: () => Promise<void>; onCancel: () => void }) {
   const [d, setD] = useState<PostDraft>(
     initial
       ? { title: initial.title, caption: initial.caption, image_url: initial.image_url, image_alt: initial.image_alt, platforms: initial.platforms, scheduled_for: initial.scheduled_for, notes: initial.notes ?? '' }
       : { title: '', caption: '', image_url: null, platforms: ['instagram', 'facebook'], scheduled_for: null, notes: '' },
   )
+  // The stored post — set once a new one is saved, so saving again updates it.
+  const [saved, setSaved] = useState<SocialPost | null>(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -411,30 +593,68 @@ function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; u
       setBusy(false)
     }
   }
-  const save = async (approve: boolean) => {
+  // 'keep' leaves the status alone. (An approved post whose words change goes
+  // back for approval by itself: the database does that.)
+  const save = async (target: 'draft' | 'submitted' | 'keep') => {
     if (!d.title.trim()) return setError('Give the post a short name.')
     if (!d.caption.trim() && !d.image_url) return setError('Add some words or a picture.')
     setBusy(true)
     setError(null)
+    let current = saved
     try {
-      let id = initial?.id
-      if (initial) await updatePost(initial.id, d)
-      else id = (await createPost(orgId, userId, d)).id
-      if (approve && id) await setPostStatus(id, 'approved')
-      await onDone()
+      if (current) await updatePost(current.id, d)
+      else {
+        current = await createPost(orgId, userId, d)
+        setSaved(current)
+      }
     } catch (e) {
       setError(errMessage(e))
       setBusy(false)
+      return
     }
+    if (target !== 'keep' && target !== current.status) {
+      try {
+        await setPostStatus(current.id, target)
+      } catch (e) {
+        // The words are safe; only the status didn't change. Stay here and say why.
+        setSaved({ ...current, title: d.title.trim(), caption: d.caption, image_url: d.image_url, platforms: d.platforms })
+        setError(`Saved, but ${target === 'submitted' ? 'not sent for approval' : 'not moved to drafts'}: ${errMessage(e)}`)
+        setBusy(false)
+        return
+      }
+    }
+    await onDone()
   }
+
+  const status = saved?.status ?? null
+  const isDraft = status === null || status === 'draft' || status === 'archived'
+  const mine = saved?.created_by === userId
+  const wordsChanged = saved !== null && wordsKey(d) !== wordsKey(saved)
+
   return (
     <form
       onSubmit={(e: FormEvent) => {
         e.preventDefault()
-        void save(false)
+        void save(isDraft ? 'draft' : 'keep')
       }}
       className="grid gap-6 md:grid-cols-2"
     >
+      <div className="space-y-2 md:col-span-2">
+        <p className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${status === 'submitted' ? 'bg-brand-orange-50 text-ink' : status === 'approved' ? 'bg-brand-blue-50 text-brand-blue' : 'bg-slate-100 text-slate-600'}`}>
+            {status ? STATUS_LABEL[status] : 'Draft · not saved yet'}
+          </span>
+          {status === 'submitted' && <span>{mine ? 'Waiting for someone else to approve it.' : 'Waiting for approval.'} Saving changes keeps it in line.</span>}
+          {status === 'approved' && <span>Approved {shortDate(saved?.approved_at)}. Changing the words, the picture, the short name or where it goes sends it back for approval.</span>}
+        </p>
+        {status === 'draft' && saved?.review_note && (
+          <div className="rounded-2xl border border-brand-orange/40 bg-brand-orange-50 px-4 py-3">
+            <p className="text-sm font-bold text-ink">Sent back for changes</p>
+            <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-700">{saved.review_note}</p>
+            <p className="mt-1 text-xs text-slate-500">Make the changes, then send it for approval again.</p>
+          </div>
+        )}
+      </div>
       <Card className="space-y-3">
         <p className="text-sm font-semibold text-slate-700">Picture</p>
         {d.image_url ? <img src={d.image_url} alt="" className="w-full rounded-xl" /> : <div className="flex h-40 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400"><Icon name="camera" size={36} /></div>}
@@ -449,7 +669,7 @@ function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; u
           )}
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
-        <p className="text-xs text-slate-500">Or make a designed card in the Share kit and “Save to the post queue”.</p>
+        <p className="text-xs text-slate-500">Or make a designed card in the Share kit and send it for approval from there.</p>
       </Card>
       <div className="space-y-3">
         <label className="block text-sm font-semibold text-slate-700">
@@ -487,12 +707,27 @@ function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; u
         </div>
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
         <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
-            Save draft
-          </button>
-          <button type="button" onClick={() => void save(true)} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
-            Save & approve
-          </button>
+          {isDraft ? (
+            <>
+              <button type="submit" disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
+                Save draft
+              </button>
+              <button type="button" onClick={() => void save('submitted')} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+                Send for approval
+              </button>
+            </>
+          ) : (
+            <>
+              {status === 'submitted' && mine && (
+                <button type="button" onClick={() => void save('draft')} disabled={busy} className={`${btn.outline} disabled:opacity-60`}>
+                  Save as draft
+                </button>
+              )}
+              <button type="submit" disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+                {status === 'approved' && wordsChanged ? 'Save and send for approval' : 'Save changes'}
+              </button>
+            </>
+          )}
           <button type="button" onClick={onCancel} className="text-sm font-bold text-slate-500">
             Cancel
           </button>
@@ -502,3 +737,37 @@ function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; u
   )
 }
 
+/* ------------------------------------------------------------- dashboard notice */
+
+/**
+ * "3 posts waiting for your approval" for the staff dashboard. Shows only to
+ * people with "Approve social posts", only when someone else's post is waiting,
+ * and not at all before update 26 is in the database.
+ */
+export function PostsToApproveNotice({ className = '' }: { className?: string }) {
+  const { membership, can } = useStaff()
+  const orgId = membership && can(APPROVE_CAP) ? membership.orgId : null
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!orgId) return
+    let alive = true
+    void countPostsToApprove(orgId).then((c) => {
+      if (alive) setN(c)
+    })
+    return () => {
+      alive = false
+    }
+  }, [orgId])
+  if (!orgId || n <= 0) return null
+  return (
+    <Link to="/staff/posts" className={`flex items-center gap-3 rounded-2xl border border-brand-orange/40 bg-brand-orange-50 px-4 py-3 shadow-sm transition hover:border-brand-orange ${className}`}>
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-ink">
+        <Icon name="check" size={20} />
+      </span>
+      <span className="min-w-0 flex-1 font-display text-base font-extrabold text-ink">
+        {n === 1 ? '1 post' : `${n} posts`} waiting for your approval
+      </span>
+      <Icon name="chevron" size={18} className="shrink-0 text-slate-400" />
+    </Link>
+  )
+}
