@@ -199,6 +199,7 @@ function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavIte
         { to: '/staff/flyers', label: 'Flyers', show: can('announcements.post') },
         { to: '/staff/outreach', label: 'Outreach letters', show: can('announcements.post') },
         { to: '/staff/impact', label: 'Impact numbers', show: can('announcements.post') },
+        { to: '/staff/guardians', label: 'Rescue Rabbit Guardians', show: can('giving.guardians') },
       ],
     },
     {

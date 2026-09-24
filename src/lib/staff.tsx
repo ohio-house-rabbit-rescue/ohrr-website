@@ -37,6 +37,8 @@ export const CAPS = [
   // Update 26: a second person approves social posts. Update 25: certificates are the top tier's.
   'social.approve',
   'volunteers.certificates',
+  // Update 29: the Legacy Fund's Rescue Rabbit Guardians list.
+  'giving.guardians',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -70,6 +72,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'counter.use', area: 'Counter', description: 'The Counter (in the app): add items, ring up sales, take tickets at the door, sell raffle tickets' },
   { key: 'social.approve', area: 'Content', description: 'Approve social-media posts written by someone else' },
   { key: 'volunteers.certificates', area: 'Volunteers', description: 'Make volunteer certificates and set the hours that earn one' },
+  { key: 'giving.guardians', area: 'Giving', description: 'Keep the Rescue Rabbit Guardians list (the Legacy Fund thank-you)' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites.
