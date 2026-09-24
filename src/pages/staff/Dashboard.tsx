@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useStaff } from '../../lib/staff'
+import { ExpiringSponsorsNotice } from './ManageSponsors'
 
 export default function StaffDashboard() {
   const { user, membership, can } = useStaff()
@@ -156,6 +157,10 @@ export default function StaffDashboard() {
       <p className="mt-1 text-sm text-slate-600">
         Signed in as <strong>{user?.email}</strong>
       </p>
+
+      {can('events.bunfest.manage') && membership?.orgId && (
+        <ExpiringSponsorsNotice orgId={membership.orgId} className="mt-5" />
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {tiles.map((t) => (

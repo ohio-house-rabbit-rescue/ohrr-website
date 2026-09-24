@@ -4,6 +4,7 @@
 // and permission (Manage Midwest BunFest info) as the app's StaffSponsors.tsx.
 // Anything saved here shows on the website and in the app at once.
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, Card, SponsorLogo } from '../../components/ui'
@@ -832,6 +833,9 @@ export function ExpiringSponsorsNotice({ orgId, className = '' }: { orgId: strin
           ))}
         </ul>
         {rows.length > 4 && <p className="mt-0.5 text-sm text-slate-600">+{rows.length - 4} more</p>}
+        <Link to="/staff/sponsors/renewals" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-brand-blue">
+          Open the renewals list <Icon name="chevron" size={15} />
+        </Link>
       </div>
     </div>
   )
@@ -927,6 +931,11 @@ export default function ManageSponsors() {
       <p className="mt-1 text-sm text-slate-600">
         The roster on the public Our Partners page, partner perks, and "Presented by" strips — on this website and in
         the app.
+      </p>
+      <p className="mt-2 text-sm">
+        <Link to="/staff/sponsors/renewals" className="font-semibold text-brand-blue">
+          Renewals list — who to ask about continuing →
+        </Link>
       </p>
 
       <ExpiringSponsorsNotice orgId={orgId} className="mt-5" />

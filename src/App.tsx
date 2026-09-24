@@ -12,6 +12,7 @@ import { BreedGuide, BreedDetail } from './pages/Breeds'
 import Volunteer from './pages/Volunteer'
 import BunFest from './pages/BunFest'
 import SilentAuction from './pages/SilentAuction'
+import { BunFestSchedule, BunFestTopic, BunFestVendors } from './pages/BunFestMore'
 import Events from './pages/Events'
 import Give from './pages/Give'
 import About from './pages/About'
@@ -68,6 +69,7 @@ import MyHours from './pages/MyHours'
 import BunnyHelp from './pages/staff/BunnyHelp'
 import ManageEvents from './pages/staff/ManageEvents'
 import ManageSponsors from './pages/staff/ManageSponsors'
+import SponsorRenewals from './pages/staff/SponsorRenewals'
 import Volunteers from './pages/staff/Volunteers'
 import SilentAuctionManager from './pages/staff/SilentAuction'
 import Features from './pages/staff/Features'
@@ -121,6 +123,7 @@ export default function App() {
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="events" element={<ManageEvents />} />
         <Route path="sponsors" element={<ManageSponsors />} />
+        <Route path="sponsors/renewals" element={<SponsorRenewals />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />
         <Route path="bunny-help" element={<BunnyHelp />} />
@@ -156,6 +159,9 @@ export default function App() {
         <Route path="/volunteer/call/:slug" element={<VolunteerCall />} />
         <Route path="/bunfest" element={<BunFest />} />
         <Route path="/bunfest/silent-auction" element={<SilentAuction />} />
+        <Route path="/bunfest/schedule" element={<BunFestSchedule />} />
+        <Route path="/bunfest/vendors" element={<BunFestVendors />} />
+        <Route path="/bunfest/p/:slug" element={<BunFestTopic />} />
         <Route path="/events" element={<Events />} />
         <Route path="/give" element={<Give />} />
         <Route path="/about" element={<About />} />
