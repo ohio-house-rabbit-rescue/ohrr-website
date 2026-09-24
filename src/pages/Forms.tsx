@@ -348,6 +348,8 @@ export function FosterInterest() {
 export function VolunteerInterest() {
   const [params] = useSearchParams()
   const role = params.get('role') ?? 'General volunteer'
+  // A specific posted shift, when the person came from one ("Sat 10am socialization").
+  const item = params.get('item') ?? ''
   const [form, setForm] = useState({ name: '', email: '', phone: '', availability: '', notes: '' })
   const [status, setStatus] = useState<'idle' | 'busy' | 'done'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -357,7 +359,7 @@ export function VolunteerInterest() {
     setStatus('busy')
     setError(null)
     try {
-      await submitRequest('volunteer-signup', { ...form, role })
+      await submitRequest('volunteer-signup', item ? { ...form, role, item } : { ...form, role })
       setStatus('done')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send that right now.')
@@ -366,7 +368,11 @@ export function VolunteerInterest() {
   }
   return (
     <>
-      <PageHero title={role} subtitle="Tell OHRR a little about you and how you’d like to help. Someone will follow up." />
+      <PageHero
+        title={role}
+        parent={{ to: '/volunteer', label: 'Volunteer' }}
+        subtitle={item ? `Signing up for: ${item}. Tell OHRR a little about you and someone will follow up.` : 'Tell OHRR a little about you and how you’d like to help. Someone will follow up.'}
+      />
       <Section className="max-w-2xl">
         {status === 'done' ? (
           <Done title={`Thanks, ${form.name}!`} to="/volunteer" label="Back to Volunteer">

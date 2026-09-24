@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { LIMIT_KINDS, OPP_CATEGORIES, categoryLabel, remainingLabel } from '../../lib/volunteerOpps'
 
 interface Opp {
   id: string
@@ -11,6 +12,12 @@ interface Opp {
   when_text: string | null
   where_text: string | null
   spots: string | null
+  limit_kind: 'none' | 'people' | 'hours'
+  limit_people: number | null
+  limit_hours: number | null
+  filled_people: number
+  filled_hours: number
+  contact_email: string | null
   is_published: boolean
   sort_order: number
 }
@@ -22,15 +29,17 @@ interface Draft {
   when_text: string
   where_text: string
   spots: string
+  limit_kind: 'none' | 'people' | 'hours'
+  limit_people: string
+  limit_hours: string
+  filled_people: string
+  filled_hours: string
+  contact_email: string
   is_published: boolean
 }
 
-const CATEGORIES: { value: string; label: string }[] = [
-  { value: 'socialization', label: 'Socialization shift' },
-  { value: 'vet-transport', label: 'Vet-transport run' },
-  { value: 'events', label: 'Event help' },
-]
-const catLabel = (v: string) => CATEGORIES.find((c) => c.value === v)?.label ?? v
+const CATEGORIES = OPP_CATEGORIES
+const catLabel = categoryLabel
 
 const empty: Draft = {
   category: 'socialization',
@@ -39,6 +48,12 @@ const empty: Draft = {
   when_text: '',
   where_text: '',
   spots: '',
+  limit_kind: 'none',
+  limit_people: '',
+  limit_hours: '',
+  filled_people: '0',
+  filled_hours: '0',
+  contact_email: '',
   is_published: true,
 }
 
@@ -101,6 +116,52 @@ function Form({
           <input className={staffInput} value={d.spots} onChange={(e) => setD({ ...d, spots: e.target.value })} placeholder="2 open" />
         </label>
       </div>
+      {/* How much help this needs — a headcount, or hours to cover. */}
+      <div className="space-y-3 rounded-2xl border border-brand-blue/20 bg-brand-blue-50/40 p-4">
+        <label className="block text-sm font-semibold text-slate-700">
+          How is it limited?
+          <select className={staffInput} value={d.limit_kind} onChange={(e) => setD({ ...d, limit_kind: e.target.value as Draft['limit_kind'] })}>
+            {LIMIT_KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {d.limit_kind === 'people' && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-slate-700">
+              People needed
+              <input inputMode="numeric" className={staffInput} value={d.limit_people} onChange={(e) => setD({ ...d, limit_people: e.target.value })} placeholder="6" />
+            </label>
+            <label className="block text-sm font-semibold text-slate-700">
+              Already signed up
+              <input inputMode="numeric" className={staffInput} value={d.filled_people} onChange={(e) => setD({ ...d, filled_people: e.target.value })} />
+            </label>
+          </div>
+        )}
+        {d.limit_kind === 'hours' && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-slate-700">
+              Hours to cover
+              <input inputMode="decimal" className={staffInput} value={d.limit_hours} onChange={(e) => setD({ ...d, limit_hours: e.target.value })} placeholder="30" />
+            </label>
+            <label className="block text-sm font-semibold text-slate-700">
+              Covered so far
+              <input inputMode="decimal" className={staffInput} value={d.filled_hours} onChange={(e) => setD({ ...d, filled_hours: e.target.value })} />
+            </label>
+          </div>
+        )}
+        {d.limit_kind !== 'none' && (
+          <p className="text-sm text-slate-600">
+            The card shows what’s left and says “Full” when it’s covered — nobody has to remember to take it down.
+          </p>
+        )}
+        <label className="block text-sm font-semibold text-slate-700">
+          Who to ask <span className="font-normal text-slate-600">(optional)</span>
+          <input className={staffInput} type="email" value={d.contact_email} onChange={(e) => setD({ ...d, contact_email: e.target.value })} placeholder="bev@…" />
+        </label>
+      </div>
       <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
         <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-brand-blue" checked={d.is_published} onChange={(e) => setD({ ...d, is_published: e.target.checked })} />
         Show on the site now (uncheck for a draft)
@@ -138,7 +199,7 @@ export default function ManageVolunteer() {
     setError(null)
     const { data, error } = await supabase
       .from('volunteer_opportunities')
-      .select('id,category,title,detail,when_text,where_text,spots,is_published,sort_order')
+      .select('id,category,title,detail,when_text,where_text,spots,limit_kind,limit_people,limit_hours,filled_people,filled_hours,contact_email,is_published,sort_order')
       .eq('org_id', orgId)
       .order('category', { ascending: true })
       .order('sort_order', { ascending: true })
@@ -158,6 +219,12 @@ export default function ManageVolunteer() {
     when_text: d.when_text.trim() || null,
     where_text: d.where_text.trim() || null,
     spots: d.spots.trim() || null,
+    limit_kind: d.limit_kind,
+    limit_people: d.limit_kind === 'people' && d.limit_people ? Number(d.limit_people) : null,
+    limit_hours: d.limit_kind === 'hours' && d.limit_hours ? Number(d.limit_hours) : null,
+    filled_people: Number(d.filled_people) || 0,
+    filled_hours: Number(d.filled_hours) || 0,
+    contact_email: d.contact_email.trim() || null,
     is_published: d.is_published,
   })
 
@@ -221,6 +288,12 @@ export default function ManageVolunteer() {
                     when_text: o.when_text ?? '',
                     where_text: o.where_text ?? '',
                     spots: o.spots ?? '',
+                    limit_kind: o.limit_kind ?? 'none',
+                    limit_people: o.limit_people == null ? '' : String(o.limit_people),
+                    limit_hours: o.limit_hours == null ? '' : String(o.limit_hours),
+                    filled_people: String(o.filled_people ?? 0),
+                    filled_hours: String(o.filled_hours ?? 0),
+                    contact_email: o.contact_email ?? '',
                     is_published: o.is_published,
                   }}
                   submitLabel="Save"
@@ -244,6 +317,8 @@ export default function ManageVolunteer() {
                   {o.when_text && <span><strong className="text-slate-600">When:</strong> {o.when_text}</span>}
                   {o.where_text && <span><strong className="text-slate-600">Where:</strong> {o.where_text}</span>}
                   {o.spots && <span><strong className="text-slate-600">Spots:</strong> {o.spots}</span>}
+                  {remainingLabel(o) && <span><strong className="text-slate-600">Left:</strong> {remainingLabel(o)}</span>}
+                  {o.contact_email && <span><strong className="text-slate-600">Ask:</strong> {o.contact_email}</span>}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button onClick={() => togglePublish(o)} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50">

@@ -218,7 +218,7 @@ export function useVolunteerOpps(): VolunteerOpp[] | null {
     let active = true
     supabase
       .from('volunteer_opportunities')
-      .select('id,category,title,detail,when_text,where_text,spots')
+      .select('id,category,title,detail,when_text,where_text,spots,limit_kind,limit_people,limit_hours,filled_people,filled_hours,contact_email')
       .eq('is_published', true)
       .order('sort_order', { ascending: true })
       .then(({ data }) => {

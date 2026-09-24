@@ -6,6 +6,7 @@ import { OHRR, CHRS_TIPLINE } from '../lib/constants'
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { listOpenCalls, type OpenCall } from '../lib/volunteers/callsApi'
+import { remainingLabel, isFull, categoryLabel } from '../lib/volunteerOpps'
 import { fmtClock, fmtDay } from '../lib/volunteers/calls'
 
 interface Position {
@@ -86,12 +87,6 @@ const OTHER_NEEDS = [
   'Grant Writer',
   'Marketing',
 ]
-
-const CAT: Record<string, string> = {
-  socialization: 'Socialization',
-  'vet-transport': 'Vet transport',
-  events: 'Events',
-}
 
 export default function Volunteer() {
   const opps = useVolunteerOpps()
@@ -209,22 +204,41 @@ export default function Volunteer() {
             <H2>Open shifts</H2>
             <LiveNote source="live" />
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {opps!.map((o) => (
-                <Card key={o.id}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-display text-base font-extrabold text-ink">{o.title}</h3>
-                    <span className="rounded-full bg-brand-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue">
-                      {CAT[o.category] ?? o.category}
-                    </span>
-                    {o.spots && (
-                      <span className="text-xs font-bold text-brand-orange-dark">{o.spots}</span>
+              {opps!.map((o) => {
+                const left = remainingLabel(o)
+                const full = isFull(o)
+                const role = categoryLabel(o.category)
+                return (
+                  <Card key={o.id}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-display text-lg font-extrabold text-ink">{o.title}</h3>
+                      <span className="rounded-full bg-brand-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue">{role}</span>
+                      {o.spots && <span className="text-sm font-bold text-brand-orange-dark">{o.spots}</span>}
+                    </div>
+                    {o.when_text && <p className="mt-1 text-base text-slate-700">{o.when_text}</p>}
+                    {o.where_text && <p className="text-sm text-slate-600">{o.where_text}</p>}
+                    {o.detail && <p className="mt-1.5 whitespace-pre-line text-sm text-slate-600">{o.detail}</p>}
+                    {left && (
+                      <p className={`mt-2 text-base font-bold ${full ? 'text-slate-600' : 'text-brand-orange-dark'}`}>{left}</p>
                     )}
-                  </div>
-                  {o.when_text && <p className="mt-1 text-sm text-slate-600">{o.when_text}</p>}
-                  {o.where_text && <p className="text-sm text-slate-500">{o.where_text}</p>}
-                  {o.detail && <p className="mt-1.5 text-sm text-slate-600">{o.detail}</p>}
-                </Card>
-              ))}
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      {!full && (
+                        <Link
+                          to={`/volunteer/interest?role=${encodeURIComponent(role)}&item=${encodeURIComponent(o.title)}`}
+                          className={btn.blue}
+                        >
+                          Sign up
+                        </Link>
+                      )}
+                      {o.contact_email && (
+                        <a href={`mailto:${o.contact_email}`} className="text-sm font-semibold text-brand-blue">
+                          Questions? Email {o.contact_email}
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                )
+              })}
             </div>
           </div>
         )}

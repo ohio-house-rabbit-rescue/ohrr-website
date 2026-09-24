@@ -57,6 +57,13 @@ export interface VolunteerOpp {
   when_text?: string | null
   where_text?: string | null
   spots?: string | null
+  /** Limited by a number of people, a number of hours, or not at all. */
+  limit_kind?: 'none' | 'people' | 'hours'
+  limit_people?: number | null
+  limit_hours?: number | null
+  filled_people?: number | null
+  filled_hours?: number | null
+  contact_email?: string | null
 }
 
 // Shared with the OHRR app (Supabase `events`).
