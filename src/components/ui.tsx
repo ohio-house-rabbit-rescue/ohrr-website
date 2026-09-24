@@ -283,21 +283,6 @@ export function Callout({ children, className = '' }: { children: ReactNode; cla
   return <div className={`rounded-3xl bg-brand-blue-50 p-6 sm:p-8 ${className}`}>{children}</div>
 }
 
-// Email as tappable text, across the top of the footer.
-export function ContactRow({ className = '' }: { className?: string }) {
-  const link = 'font-semibold text-brand-blue hover:text-brand-blue-dark'
-  return (
-    <p className={`flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600 ${className}`}>
-      <span>
-        Email{' '}
-        <a href={OHRR.emailHref} className={link}>
-          {OHRR.email}
-        </a>
-      </span>
-    </p>
-  )
-}
-
 /**
  * Visiting, pointing people to email rather than the door. The street address
  * itself is in the footer and on the Hop Shop page (see OHRR in lib/constants).

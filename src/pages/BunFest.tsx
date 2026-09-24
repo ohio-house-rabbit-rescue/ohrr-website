@@ -5,6 +5,7 @@ import PresentedBy from '../components/PresentedBy'
 import { formatDate, formatTimeRange } from '../lib/format'
 import { BUNFEST_SAMPLE, BUNFEST_SITE } from '../lib/constants'
 import { EventWhenWhere } from './Events'
+import AddToCalendar from '../components/AddToCalendar'
 
 // What's at Midwest BunFest — from the live announcement post.
 const FEATURES = [
@@ -79,6 +80,7 @@ export default function BunFest() {
                 )}
                 <p className={`${event.theme ? 'mt-3' : ''} font-display text-2xl font-black text-ink`}>Mark your calendars!</p>
                 <EventWhenWhere e={event} />
+                <AddToCalendar e={event} className="mt-4" />
                 <Facts info={event.info} />
                 {event.summary && (
                   <p className="mt-4 text-base leading-relaxed text-slate-600">{event.summary}</p>

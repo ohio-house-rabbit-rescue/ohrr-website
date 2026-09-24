@@ -47,8 +47,19 @@ export type IconName =
   | 'box'
   | 'eye'
   | 'eyeOff'
+  // Website only: the footer's social links as icons (the app does not need them yet)
+  | 'facebook'
+  | 'instagram'
 
 const paths: Record<IconName, ReactNode> = {
+  facebook: <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />,
+  instagram: (
+    <>
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </>
+  ),
   home: <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" />,
   calendar: (
     <>

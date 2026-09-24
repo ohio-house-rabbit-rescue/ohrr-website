@@ -92,7 +92,11 @@ export default function Surrender() {
           </p>
           <p>
             If OHRR does not have the space to admit a rabbit, it will offer a list of other organizations, with
-            contact information, that may accept the rabbit. OHRR also uses a waiting list.
+            contact information, that may accept the rabbit. OHRR also uses a waiting list.{' '}
+            <Link to="/rescues" className="font-semibold text-brand-blue">
+              See rescues near you
+            </Link>
+            .
           </p>
           <p>
             OHRR is a private, nonprofit rabbit rescue and does not receive any tax dollars from the city or any
