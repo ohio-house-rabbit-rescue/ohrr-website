@@ -34,6 +34,9 @@ export const CAPS = [
   'bookings.manage',
   'social.publish',
   'counter.use',
+  // Update 26: a second person approves social posts. Update 25: certificates are the top tier's.
+  'social.approve',
+  'volunteers.certificates',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -65,6 +68,8 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'bookings.manage', area: 'Bookings', description: 'Set up bookable shifts & appointments, see rosters, confirm and check in' },
   { key: 'social.publish', area: 'Content', description: 'Release queued social-media posts (the one person who posts as OHRR)' },
   { key: 'counter.use', area: 'Counter', description: 'The Counter (in the app): add items, ring up sales, take tickets at the door, sell raffle tickets' },
+  { key: 'social.approve', area: 'Content', description: 'Approve social-media posts written by someone else' },
+  { key: 'volunteers.certificates', area: 'Volunteers', description: 'Make volunteer certificates and set the hours that earn one' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites.
@@ -87,6 +92,7 @@ export const PRESETS: Record<string, Cap[]> = {
   'Content Editor': ['content.education.edit', 'announcements.post', 'events.bunfest.manage'],
   // The till and the door only (the Counter lives in the app, on a phone).
   'Counter volunteer': ['counter.use'],
+  'Content Approver': ['social.approve'],
 }
 
 export interface Membership {

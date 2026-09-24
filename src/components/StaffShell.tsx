@@ -148,7 +148,7 @@ function staffGroups(can: Can): { title: string; items: NavItem[] }[] {
       items: [
         { to: '/staff/homepage', label: 'Homepage', show: can('announcements.post') },
         { to: '/staff/announcements', label: 'Announcements', show: can('announcements.post') },
-        { to: '/staff/posts', label: 'Posts & Share kit', show: can('announcements.post') || can('social.publish') },
+        { to: '/staff/posts', label: 'Posts & Share kit', show: can('announcements.post') || can('social.publish') || can('social.approve') },
         { to: '/staff/flyers', label: 'Flyers', show: can('announcements.post') },
         { to: '/staff/outreach', label: 'Outreach letters', show: can('announcements.post') },
         { to: '/staff/impact', label: 'Impact numbers', show: can('announcements.post') },

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useStaff } from '../../lib/staff'
 import { ExpiringSponsorsNotice } from './ManageSponsors'
 import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
+import { PostsToApproveNotice } from './Posts'
 import { CERTIFICATES_CAP } from '../../lib/volunteers/api'
 
 export default function StaffDashboard() {
@@ -19,7 +20,7 @@ export default function StaffDashboard() {
       h: 'Bookings',
       p: 'Volunteer shifts and appointments: who’s coming, make times, set up what can be booked.',
     },
-    (can('announcements.post') || can('social.publish')) && {
+    (can('announcements.post') || can('social.publish') || can('social.approve')) && {
       to: '/staff/posts',
       h: 'Posts & Share kit',
       p: 'Ready-made social posts from rabbits, events and education messages; a queue one person releases.',
@@ -167,6 +168,7 @@ export default function StaffDashboard() {
         <PendingApplicationsNotice orgId={membership.orgId} className="mt-5" />
       )}
       {can(CERTIFICATES_CAP) && membership?.orgId && <CertificatesNotice orgId={membership.orgId} className="mt-5" />}
+      {can('social.approve') && <PostsToApproveNotice className="mt-5" />}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {tiles.map((t) => (
