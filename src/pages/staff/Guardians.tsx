@@ -29,7 +29,8 @@ export default function Guardians() {
       .select('id, year, display_name, sort_name, is_published')
       .eq('org_id', orgId)
     if (error) {
-      if (/guardians|schema cache|does not exist/i.test(error.message)) setMissing(true)
+      // Only a missing table means update 29 hasn't run; a permission error is shown as it is.
+      if (error.code === 'PGRST205' || error.code === '42P01' || /schema cache|does not exist/i.test(error.message)) setMissing(true)
       else setError(errMessage(error))
       setRows([])
       return
