@@ -2,7 +2,7 @@
 // what it's for, when, how long each shift is and how many people each needs
 // — with the shifts it will make shown as you type. Saving makes (or
 // remakes) the shifts.
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { errMessage } from '../../lib/supabase'
 import { useBunFestEvent } from '../../lib/data'
 import { Card, btn } from '../../components/ui'
@@ -10,7 +10,8 @@ import { Icon } from '../../components/icons'
 import { staffInput } from '../../lib/staff'
 import { fmtClock, lengthText, needText, plannedShifts, type Call } from '../../lib/volunteers/calls'
 import { deleteCall, saveCall, type CallRow } from '../../lib/volunteers/callsApi'
-import { FormError } from './callBits'
+import { columnsReady, setCallApproval } from '../../lib/volunteers/api'
+import { FormError, WhoCanSignUp } from './callBits'
 
 const LENGTHS = [60, 90, 120, 180, 240]
 
@@ -56,6 +57,19 @@ export default function VolunteerCallEditor({
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Who can sign up (update 25): new calls are for approved Events & BunFest
+  // volunteers unless staff open them to anyone.
+  const [approvals, setApprovals] = useState<boolean | null>(null)
+  const [approval, setApproval] = useState<string | null>(
+    initial ? ((initial as CallRow & { approval_role?: string | null }).approval_role ?? null) : 'events',
+  )
+  useEffect(() => {
+    let alive = true
+    columnsReady('volunteer_calls', 'approval_role').then((ok) => alive && setApprovals(ok))
+    return () => {
+      alive = false
+    }
+  }, [])
   const txt = (k: keyof typeof d) => (e: { target: { value: string } }) => setD({ ...d, [k]: e.target.value })
 
   const preview: Call = {
@@ -124,12 +138,20 @@ export default function VolunteerCallEditor({
         closes_on: d.closes_on || null,
         is_published: d.is_published,
       })
-      onSaved(
-        r.id,
+      // Then who can sign up; the database copies it to the call's shifts.
+      let approvalNote: string | null = null
+      if (approvals) {
+        try {
+          await setCallApproval(r.id, approval)
+        } catch (err) {
+          approvalNote = `Who can sign up wasn’t saved: ${errMessage(err)}`
+        }
+      }
+      const orphanNote =
         r.orphaned > 0
           ? `Saved. ${r.orphaned} ${r.orphaned === 1 ? 'shift has' : 'shifts have'} people on ${r.orphaned === 1 ? 'it' : 'them'} but no longer fit${r.orphaned === 1 ? 's' : ''} the hours — ${r.orphaned === 1 ? 'it’s' : 'they’re'} closed to new sign-ups; check under Sign-ups.`
-          : undefined,
-      )
+          : null
+      onSaved(r.id, [orphanNote ?? (approvalNote ? 'Saved.' : null), approvalNote].filter(Boolean).join(' ') || undefined)
     } catch (err) {
       setError(errMessage(err))
       setBusy(false)
@@ -246,6 +268,14 @@ export default function VolunteerCallEditor({
           Who can help
           <input className={staffInput} value={d.who} onChange={txt('who')} placeholder="Anyone 16 or older — no experience needed." />
         </label>
+        {approvals && (
+          <div className="lg:col-span-2">
+            <WhoCanSignUp label="Who can sign up" value={approval} onChange={setApproval} />
+          </div>
+        )}
+        {approvals === false && (
+          <p className="text-xs text-slate-500 lg:col-span-2">Calls for approved volunteers only arrive with database update 25 — until then anyone can sign up.</p>
+        )}
         <label className="block text-sm font-semibold text-slate-700">
           Before they sign up — one per line (optional)
           <textarea className={staffInput} rows={3} value={d.requirements} onChange={txt('requirements')} placeholder="Closed-toe shoes" />

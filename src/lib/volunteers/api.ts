@@ -9,7 +9,9 @@
 // same localStorage key as the app, so a link opened on a laptop works like
 // one opened on a phone.
 import { supabase } from '../supabase'
+import type { Cap } from '../staff'
 import { APP_ORIGIN, SITE_ORIGIN } from './calls'
+import type { CertificateSuggestion } from './approval'
 
 export type VolunteerStatus = 'prospect' | 'active' | 'paused' | 'former'
 export type HoursStatus = 'logged' | 'confirmed'
@@ -32,6 +34,18 @@ export interface VolunteerRow {
   hours_for: 'school' | 'military' | 'workplace' | 'community' | 'other' | null
   /** School, branch, employer … whatever that letter asks for. */
   letter_details: Record<string, string> | null
+  /*
+   * Applications and approvals (update 25) — optional because the columns
+   * aren't there until that update has been run.
+   */
+  /** What they may sign up for: kinds such as 'socialization', or '*' for everything. */
+  approved_for?: string[]
+  review_status?: ReviewStatus | null
+  applied_at?: string | null
+  /** Their answers on the application (age, availability …) plus `kinds`: what they asked to do. */
+  application?: Record<string, unknown> | null
+  reviewed_at?: string | null
+  reviewed_by?: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -48,7 +62,11 @@ export interface VolunteerInput {
   started_on?: string | null
   orientation_on?: string | null
   notes?: string | null
+  /** Only sent once update 25 has added the column. */
+  approved_for?: string[]
 }
+
+export type ReviewStatus = 'pending' | 'approved' | 'declined'
 
 export interface HoursRow {
   id: string
@@ -158,6 +176,138 @@ export async function setHoursStatus(entryId: string, status: HoursStatus): Prom
 export async function deleteHoursEntry(id: string): Promise<void> {
   const { error } = await supabase.from('volunteer_hours_entries').delete().eq('id', id)
   if (error) throw error
+}
+
+/* ------------------------------------------ applications and approvals */
+
+// Update 25: new people apply, staff approve them for everything or for some
+// kinds of volunteering, and shifts or calls can be for approved volunteers
+// only. Until that update is run the columns aren't there, so the staff
+// screens ask first and hide what can't be saved yet.
+
+/** Whether these columns exist yet, e.g. columnsReady('volunteers', 'approved_for,review_status'). */
+export async function columnsReady(table: string, columns: string): Promise<boolean> {
+  const { error } = await supabase.from(table).select(columns).limit(1)
+  return !error
+}
+
+/** How many applications are waiting for someone to look at them (0 before update 25). */
+export async function pendingApplications(orgId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('volunteers')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('review_status', 'pending')
+  if (error) return 0
+  return count ?? 0
+}
+
+async function review(id: string, change: Record<string, unknown>): Promise<void> {
+  const { data, error } = await supabase.from('volunteers').update(change).eq('id', id).select('id')
+  if (error) throw error
+  // Row-level security turns a refused update into "nothing changed" — say so.
+  if (!data || data.length === 0) throw new Error('That wasn’t saved — you may not have permission to change the volunteer roster.')
+}
+
+/** Approve someone: they become active and may sign up for `kinds` ('*' = everything). */
+export async function approveVolunteer(id: string, kinds: string[], reviewer: string | null): Promise<void> {
+  await review(id, {
+    status: 'active',
+    approved_for: kinds,
+    review_status: 'approved',
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: reviewer,
+  })
+}
+
+/** Decline an application. What they were already approved for (if anything) stays. */
+export async function declineVolunteer(id: string, reviewer: string | null): Promise<void> {
+  await review(id, { review_status: 'declined', reviewed_at: new Date().toISOString(), reviewed_by: reviewer })
+}
+
+/** Who can sign up for a volunteer call: a kind, or null for anyone. The database copies it to the call's shifts. */
+export async function setCallApproval(callId: string, role: string | null): Promise<void> {
+  const { error } = await supabase.from('volunteer_calls').update({ approval_role: role }).eq('id', callId)
+  if (error) throw error
+}
+
+/** A hours letter a volunteer made for themselves (or staff made), with the code that checks it. */
+export interface IssuedLetterRow {
+  code: string
+  kind: string
+  period_from: string
+  period_to: string
+  total_hours: number | string
+  issued_by: 'self' | 'staff'
+  created_at: string
+}
+
+/** The letters on someone's record, newest first. null = not available yet (before update 25). */
+export async function volunteerLetters(volunteerId: string): Promise<IssuedLetterRow[] | null> {
+  const { data, error } = await supabase
+    .from('volunteer_letters')
+    .select('code, kind, period_from, period_to, total_hours, issued_by, created_at')
+    .eq('volunteer_id', volunteerId)
+    .order('created_at', { ascending: false })
+  if (error) return null
+  return (data ?? []) as IssuedLetterRow[]
+}
+
+/* ------------------------------------------------ certificates (update 25) */
+
+// Certificates are OHRR's top tier's to give: owners and admins, or anyone
+// granted "Make volunteer certificates". A certificate is suggested when a
+// volunteer makes a letter and when their confirmed hours pass a mark the top
+// tier sets. Before update 25 the tables aren't there: these return null / 0.
+
+/** "Make volunteer certificates and set the hours that earn one" (not in the Team list's CAPS yet). */
+export const CERTIFICATES_CAP = 'volunteers.certificates' as string as Cap
+
+/** Open suggestions, newest first. null = not available (before update 25, or not allowed). */
+export async function certificateSuggestions(orgId: string): Promise<CertificateSuggestion[] | null> {
+  const { data, error } = await supabase
+    .from('certificate_suggestions')
+    .select('*')
+    .eq('org_id', orgId)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+  if (error) return null
+  return (data ?? []) as CertificateSuggestion[]
+}
+
+export async function openCertificateCount(orgId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('certificate_suggestions')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('status', 'open')
+  if (error) return 0
+  return count ?? 0
+}
+
+/** "Make certificate" (once it's made) or "Not now". */
+export async function setSuggestionStatus(id: string, status: 'made' | 'dismissed', by: string | null): Promise<void> {
+  const { data, error } = await supabase
+    .from('certificate_suggestions')
+    .update({ status, handled_by: by, handled_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('That wasn’t saved — making certificates needs the “Make volunteer certificates” permission.')
+}
+
+/** The hours marks that earn a certificate, e.g. [25, 50, 100, 250]. null = not available. */
+export async function certificateHours(orgId: string): Promise<number[] | null> {
+  const { data, error } = await supabase.from('volunteer_settings').select('certificate_hours').eq('org_id', orgId).maybeSingle()
+  if (error) return null
+  return ((data?.certificate_hours as number[] | null) ?? []).map(Number)
+}
+
+/** Save the marks; returns how many new suggestions that made (for people already past one). */
+export async function setCertificateHours(orgId: string, hours: number[]): Promise<number> {
+  const { data, error } = await supabase.rpc('set_certificate_hours', { p_org: orgId, p_hours: hours })
+  if (error) throw error
+  return Number(data ?? 0)
 }
 
 /* ------------------------------------------------------ a volunteer's own */

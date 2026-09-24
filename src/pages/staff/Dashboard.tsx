@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useStaff } from '../../lib/staff'
 import { ExpiringSponsorsNotice } from './ManageSponsors'
+import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
+import { CERTIFICATES_CAP } from '../../lib/volunteers/api'
 
 export default function StaffDashboard() {
   const { user, membership, can } = useStaff()
@@ -161,6 +163,10 @@ export default function StaffDashboard() {
       {can('events.bunfest.manage') && membership?.orgId && (
         <ExpiringSponsorsNotice orgId={membership.orgId} className="mt-5" />
       )}
+      {(can('volunteers.shifts.manage') || can('bookings.manage')) && membership?.orgId && (
+        <PendingApplicationsNotice orgId={membership.orgId} className="mt-5" />
+      )}
+      {can(CERTIFICATES_CAP) && membership?.orgId && <CertificatesNotice orgId={membership.orgId} className="mt-5" />}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {tiles.map((t) => (

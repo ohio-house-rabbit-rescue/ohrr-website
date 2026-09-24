@@ -8,6 +8,12 @@
 // certificate of appreciation to frame. The volunteer's details (their
 // school, branch, employer) are remembered on their record from sign-up, so a
 // letter is a couple of clicks. Every letter thanks them.
+//
+// Certificates are OHRR's top tier's to give (update 25): only they see the
+// certificate kind, which can be headed "of appreciation" or "of achievement"
+// and signed with the signer's name. Opened from Staff → Volunteers →
+// Certificates (&suggestion=<id>), downloading or printing it marks that
+// suggestion as made.
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useStaff, Spinner, staffInput } from '../../lib/staff'
@@ -21,6 +27,7 @@ import { LETTER_KINDS, buildLetter, letterText, longDate, type HoursLine, type L
 import { paintCertificate, paintLetter } from '../../lib/volunteers/paint'
 import { useOrgBits } from '../../lib/volunteers/orgBits'
 import { hoursHistory } from '../../lib/volunteers/callsApi'
+import { CERTIFICATES_CAP, setSuggestionStatus } from '../../lib/volunteers/api'
 
 const iso = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
@@ -42,23 +49,37 @@ const KINDS = new Set(LETTER_KINDS.map((k) => k.value))
 const FROM_SIGNUP: Record<string, LetterKind> = { school: 'school', military: 'military', workplace: 'workplace', community: 'general', other: 'general' }
 
 export default function HoursLetter() {
-  const { membership } = useStaff()
+  const { user, membership, can } = useStaff()
   const orgId = membership?.orgId ?? ''
   const org = useOrgBits()
   const [params] = useSearchParams()
   const email = params.get('email') ?? ''
   const name = params.get('name') || email
   const startKind = params.get('kind')
+  // From "Certificates to consider": which suggestion this certificate answers.
+  const suggestion = params.get('suggestion')
+  const canCertificates = can(CERTIFICATES_CAP)
+  const kinds = LETTER_KINDS.filter((k) => k.value !== 'certificate' || canCertificates)
   const [kind, setKind] = useState<LetterKind>(startKind && KINDS.has(startKind as LetterKind) ? (startKind as LetterKind) : 'general')
-  const [period, setPeriod] = useState(params.get('from') ? 'custom' : 'year')
-  const [from, setFrom] = useState(params.get('from') ?? periodFor('year').from)
-  const [to, setTo] = useState(params.get('to') ?? periodFor('year').to)
+  // A certificate for passing a mark covers all their hours, not just this year's.
+  const startPeriod = params.get('from') ? 'custom' : suggestion ? 'all' : 'year'
+  const [period, setPeriod] = useState(startPeriod)
+  const [from, setFrom] = useState(params.get('from') ?? periodFor(startPeriod).from)
+  const [to, setTo] = useState(params.get('to') ?? periodFor(startPeriod).to)
+  const [heading, setHeading] = useState<'appreciation' | 'achievement'>(suggestion ? 'achievement' : 'appreciation')
+  const [signed, setSigned] = useState(false)
+  const [made, setMade] = useState(false)
   const [details, setDetails] = useState<Record<string, string>>({})
   const [volunteerId, setVolunteerId] = useState<string | null>(null)
   const [lines, setLines] = useState<HoursLine[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [savedDetails, setSavedDetails] = useState(false)
+
+  // Certificates are the top tier's; anyone else gets a letter.
+  useEffect(() => {
+    if (kind === 'certificate' && !canCertificates) setKind('general')
+  }, [kind, canCertificates])
 
   // What they told us at sign-up: the kind of letter, and its details.
   useEffect(() => {
@@ -89,8 +110,22 @@ export default function HoursLetter() {
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   const input: LetterInput | null = lines ? { kind, name, details, from, to, lines, org, today } : null
-  const letter = useMemo(() => (input ? buildLetter(input) : null), [input])
+  const built = useMemo(() => (input ? buildLetter(input) : null), [input])
+  const headingText = heading === 'achievement' ? 'Certificate of Achievement' : 'Certificate of Appreciation'
+  const letter = built && kind === 'certificate' ? { ...built, title: headingText } : built
   const kindMeta = LETTER_KINDS.find((k) => k.value === kind)!
+  const signIt = kind === 'certificate' && signed && Boolean(letter?.signer.name)
+
+  // Made from a suggestion: say so in Certificates to consider (once).
+  const markMade = async () => {
+    if (!suggestion || made || kind !== 'certificate') return
+    try {
+      await setSuggestionStatus(suggestion, 'made', user?.id ?? null)
+      setMade(true)
+    } catch (e) {
+      setError(errMessage(e))
+    }
+  }
 
   const download = async () => {
     if (!letter || !input) return
@@ -98,7 +133,7 @@ export default function HoursLetter() {
     try {
       const canvas = document.createElement('canvas')
       if (kind === 'certificate') {
-        await paintCertificate(canvas, { name, lines: letter.paragraphs.slice(1), date: today, signer: letter.signer, org })
+        await paintCertificate(canvas, { name, lines: letter.paragraphs.slice(1), date: today, signer: letter.signer, org, heading: headingText, signed: signIt })
       } else {
         await paintLetter(canvas, {
           date: today,
@@ -114,6 +149,7 @@ export default function HoursLetter() {
         })
       }
       savePng(await canvasToBlob(canvas), `ohrr-${kind}-hours-${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`)
+      await markMade()
     } catch (e) {
       setError(errMessage(e))
     }
@@ -143,9 +179,15 @@ export default function HoursLetter() {
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
       <div className="no-print space-y-4">
-        <Link to="/staff/calls" className="inline-flex items-center gap-1 text-sm font-bold text-brand-blue">
-          <Icon name="arrowLeft" size={15} /> Volunteer calls
-        </Link>
+        {suggestion ? (
+          <Link to="/staff/volunteers?tab=certificates" className="inline-flex items-center gap-1 text-sm font-bold text-brand-blue">
+            <Icon name="arrowLeft" size={15} /> Certificates to consider
+          </Link>
+        ) : (
+          <Link to="/staff/calls" className="inline-flex items-center gap-1 text-sm font-bold text-brand-blue">
+            <Icon name="arrowLeft" size={15} /> Volunteer calls
+          </Link>
+        )}
         <div>
           <h1 className="font-display text-2xl font-black text-ink">Hours letter for {name}</h1>
           <p className="text-sm text-slate-600">Written from the hours on record. Every letter thanks them.</p>
@@ -154,7 +196,7 @@ export default function HoursLetter() {
         <div>
           <p className="text-sm font-semibold text-slate-700">Who it’s for</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
-            {LETTER_KINDS.map((k) => (
+            {kinds.map((k) => (
               <button
                 key={k.value}
                 type="button"
@@ -168,6 +210,41 @@ export default function HoursLetter() {
           </div>
           <p className="mt-1.5 text-xs text-slate-500">{kindMeta.hint}</p>
         </div>
+
+        {kind === 'certificate' && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-slate-700">Heading</p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ['appreciation', 'Appreciation'],
+                  ['achievement', 'Achievement'],
+                ] as const
+              ).map(([h, label]) => (
+                <button
+                  key={h}
+                  type="button"
+                  aria-pressed={heading === h}
+                  onClick={() => setHeading(h)}
+                  className={`rounded-full px-3.5 py-2 text-sm font-bold ${heading === h ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {org.signerName && (
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-brand-blue" checked={signed} onChange={(e) => setSigned(e.target.checked)} />
+                Sign with {org.signerName}’s name
+              </label>
+            )}
+            {suggestion && (
+              <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-sm text-brand-blue">
+                {made ? 'Marked as made in Certificates to consider.' : 'From Certificates to consider — downloading or printing it marks it as made.'}
+              </p>
+            )}
+          </div>
+        )}
 
         {kindMeta.ask.length > 0 && (
           <div className="space-y-2">
@@ -236,7 +313,15 @@ export default function HoursLetter() {
         )}
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => window.print()} className={btn.orange} disabled={!letter}>
+          <button
+            type="button"
+            onClick={() => {
+              window.print()
+              void markMade()
+            }}
+            className={btn.orange}
+            disabled={!letter}
+          >
             <Icon name="printer" size={16} className="mr-1.5" /> Print / save as PDF
           </button>
           <button type="button" onClick={() => void download()} className={btn.outline} disabled={!letter || saving}>
@@ -257,7 +342,7 @@ export default function HoursLetter() {
         {letter && input && kind === 'certificate' && (
           <div className="letter rounded-2xl border-[10px] border-double border-brand-blue bg-white p-10 text-center">
             <img src="/img/ohrr-mark.png" alt="" className="mx-auto h-24 w-24" />
-            <p className="mt-6 font-display text-lg font-extrabold tracking-[0.2em] text-brand-orange">CERTIFICATE OF APPRECIATION</p>
+            <p className="mt-6 font-display text-lg font-extrabold tracking-[0.2em] text-brand-orange">{headingText.toUpperCase()}</p>
             <p className="mt-6 font-display text-5xl font-black text-ink">{name}</p>
             {letter.paragraphs.slice(1).map((p) => (
               <p key={p} className="mx-auto mt-5 max-w-xl text-xl leading-relaxed text-slate-700">
@@ -266,7 +351,13 @@ export default function HoursLetter() {
             ))}
             <div className="mx-auto mt-16 grid max-w-2xl grid-cols-2 gap-10 text-sm text-slate-600">
               <div>
-                <div className="h-10 border-b border-slate-400" />
+                {signIt ? (
+                  <div className="flex h-10 items-end justify-center border-b border-slate-400">
+                    <span className="signature text-4xl leading-none text-[#1e3a8a]">{letter.signer.name}</span>
+                  </div>
+                ) : (
+                  <div className="h-10 border-b border-slate-400" />
+                )}
                 <p className="mt-2 font-bold text-ink">{letter.signer.name || 'Signature'}</p>
                 <p>{letter.signer.title ? `${letter.signer.title}, ${org.name}` : org.name}</p>
               </div>
@@ -340,6 +431,8 @@ export default function HoursLetter() {
         )}
       </div>
       <style>{`
+        @font-face { font-family: 'OHRR Signature'; src: url(/fonts/dancing-script-600.woff2) format('woff2'); font-weight: 600; font-display: swap; }
+        .signature { font-family: 'OHRR Signature', cursive; font-weight: 600; }
         @media print {
           @page { size: letter; margin: 0.8in; }
           body * { visibility: hidden !important; }

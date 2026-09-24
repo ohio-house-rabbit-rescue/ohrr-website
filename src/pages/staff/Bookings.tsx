@@ -29,6 +29,9 @@ import {
   type SlotRow,
   type WeeklyRule,
 } from '../../lib/bookings'
+import { columnsReady } from '../../lib/volunteers/api'
+import { kindLabel } from '../../lib/volunteers/approval'
+import { WhoCanSignUp } from './callBits'
 
 // Small local stand-ins for the app's shell pieces.
 function Screen({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -50,12 +53,18 @@ function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** A shift can be for approved volunteers only (update 25): the kind they must be approved for, or null for anyone. */
+type TypeWithApproval = Partial<BookingType> & { org_id: string; slug: string; name: string; approval_role?: string | null }
+const approvalOf = (t: BookingType) => (t as BookingType & { approval_role?: string | null }).approval_role ?? null
+
 export default function StaffBookings() {
   const { membership } = useStaff()
   const orgId = membership?.orgId ?? ''
   const [tab, setTab] = useState<Tab>('roster')
   const [types, setTypes] = useState<BookingType[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // "Who can book" needs update 25's approval_role column.
+  const [approvals, setApprovals] = useState<boolean | null>(null)
 
   const reloadTypes = useCallback(async () => {
     try {
@@ -67,6 +76,13 @@ export default function StaffBookings() {
   useEffect(() => {
     if (orgId) void reloadTypes()
   }, [orgId, reloadTypes])
+  useEffect(() => {
+    let alive = true
+    columnsReady('booking_types', 'approval_role').then((ok) => alive && setApprovals(ok))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   return (
     <Screen className="space-y-4">
@@ -96,7 +112,7 @@ export default function StaffBookings() {
       {types === null && !error && <Spinner />}
       {types && tab === 'roster' && <Roster orgId={orgId} />}
       {types && tab === 'times' && <MakeTimes types={types} />}
-      {types && tab === 'setup' && <Setup orgId={orgId} types={types} onChanged={reloadTypes} />}
+      {types && tab === 'setup' && <Setup orgId={orgId} types={types} approvals={approvals} onChanged={reloadTypes} />}
     </Screen>
   )
 }
@@ -484,7 +500,7 @@ const emptyType = (orgId: string): Partial<BookingType> & { org_id: string; slug
   auto_weeks: 8,
 })
 
-function Setup({ orgId, types, onChanged }: { orgId: string; types: BookingType[]; onChanged: () => Promise<void> }) {
+function Setup({ orgId, types, approvals, onChanged }: { orgId: string; types: BookingType[]; approvals: boolean | null; onChanged: () => Promise<void> }) {
   const [editing, setEditing] = useState<string | 'new' | null>(null)
   return (
     <div className="space-y-3">
@@ -502,6 +518,11 @@ function Setup({ orgId, types, onChanged }: { orgId: string; types: BookingType[
                 {t.max_per_month ? ` · max ${t.max_per_month}/month` : ''}
                 {t.confirm_mode === 'staff' ? ' · staff confirms' : ''} · /book/{t.slug}
               </span>
+              {approvals && t.kind === 'shift' && approvalOf(t) && (
+                <span className="mt-1 block text-xs text-slate-600">
+                  <span className="font-bold text-brand-blue">Who can book:</span> approved volunteers — {kindLabel(approvalOf(t))}
+                </span>
+              )}
               {t.weekly.length > 0 ? (
                 <span className="mt-1 block text-xs text-slate-600">
                   <span className="font-bold text-brand-blue">Every week:</span> {fmtWeekly(t.weekly).join(' · ')}
@@ -517,6 +538,7 @@ function Setup({ orgId, types, onChanged }: { orgId: string; types: BookingType[
           {editing === t.id && (
             <TypeForm
               initial={t}
+              approvals={approvals}
               onSaved={async () => {
                 setEditing(null)
                 await onChanged()
@@ -529,6 +551,7 @@ function Setup({ orgId, types, onChanged }: { orgId: string; types: BookingType[
         <Card>
           <TypeForm
             initial={emptyType(orgId)}
+            approvals={approvals}
             onSaved={async () => {
               setEditing(null)
               await onChanged()
@@ -544,8 +567,8 @@ function Setup({ orgId, types, onChanged }: { orgId: string; types: BookingType[
   )
 }
 
-function TypeForm({ initial, onSaved }: { initial: Partial<BookingType> & { org_id: string; slug: string; name: string }; onSaved: () => Promise<void> }) {
-  const [d, setD] = useState({ ...initial })
+function TypeForm({ initial, approvals, onSaved }: { initial: TypeWithApproval; approvals: boolean | null; onSaved: () => Promise<void> }) {
+  const [d, setD] = useState<TypeWithApproval>({ ...initial })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const num = (k: keyof BookingType) => (e: { target: { value: string } }) => setD({ ...d, [k]: e.target.value === '' ? null : Number(e.target.value) })
@@ -567,6 +590,8 @@ function TypeForm({ initial, onSaved }: { initial: Partial<BookingType> & { org_
         attest_text: d.attest_text || null,
         max_per_month: d.max_per_month || null,
         auto_weeks: Math.min(26, Math.max(1, Number(d.auto_weeks) || 8)),
+        // Appointments are open to anyone; only a shift can be for approved volunteers.
+        ...(approvals ? { approval_role: d.kind === 'shift' ? (d.approval_role ?? null) : null } : {}),
         weekly: (d.weekly ?? [])
           .filter((r) => r.days.length > 0 && r.start && r.end && r.end > r.start)
           .map((r) => ({ days: r.days, start: r.start, end: r.end, capacity: r.capacity || null, label: r.label?.trim() || null })),
@@ -601,6 +626,12 @@ function TypeForm({ initial, onSaved }: { initial: Partial<BookingType> & { org_
           </select>
         </label>
       </div>
+      {d.kind === 'shift' && approvals && (
+        <WhoCanSignUp label="Who can book" value={d.approval_role ?? null} onChange={(approval_role) => setD({ ...d, approval_role })} />
+      )}
+      {d.kind === 'shift' && approvals === false && (
+        <p className="text-xs text-slate-500">Shifts for approved volunteers only arrive with database update 25 — until then anyone can book.</p>
+      )}
       <label className="block text-sm font-semibold text-slate-700">
         What it is (shown to people)
         <textarea className={staffInput} rows={2} value={d.description ?? ''} onChange={txt('description')} />

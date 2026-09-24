@@ -8,6 +8,7 @@ import { publishHappyTail, TAIL_STATUS_LABEL, type TailStatus } from '../../lib/
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
+import { kindLabel } from '../../lib/volunteers/approval'
 
 type Status = 'new' | 'in_progress' | 'done' | 'archived'
 interface Row {
@@ -17,7 +18,8 @@ interface Row {
   email: string | null
   phone: string | null
   subject: string | null
-  payload: Record<string, string>
+  /** Mostly text; a volunteer application's `kinds` is a list. */
+  payload: Record<string, unknown>
   status: Status
   staff_notes: string | null
   source: string | null
@@ -29,6 +31,7 @@ const KIND: Record<string, { label: string; icon: IconName }> = {
   'service-signup': { label: 'Bonding / clinic', icon: 'heart' },
   'surrender-intake': { label: 'Surrender', icon: 'mappin' },
   'volunteer-signup': { label: 'Volunteer', icon: 'users' },
+  'volunteer-application': { label: 'Volunteer application', icon: 'users' },
   'happy-tail': { label: 'Happy Tail', icon: 'sparkles' },
   'raffle-request': { label: 'Raffle tickets', icon: 'ticket' },
   'reserve-session': { label: 'BunFest session', icon: 'clock' },
@@ -45,6 +48,12 @@ const kindMeta = (k: string) => KIND[k] ?? { label: k.replace(/-/g, ' '), icon: 
 const labelOf = (key: string) => {
   const s = key.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim()
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
+/** A payload value as text: a list becomes "a, b" (an application's kinds by their names). */
+const asText = (key: string, v: unknown): string => {
+  if (Array.isArray(v)) return v.map((x) => (key === 'kinds' ? kindLabel(String(x)) : String(x))).join(', ')
+  if (v && typeof v === 'object') return JSON.stringify(v)
+  return v == null ? '' : String(v)
 }
 const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
@@ -91,7 +100,7 @@ export default function Inbox() {
     const lines = [head.map(esc).join(',')]
     for (const r of list) {
       lines.push(
-        [r.created_at, kindMeta(r.kind).label, r.status, r.name, r.email, r.phone, r.subject, ...keys.map((k) => r.payload?.[k] ?? ''), r.staff_notes]
+        [r.created_at, kindMeta(r.kind).label, r.status, r.name, r.email, r.phone, r.subject, ...keys.map((k) => asText(k, r.payload?.[k])), r.staff_notes]
           .map(esc)
           .join(','),
       )
@@ -185,22 +194,30 @@ export default function Inbox() {
                     )}
                   </div>
                   <dl className="grid gap-x-6 gap-y-1 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                    {Object.entries(r.payload ?? {}).map(([key, value]) => (
-                      <div key={key} className={isPhoto(value) || value.length > 80 ? 'sm:col-span-2' : ''}>
-                        <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">{labelOf(key)}</dt>
-                        <dd className="whitespace-pre-wrap break-words text-sm text-ink">
-                          {isPhoto(value) ? (
-                            <a href={value} target="_blank" rel="noopener noreferrer">
-                              <img src={value} alt={labelOf(key)} loading="lazy" className="mt-1 max-h-72 rounded-xl object-cover" />
-                            </a>
-                          ) : (
-                            value
-                          )}
-                        </dd>
-                      </div>
-                    ))}
+                    {Object.entries(r.payload ?? {}).map(([key, raw]) => {
+                      const value = asText(key, raw)
+                      return (
+                        <div key={key} className={isPhoto(value) || value.length > 80 ? 'sm:col-span-2' : ''}>
+                          <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">{labelOf(key)}</dt>
+                          <dd className="whitespace-pre-wrap break-words text-sm text-ink">
+                            {isPhoto(value) ? (
+                              <a href={value} target="_blank" rel="noopener noreferrer">
+                                <img src={value} alt={labelOf(key)} loading="lazy" className="mt-1 max-h-72 rounded-xl object-cover" />
+                              </a>
+                            ) : (
+                              value
+                            )}
+                          </dd>
+                        </div>
+                      )
+                    })}
                   </dl>
                   {r.kind === 'happy-tail' && <PublishTail row={r} onPublished={() => void setStatus(r, 'done')} />}
+                  {r.kind === 'volunteer-application' && (
+                    <Link to="/staff/volunteers" className={btn.outline}>
+                      Review in Volunteers <Icon name="chevron" size={15} />
+                    </Link>
+                  )}
                   <Notes row={r} onSave={(n) => setStatus(r, r.status, n)} />
                   <div className="flex flex-wrap gap-2">
                     {r.status !== 'done' && (
@@ -247,7 +264,7 @@ function isPhoto(value: string): boolean {
  * story could arrive and never reach the page: there was nowhere to put it.
  */
 function PublishTail({ row, onPublished }: { row: Row; onPublished: () => void }) {
-  const payload = (row.payload ?? {}) as Record<string, string>
+  const payload = Object.fromEntries(Object.entries(row.payload ?? {}).map(([k, v]) => [k, asText(k, v)])) as Record<string, string>
   const [open, setOpen] = useState(false)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
