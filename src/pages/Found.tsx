@@ -14,6 +14,11 @@ export default function Found() {
       <PageHero
         title="Found a rabbit?"
         subtitle="A domestic rabbit outdoors can’t survive on its own. Here’s how to help — and what to do if you need to surrender one."
+        doors={[
+          { to: '/found/report', icon: 'camera', h: 'Report a found rabbit', p: 'With a photo, in a couple of minutes' },
+          { href: '#wild', icon: 'help', h: 'Domestic or wild?', p: 'How to tell, and who helps wild rabbits' },
+          { href: '#catch', icon: 'info', h: 'Catching a stray', p: 'How to do it safely' },
+        ]}
       />
       <Section>
         <div className="grid gap-4 md:grid-cols-2">
@@ -60,7 +65,7 @@ export default function Found() {
             <HurtNote />
             {/* Domestic or wild */}
             <Card>
-              <h2 className="font-display text-xl font-extrabold text-ink">{wildOrDomestic.heading}</h2>
+              <h2 id="wild" className="font-display text-xl font-extrabold text-ink">{wildOrDomestic.heading}</h2>
               <p className="mt-2 text-base leading-relaxed text-slate-700">{wildOrDomestic.text}</p>
               <p className="mt-2 text-base leading-relaxed text-slate-700">
                 {wildOrDomestic.wildNote}{' '}
@@ -73,7 +78,7 @@ export default function Found() {
         </div>
 
         {/* Catch steps */}
-        <H2 className="mt-12">Catching a stray</H2>
+        <H2 id="catch" className="mt-12">Catching a stray</H2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {catchSteps.map((s, i) => (
             <Card key={s.title} className="flex gap-4">

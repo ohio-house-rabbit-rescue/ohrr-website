@@ -30,46 +30,110 @@ export function Section({ children, className = '', id }: { children: ReactNode;
 }
 
 /**
+ * One of a page's main things to do, shown beside the page title — the home
+ * page's pattern, so what a visitor came for is on the first screen. `to` is a
+ * page on this site; `href` is a place on this page ("#shifts"), an email
+ * (mailto:) or another site.
+ */
+export interface Door {
+  h: string
+  p?: string
+  icon: IconName
+  to?: string
+  href?: string
+}
+
+export function DoorList({ doors, className = '' }: { doors: Door[]; className?: string }) {
+  const row =
+    'group flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-brand-blue'
+  return (
+    <ul className={`grid gap-2.5 ${className}`}>
+      {doors.map((d) => {
+        const away = !!d.href && /^https?:/.test(d.href)
+        const inner = (
+          <>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue-50 text-brand-blue" aria-hidden="true">
+              <Icon name={d.icon} size={22} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-lg font-extrabold leading-snug text-ink group-hover:text-brand-blue">{d.h}</span>
+              {/* Phones get the titles only, so every door fits on the first screen */}
+              {d.p && <span className="hidden text-sm text-slate-600 sm:block">{d.p}</span>}
+            </span>
+            <Icon name={away ? 'external' : 'chevron'} size={18} className="shrink-0 text-brand-blue" />
+          </>
+        )
+        return (
+          <li key={d.h}>
+            {d.to ? (
+              <Link to={d.to} className={row}>
+                {inner}
+              </Link>
+            ) : (
+              <a href={d.href} className={row} {...(away ? ext : {})}>
+                {inner}
+              </a>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/**
  * The page title band. Every page says where it is and offers a way back:
  * "Home › Adopt › Adoption policy". `parent` names the section a sub-page
- * belongs to. Kept short (2026-09-24, OHRR: "the important things above the
- * fold") — a light band, not a tall coloured app header, so the page's own
- * content starts on the first screen.
+ * belongs to. Kept short and light (2026-09-24, OHRR: "the important things
+ * above the fold"). `doors` (or any `aside`, e.g. Bunny Help's question box)
+ * sit beside the title on a laptop and under it on a phone.
  */
 export function PageHero({
   title,
   subtitle,
   parent,
+  doors,
+  aside,
 }: {
   title: string
   subtitle?: string
   parent?: { to: string; label: string }
+  doors?: Door[]
+  aside?: ReactNode
 }) {
   const crumb = 'font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-4 hover:decoration-brand-blue'
+  const side = doors && doors.length > 0 ? <DoorList doors={doors} /> : aside
   return (
     <div className="border-b border-brand-blue/10 bg-brand-blue-50">
-      <div className="mx-auto max-w-6xl px-5 py-5 md:py-7">
-        <nav aria-label="You are here" className="no-print mb-1.5 text-sm text-slate-600">
-          <Link to="/" className={crumb}>
-            Home
-          </Link>
-          {parent && (
-            <>
-              <span className="mx-2" aria-hidden="true">
-                ›
-              </span>
-              <Link to={parent.to} className={crumb}>
-                {parent.label}
-              </Link>
-            </>
-          )}
-          <span className="mx-2" aria-hidden="true">
-            ›
-          </span>
-          <span aria-current="page">{title}</span>
-        </nav>
-        <h1 className="font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl">{title}</h1>
-        {subtitle && <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
+      <div
+        className={`mx-auto max-w-6xl px-5 py-5 md:py-7 ${
+          side ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-12' : ''
+        }`}
+      >
+        <div>
+          <nav aria-label="You are here" className="no-print mb-1.5 text-sm text-slate-600">
+            <Link to="/" className={crumb}>
+              Home
+            </Link>
+            {parent && (
+              <>
+                <span className="mx-2" aria-hidden="true">
+                  ›
+                </span>
+                <Link to={parent.to} className={crumb}>
+                  {parent.label}
+                </Link>
+              </>
+            )}
+            <span className="mx-2" aria-hidden="true">
+              ›
+            </span>
+            <span aria-current="page">{title}</span>
+          </nav>
+          <h1 className="font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl">{title}</h1>
+          {subtitle && <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
+        </div>
+        {side && <div className="no-print">{side}</div>}
       </div>
     </div>
   )
@@ -128,9 +192,11 @@ export function RabbitCard({ r, compact = false }: { r: Rabbit; compact?: boolea
 // ---- Primitives reused by the content pages (same styles as the existing cards) ----
 
 // Section heading in the site's existing style.
-export function H2({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function H2({ children, className = '', id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <h2 className={`font-display text-2xl font-black text-ink sm:text-3xl ${className}`}>{children}</h2>
+    <h2 id={id} className={`font-display text-2xl font-black text-ink sm:text-3xl ${className}`}>
+      {children}
+    </h2>
   )
 }
 
@@ -215,7 +281,8 @@ export function Callout({ children, className = '' }: { children: ReactNode; cla
   return <div className={`rounded-3xl bg-brand-blue-50 p-6 sm:p-8 ${className}`}>{children}</div>
 }
 
-// Call · Email · Directions — tappable text, shown in the footer and on the Contact page.
+// Email as tappable text, shown in the footer. No street address or directions:
+// see OHRR in lib/constants.
 export function ContactRow({ className = '' }: { className?: string }) {
   const link = 'font-semibold text-brand-blue hover:text-brand-blue-dark'
   return (
@@ -226,11 +293,45 @@ export function ContactRow({ className = '' }: { className?: string }) {
           {OHRR.email}
         </a>
       </span>
-      <span>
-        <a href={OHRR.mapsHref} {...ext} className={link}>
-          Directions to {OHRR.address}
-        </a>
-      </span>
+    </p>
+  )
+}
+
+/**
+ * Where OHRR is, without the street address — the address goes out with an
+ * appointment or a volunteer shift.
+ */
+export function VisitNote({ className = '' }: { className?: string }) {
+  return (
+    <p className={`text-base leading-relaxed text-slate-700 ${className}`}>
+      The Adoption Center is in {OHRR.place}. Visits are by appointment, and we send the address with your
+      appointment or volunteer shift. For anything else,{' '}
+      <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
+        email us
+      </a>{' '}
+      first.
+    </p>
+  )
+}
+
+/**
+ * OHRR is a restricted-admissions rescue (its Admissions Policy): a rabbit
+ * comes in only once OHRR has accepted it. Rabbits left at the door are the
+ * reason the address is kept off the site.
+ */
+export function NoDropOffNote({ className = '', link = true }: { className?: string; link?: boolean }) {
+  return (
+    <p className={`rounded-xl border border-brand-orange/40 bg-brand-orange-50 px-4 py-3 text-base leading-relaxed text-slate-800 ${className}`}>
+      <strong className="text-ink">Please don’t bring a rabbit to the Adoption Center without talking to us first.</strong>{' '}
+      OHRR is a restricted-admissions rescue: a rabbit can only come in once we’ve accepted it.
+      {link && (
+        <>
+          {' '}
+          <Link to="/surrender" className="font-bold text-brand-blue">
+            How surrender works
+          </Link>
+        </>
+      )}
     </p>
   )
 }

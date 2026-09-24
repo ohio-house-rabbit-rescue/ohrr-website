@@ -40,11 +40,7 @@ export default function Footer() {
               Ohio House Rabbit Rescue
             </span>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-slate-600">
-            {OHRR.street}
-            <br />
-            {OHRR.cityStateZip}
-          </p>
+          <p className="mt-4 text-sm leading-relaxed text-slate-600">{OHRR.place}</p>
           {org.notice && (
             <p className="mt-2 rounded-lg bg-brand-orange-50 px-3 py-1.5 text-sm font-bold text-brand-orange-ink">{org.notice}</p>
           )}

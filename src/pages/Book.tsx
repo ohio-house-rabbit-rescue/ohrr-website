@@ -31,6 +31,12 @@ import {
 const input =
   'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20'
 
+// Before booking, only the place ("OHRR Adoption Center"); the street address
+// is on the confirmation and the calendar file (see OHRR in lib/constants).
+function placeOnly(location: string): string {
+  return location.split(' · ')[0]
+}
+
 export default function Book() {
   const { slug = '' } = useParams()
   const [params] = useSearchParams()
@@ -107,7 +113,7 @@ export default function Book() {
           <Card>
             <p className="text-sm text-slate-700">
               <span className="font-bold text-ink">{durationLabel(type.duration_min)}</span>
-              {type.location ? ` · ${type.location}` : ''}
+              {type.location ? ` · ${placeOnly(type.location)}` : ''}
             </p>
             {type.weekly.length > 0 && (
               <p className="mt-2 text-sm text-slate-700">

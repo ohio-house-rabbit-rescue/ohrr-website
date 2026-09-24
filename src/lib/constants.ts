@@ -51,8 +51,13 @@ export const OHIO_WILDLIFE_CENTER = 'https://www.ohiowildlifecenter.org/wildlife
 // The live site's SignUp.com links, for reference only:
 //   http://signup.com/go/35ayZe (Bunny Socialization) · http://signup.com/go/WuT2xR (Buncare)
 
+// The street address is NOT shown on public pages (2026-09-24, OHRR: people
+// leave rabbits at the door when it is public, and OHRR then has to take
+// them). Public pages say `place`; the address goes out with a booking, on
+// supplier orders and on letters to one person.
 export const OHRR = {
   name: 'Ohio House Rabbit Rescue',
+  place: 'Columbus, Ohio',
   street: '5485 N. High Street',
   cityStateZip: 'Columbus, OH 43214',
   address: '5485 N. High Street, Columbus, OH 43214',

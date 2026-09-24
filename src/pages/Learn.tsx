@@ -17,9 +17,6 @@ function dedupe<T extends { title: string; externalUrl?: string | null }>(list: 
   return list.filter((a) => keep.has(a))
 }
 
-// Shown as the featured cards at the top, so they are left out of the article grid.
-const FEATURED = new Set(['bunny-living-space', 'tips-for-catching-a-stray'])
-
 export default function Learn() {
   const { articles: all, source } = useCareArticles()
   // Learn shows care guides; the Give / Adopt / About pages live at /info/<slug>.
@@ -33,55 +30,22 @@ export default function Learn() {
       <PageHero
         title="Rabbit care"
         subtitle="Good care means happier rabbits — and fewer surrenders. Articles straight from OHRR, plus rabbit-savvy vets across Ohio."
+        doors={[
+          { to: '/help', icon: 'help', h: 'Bunny Help', p: 'Ask about something your bunny is doing' },
+          { to: '/learn/vets', icon: 'phone', h: 'Rabbit-savvy vets', p: 'Across Ohio, including emergency care' },
+          { to: '/learn/breeds', icon: 'search', h: 'What kind of bunny do I have?', p: 'Ears, size and coat' },
+        ]}
       />
       <PresentedBy surface="care-library" />
       <Section>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <LinkCard
-            to="/help"
-            icon="help"
-            h="Bunny Help — ask a question"
-            p="Not eating, hiding, wet chin, sneezing? Type what you're seeing and get OHRR's own guidance, the urgent things first."
-            cta="Ask Bunny Help →"
-          />
-          <LinkCard
-            to="/learn/vets"
-            icon="phone"
-            h="Find a rabbit-savvy vet"
-            p="OHRR's list of vets for rabbit care across Ohio — Central Ohio, Cincinnati, Dayton, Toledo and Northeast Ohio — including 24/7 exotics emergency care and low-cost spay/neuter."
-            cta="See the vet list →"
-          />
-          <LinkCard
-            to="/learn/breeds"
-            icon="search"
-            h="What kind of bunny do I have?"
-            p="Ears, size, coat — three questions and the breeds that fit, with photos. Most rabbits are a mix, and that's fine."
-            cta="Find out →"
-          />
-          <LinkCard
-            to="/learn/bunny-living-space"
-            icon="book"
-            h="Bunny Living Space"
-            p="Ready to adopt? What to include in your bunny's space, our housing requirements, and tips before you bring them home."
-            cta="Read more →"
-          />
-          <LinkCard
-            to="/learn/tips-for-catching-a-stray"
-            icon="book"
-            h="Tips for Catching a Stray"
-            p="Found a rabbit outdoors? How to tell if it is domestic, who to call, and how to catch it safely."
-            cta="Read more →"
-          />
-        </div>
-
-        <div className="mt-12">
-          <H2>Articles on bunny care</H2>
+        <div>
+          <H2 id="articles">Articles on bunny care</H2>
           <LiveNote source={source} />
           {articles === null ? (
             <p className="mt-6 text-sm text-slate-500">Loading…</p>
           ) : (
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {articles.filter((a) => !FEATURED.has(a.slug)).map((a) =>
+              {articles.map((a) =>
                 a.externalUrl ? (
                   <LinkCard
                     key={a.slug}

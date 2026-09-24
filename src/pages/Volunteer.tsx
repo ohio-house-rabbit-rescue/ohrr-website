@@ -127,22 +127,22 @@ export default function Volunteer() {
       <PageHero
         title="Volunteer"
         subtitle="Whether you want to get up close with the bunnies or work behind the scenes, we have an opportunity for you. We welcome volunteers of all ages and backgrounds."
+        doors={[
+          { href: '#shifts', icon: 'calendar', h: 'Pick a shift', p: 'Socialization, Buncare and more' },
+          { to: '/volunteer/foster', icon: 'home', h: 'Foster a rabbit', p: 'A few weeks in your home' },
+          { to: '/volunteer/hours', icon: 'clock', h: 'My volunteer hours', p: 'Already volunteering? See and print them' },
+        ]}
       />
       <PresentedBy surface="volunteer" />
       <Section>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="max-w-2xl text-base text-slate-700">
-            Some volunteers come to us knowing everything about bunnies and some start off knowing nothing at all. We
-            truly are one big, happy volunteer family and we would love to have you join us.
-          </p>
-          <Link to="/volunteer/hours" className={btn.outline}>
-            Already volunteering? See your hours
-          </Link>
-        </div>
+        <p className="max-w-2xl text-base text-slate-700">
+          Some volunteers come to us knowing everything about bunnies and some start off knowing nothing at all. We
+          truly are one big, happy volunteer family and we would love to have you join us.
+        </p>
 
         <OpenCalls />
 
-        <H2 className="mt-10">Shifts and ways to help</H2>
+        <H2 id="shifts" className="mt-10">Shifts and ways to help</H2>
         <p className="mt-2 text-base text-slate-700">
           Pick a shift and you’re booked — no account. Your hours are recorded when you check in, and you can print
           your own hours record any time.

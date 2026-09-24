@@ -187,6 +187,11 @@ export default function Give() {
       <PageHero
         title="Ways to give"
         subtitle="Every gift goes to the bunnies: vet care, food, and the Adoption Center. OHRR is a 501(c)(3), so your donation is tax deductible."
+        doors={[
+          ...(donate ? [{ href: donate.href, icon: 'heart' as const, h: 'Donate online', p: 'Opens OHRR’s donation page' }] : []),
+          { href: '#shop', icon: 'bag', h: 'Give while you shop', p: 'Costs you nothing extra' },
+          { href: '#more', icon: 'gift', h: 'More ways to help', p: 'Wish list, matching gifts and more' },
+        ]}
       />
       <Section>
         {donate && (
@@ -224,7 +229,7 @@ export default function Give() {
           ))}
         </div>
 
-        <h2 className="mt-12 font-display text-2xl font-black text-ink">Give while you shop</h2>
+        <h2 id="shop" className="mt-12 font-display text-2xl font-black text-ink">Give while you shop</h2>
         <p className="mt-1 text-base text-slate-700">Costs you nothing extra — a share comes to the bunnies.</p>
         <ul className="mt-2 divide-y divide-slate-200">
           {shop.map((w) => (
@@ -232,7 +237,7 @@ export default function Give() {
           ))}
         </ul>
 
-        <h2 className="mt-12 font-display text-2xl font-black text-ink">More ways to help</h2>
+        <h2 id="more" className="mt-12 font-display text-2xl font-black text-ink">More ways to help</h2>
         <ul className="mt-2 divide-y divide-slate-200">
           {more.map((w) => (
             <Row key={w.h} w={w} />

@@ -139,7 +139,7 @@ export async function renderFlyer(canvas: HTMLCanvasElement, f: CanvasFlyer, log
   fy += 90
   ctx.fillStyle = '#64748b'
   ctx.font = `500 40px "${body}"`
-  ctx.fillText(OHRR.address, pad, fy)
+  ctx.fillText(OHRR.place, pad, fy)
   fy += 56
   ctx.fillText(OHRR.email, pad, fy)
 }

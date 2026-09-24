@@ -23,12 +23,13 @@ const MORE = [
   { to: '/contact', label: 'Contact us' },
 ]
 
-const NAV = [
+// Volunteer is orange so it stands out (OHRR, 2026-09-24).
+const NAV: { to: string; label: string; highlight?: boolean }[] = [
   { to: '/adopt', label: 'Adopt' },
   { to: '/help', label: 'Bunny Help' },
   { to: '/learn', label: 'Rabbit care' },
   { to: '/surrender', label: 'Found / surrender' },
-  { to: '/volunteer', label: 'Volunteer' },
+  { to: '/volunteer', label: 'Volunteer', highlight: true },
   { to: '/give', label: 'Give' },
   { to: '/about', label: 'About' },
 ]
@@ -42,6 +43,11 @@ export default function Header() {
     `inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-2 text-base font-bold transition ${
       isActive ? 'bg-brand-blue-50 text-brand-blue' : 'text-slate-700 hover:bg-slate-100 hover:text-brand-blue'
     }`
+  const orangeClass = ({ isActive }: { isActive: boolean }) =>
+    `inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-2 text-base font-bold transition ${
+      isActive ? 'bg-brand-orange-50 text-brand-orange-ink' : 'text-brand-orange-nav hover:bg-brand-orange-50 hover:text-brand-orange-ink'
+    }`
+  const navClass = (n: (typeof NAV)[number]) => (n.highlight ? orangeClass : linkClass)
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
@@ -94,7 +100,7 @@ export default function Header() {
         {/* Laptop: every page in the menu, always visible */}
         <nav aria-label="Main" className="hidden shrink-0 gap-0.5 xl:flex">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={linkClass}>
+            <NavLink key={n.to} to={n.to} className={navClass(n)}>
               {n.label}
             </NavLink>
           ))}
@@ -119,7 +125,7 @@ export default function Header() {
       <nav aria-label="Main" className="hidden border-t border-slate-100 lg:block xl:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-5 py-0.5">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={linkClass}>
+            <NavLink key={n.to} to={n.to} className={navClass(n)}>
               {n.label}
             </NavLink>
           ))}
@@ -133,7 +139,7 @@ export default function Header() {
               Home
             </NavLink>
             {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} className={linkClass}>
+              <NavLink key={n.to} to={n.to} className={navClass(n)}>
                 {n.label}
               </NavLink>
             ))}

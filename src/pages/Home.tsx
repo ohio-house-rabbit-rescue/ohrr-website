@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useFeaturedRabbits, useEvents } from '../lib/data'
-import { btn, ext, RabbitCard, LiveNote, Section } from '../components/ui'
-import { Icon, type IconName } from '../components/icons'
+import { btn, ext, RabbitCard, LiveNote, Section, DoorList, type Door } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { HelpSearchBox } from '../components/HelpSearchBox'
 import { useOrgProfile } from '../lib/orgProfile'
@@ -17,7 +16,7 @@ import { DONATE, OHRR } from '../lib/constants'
 // — BunFest, the Hop Shop, news, sponsors — is one quiet line or the footer.
 
 function Purpose() {
-  const doors: { to: string; icon: IconName; h: string; p: string }[] = [
+  const doors: Door[] = [
     { to: '/adopt', icon: 'heart', h: 'Adopt a rabbit', p: 'The rabbits, and how adopting works' },
     { to: '/help', icon: 'help', h: 'Help with my rabbit', p: 'Bunny Help, care guides and vets' },
     { to: '/surrender', icon: 'mappin', h: 'Found or surrendering a rabbit', p: 'Strays, admissions and surrender' },
@@ -35,25 +34,7 @@ function Purpose() {
             companions, so fewer are ever given up.
           </p>
         </div>
-        <ul className="grid gap-2.5">
-          {doors.map((d) => (
-            <li key={d.to}>
-              <Link
-                to={d.to}
-                className="group flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-brand-blue"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue-50 text-brand-blue" aria-hidden="true">
-                  <Icon name={d.icon} size={22} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-display text-lg font-extrabold leading-snug text-ink group-hover:text-brand-blue">{d.h}</span>
-                  <span className="hidden text-sm text-slate-600 sm:block">{d.p}</span>
-                </span>
-                <Icon name="chevron" size={18} className="shrink-0 text-brand-blue" />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <DoorList doors={doors} />
       </div>
     </section>
   )
@@ -142,9 +123,8 @@ function ThisWeekLine() {
     <section className="border-t border-slate-200 bg-canvas">
       <div className="mx-auto grid max-w-6xl gap-4 px-5 py-8 text-base text-slate-700 md:grid-cols-2">
         <p>
-          <strong className="text-ink">Adoption Center &amp; Hop Shop:</strong> {org.hours}
+          <strong className="text-ink">Adoption Center &amp; Hop Shop, {OHRR.place}:</strong> {org.hours}
           {org.notice && <span className="block font-bold text-brand-orange-ink">{org.notice}</span>}
-          <span className="block">{OHRR.address}</span>
         </p>
         {next && (
           <p>

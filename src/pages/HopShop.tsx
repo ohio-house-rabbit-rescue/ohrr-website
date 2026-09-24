@@ -4,6 +4,7 @@ import { PageHero, Section, btn, ext, H2, Card, Callout, LiveNote } from '../com
 import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
 import { OHRR, AMAZON_WISH_LIST } from '../lib/constants'
+import { useOrgProfile } from '../lib/orgProfile'
 
 const PRODUCTS = [
   'Pellets',
@@ -21,12 +22,18 @@ const PRODUCTS = [
 
 export default function HopShop() {
   const products = useHopShopProducts()
+  const org = useOrgProfile()
 
   return (
     <>
       <PageHero
         title="The Hop Shop"
         subtitle="Did you know OHRR has its very own shop where you can purchase food, supplies and toys? The profits go to support OHRR."
+        doors={[
+          { href: '#products', icon: 'bag', h: 'What we sell', p: 'Food, hay, litter, toys and more' },
+          { href: '#visit', icon: 'clock', h: 'Hours and directions', p: 'Inside the Adoption Center' },
+          { href: AMAZON_WISH_LIST, icon: 'gift', h: 'Donate supplies instead', p: 'The Adoption Center’s wish list' },
+        ]}
       />
       <PresentedBy surface="hop-shop" />
       <Section>
@@ -38,7 +45,7 @@ export default function HopShop() {
               support OHRR!
             </p>
 
-            <H2 className="mt-10">Products for purchase</H2>
+            <H2 id="products" className="mt-10">Products for purchase</H2>
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {PRODUCTS.map((p) => (
                 <li key={p} className="flex gap-2.5 text-sm text-slate-700">
@@ -102,26 +109,18 @@ export default function HopShop() {
 
           <aside>
             <Callout className="!p-6">
-              <h2 className="font-display text-lg font-extrabold text-brand-blue">Hop Shop hours</h2>
-              <p className="mt-3 text-base font-semibold text-slate-700">{OHRR.hours}</p>
+              <h2 id="visit" className="font-display text-lg font-extrabold text-brand-blue">Hop Shop hours</h2>
+              {org.notice && (
+                <p className="mt-2 rounded-xl bg-brand-orange-50 px-3 py-2 text-sm font-bold text-brand-orange-ink">{org.notice}</p>
+              )}
+              <p className="mt-3 text-base font-semibold text-slate-700">{org.hopshop_hours}</p>
               <p className="mt-1 text-sm text-slate-600">{OHRR.hoursNote}</p>
-              <h2 className="mt-5 font-display text-lg font-extrabold text-brand-blue">Address</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                OHRR Adoption Center and Hop Shop
-                <br />
-                {OHRR.street}
-                <br />
-                {OHRR.cityStateZip}
+              <p className="mt-4 text-sm leading-relaxed text-slate-700">
+                The Hop Shop is inside the Adoption Center in {OHRR.place}. Email us and we’ll send directions.
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{OHRR.landmark}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a href={OHRR.mapsHref} {...ext} className={btn.blue}>
-                  Get directions
-                </a>
-                <a href={OHRR.emailHref} className={btn.outline}>
-                  Email OHRR
-                </a>
-              </div>
+              <a href={OHRR.emailHref} className={`${btn.outline} mt-3`}>
+                Email OHRR
+              </a>
             </Callout>
           </aside>
         </div>

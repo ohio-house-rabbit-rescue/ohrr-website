@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PageHero, Section, btn, ext, H2, Card, Callout, LinkCard } from '../components/ui'
+import { PageHero, Section, btn, ext, H2, Card, Callout, LinkCard, VisitNote, NoDropOffNote } from '../components/ui'
 import { APPLY, BE_THE_VOICE_PDF, CAPITAL_PLEDGE_PDF, BUNFEST_SAMPLE, OHRR } from '../lib/constants'
 import { useOrgProfile } from '../lib/orgProfile'
 
@@ -75,6 +75,11 @@ export default function About() {
       <PageHero
         title="About OHRR"
         subtitle="A rabbit-specific rescue in Central Ohio, founded in 2009, operating the Ohio House Rabbit Adoption Center in Columbus."
+        doors={[
+          { href: '#visit', icon: 'clock', h: 'Hours and visiting', p: 'The Adoption Center and Hop Shop' },
+          { to: '/contact', icon: 'mail', h: 'Contact us', p: 'Email, and media inquiries' },
+          { to: '/impact', icon: 'star', h: 'Our impact', p: 'What OHRR does in a year' },
+        ]}
       />
       <Section>
         <div className="grid gap-10 md:grid-cols-3">
@@ -174,33 +179,18 @@ export default function About() {
 
           <aside className="space-y-4">
             <Callout className="!p-6">
-              <h2 className="font-display text-lg font-extrabold text-brand-blue">Visit us</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-700">
-                {OHRR.street}
-                <br />
-                {OHRR.cityStateZip}
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{OHRR.landmark}</p>
+              <h2 id="visit" className="font-display text-lg font-extrabold text-brand-blue">Hours and visiting</h2>
               <p className="mt-3 text-sm text-slate-700">
                 Hop Shop &amp; Adoption Center: <strong>{org.hours}</strong>
                 <br />
                 {OHRR.hoursNote}
               </p>
-              <p className="mt-3 text-sm">
-                <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
-                  {OHRR.email}
-                </a>
-              </p>
-              <p className="mt-1 text-sm">
-                <a href={OHRR.mapsHref} {...ext} className="font-semibold text-brand-blue">
-                  Directions
-                </a>
-              </p>
+              <VisitNote className="mt-3 !text-sm" />
+              <NoDropOffNote className="mt-3 !text-sm" />
               <p className="mt-4 text-xs text-slate-600">
                 501(c)(3) nonprofit · EIN {OHRR.ein} · {OHRR.phone}
               </p>
             </Callout>
-            <LinkCard to="/contact" icon="mail" h="Contact us" p="Address, hours, email, social media and media inquiries." cta="Contact →" />
             <LinkCard to="/hop-shop" icon="bag" h="Hop Shop" p="Rabbit food, supplies and toys at the Adoption Center. Profits support OHRR." cta="Hop Shop →" />
             <LinkCard to="/partners" icon="star" h="Partners" p="The businesses and organizations that support OHRR and Midwest BunFest." cta="Partners →" />
             <LinkCard to="/surrender" icon="mappin" h="Found a rabbit? Need to surrender?" p="Our admissions policy, the surrender forms, and how field rescues work." cta="Admissions →" />

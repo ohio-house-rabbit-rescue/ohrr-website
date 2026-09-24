@@ -52,16 +52,10 @@ export default function Help() {
       <PageHero
         title="Bunny Help"
         subtitle="Tell us what your bunny is doing and we’ll point you to OHRR’s own care guidance — never a diagnosis."
-      />
-      <Section>
-        <Card className="space-y-4">
+        aside={
           <label className="block">
             <span className="font-display text-xl font-extrabold text-ink">Is something up with your bunny?</span>
-            <span className="mt-1 block text-base leading-relaxed text-slate-600">
-              Ask it the way you’d ask a friend — “did my bunny stop eating?”, “why is she chewing cords?”, “is his
-              poop normal?”. You’ll get OHRR’s own guidance, never a diagnosis.
-            </span>
-            <span className="relative mt-3 block">
+            <span className="relative mt-2 block">
               <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-blue" />
               <input
                 type="search"
@@ -74,7 +68,12 @@ export default function Help() {
                 className="w-full rounded-full border border-brand-blue/30 bg-white py-3 pl-12 pr-4 text-base text-ink outline-none transition placeholder:text-slate-500 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
               />
             </span>
+            <span className="mt-1.5 block text-sm text-slate-600">Ask it the way you’d ask a friend.</span>
           </label>
+        }
+      />
+      <Section>
+        <Card className="space-y-4">
 
           {!active && (
             <div className="flex flex-wrap gap-2">

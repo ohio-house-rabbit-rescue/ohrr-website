@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PageHero, Section, btn, ext, H2, Card, Callout } from '../components/ui'
+import { PageHero, Section, btn, ext, H2, Card, Callout, NoDropOffNote } from '../components/ui'
 import {
   OHRR,
   CHRS_TIPLINE,
@@ -16,8 +16,14 @@ export default function Surrender() {
       <PageHero
         title="Found a rabbit? Need to surrender?"
         subtitle="How admissions work at OHRR, the two surrender forms, and how field rescues of stray domestic rabbits are coordinated in Columbus."
+        doors={[
+          { to: '/found', icon: 'mappin', h: 'I found a rabbit', p: 'Domestic or wild, and who to tell' },
+          { href: '#surrender', icon: 'home', h: 'I need to surrender my rabbit', p: 'Check for space, then the form' },
+          { href: '#policy', icon: 'info', h: 'How admissions work', p: 'OHRR’s admissions policy, in brief' },
+        ]}
       />
       <Section>
+        <NoDropOffNote link={false} className="mb-6" />
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <h3 className="font-display text-lg font-extrabold text-brand-blue">I found a rabbit outdoors</h3>
@@ -55,7 +61,7 @@ export default function Surrender() {
           </Card>
 
           <Card>
-            <h3 className="font-display text-lg font-extrabold text-brand-blue">I need to surrender a rabbit</h3>
+            <h3 id="surrender" className="font-display text-lg font-extrabold text-brand-blue">I need to surrender a rabbit</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
               If you are considering bringing a rabbit to OHRR, first email{' '}
               <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
@@ -76,7 +82,7 @@ export default function Surrender() {
           </Card>
         </div>
 
-        <H2 className="mt-12">Admissions policy, in brief</H2>
+        <H2 id="policy" className="mt-12">Admissions policy, in brief</H2>
         <div className="mt-4 max-w-3xl space-y-4 text-base leading-relaxed text-slate-700">
           <p>
             Ohio House Rabbit Rescue, Inc. is a <strong>restricted-admissions organization</strong>. If space is

@@ -59,9 +59,14 @@ export default function Adopt() {
       <PageHero
         title="Adopt a rabbit"
         subtitle="Meet the rabbits looking for homes at OHRR. Adoptions are by appointment on Saturdays and Sundays at our Columbus Adoption Center."
+        doors={[
+          { href: '#rabbits', icon: 'heart', h: 'Meet the rabbits', p: 'Everyone looking for a home right now' },
+          { href: '#how', icon: 'info', h: 'How adopting works', p: 'The steps, and what to have ready' },
+          { to: APPLY, icon: 'book', h: 'Start an application', p: 'The first step to adopting' },
+        ]}
       />
       <Section>
-        <H2>Rabbits looking for homes</H2>
+        <H2 id="rabbits">Rabbits looking for homes</H2>
         <LiveNote source={source} />
         {rabbits === null ? (
           <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -97,7 +102,7 @@ export default function Adopt() {
         </p>
 
         <div className="mt-12">
-          <H2>How adopting works</H2>
+          <H2 id="how">How adopting works</H2>
           <p className="mt-2 max-w-2xl text-slate-600">
             At OHRR, adoptions are done by appointment on Saturdays and Sundays. Here is the process,
             step by step.

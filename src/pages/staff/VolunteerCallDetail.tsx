@@ -356,8 +356,9 @@ function ShareTab({ call, org }: { call: Call; org: OrgBits }) {
       closing: 'With thanks,',
       signer: { name: org.signerName, title: org.signerTitle },
       qr: { url: msg.link, caption: msg.link.replace(/^https:\/\//, '') },
-      footer: [org.name, org.address, org.email].filter(Boolean).join(' · '),
-      org,
+      // A call letter gets pinned up, so no street address (OHRR keeps it off public things).
+      footer: [org.name, org.email].filter(Boolean).join(' · '),
+      org: { ...org, address: '' },
     })
     return canvasToBlob(canvas)
   }

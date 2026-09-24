@@ -62,7 +62,7 @@ export default function Privacy() {
 
           <H>Who we are</H>
           <P>
-            Ohio House Rabbit Rescue (OHRR), {OHRR.address}, is a 501(c)(3) nonprofit rabbit rescue (EIN {OHRR.ein}).
+            Ohio House Rabbit Rescue (OHRR), {OHRR.place}, is a 501(c)(3) nonprofit rabbit rescue (EIN {OHRR.ein}).
             Questions about this policy or your information: email{' '}
             <a href={OHRR.emailHref} className={a}>
               {OHRR.email}
@@ -211,7 +211,7 @@ export default function Privacy() {
 
           <H>Contact</H>
           <P>
-            Ohio House Rabbit Rescue, {OHRR.address} ·{' '}
+            Ohio House Rabbit Rescue, {OHRR.place} ·{' '}
             <a href={OHRR.emailHref} className={a}>
               {OHRR.email}
             </a>

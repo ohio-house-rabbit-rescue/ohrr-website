@@ -10,6 +10,9 @@
   --color-brand-orange-50: #fdf1e3;
   /* Orange as text needs to be darker than the brand orange to be readable. */
   --color-brand-orange-ink: #9a5208;
+  /* The brightest shade of the brand orange that still reads on white
+     (4.8:1) — for the one menu item OHRR wants to stand out: Volunteer. */
+  --color-brand-orange-nav: #b35900;
 
   --color-ink: #2f3a45;
   --color-canvas: #f7f4ee;
@@ -55,6 +58,10 @@ html {
   }
   body {
     overflow-wrap: break-word;
+  }
+  /* A jump link ("#shifts") lands below the sticky header, not under it. */
+  [id] {
+    scroll-margin-top: 8.5rem;
   }
 }
 body {
