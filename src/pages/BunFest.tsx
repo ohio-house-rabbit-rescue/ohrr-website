@@ -62,9 +62,9 @@ export default function BunFest() {
       <PageHero title={event?.title ?? 'Midwest BunFest'} subtitle={subtitle} />
       <Section>
         <div className="grid items-center gap-8 md:grid-cols-2">
-          <div className="rounded-3xl bg-gradient-to-br from-[#1690bf] to-[#0f7197] p-6 shadow-xl">
-            <div className="rounded-2xl bg-white p-5">
-              <img src="/img/bunfest-2026-logo.png" alt="Midwest BunFest" className="mx-auto block w-full max-w-xs" />
+          <div className="order-last rounded-3xl bg-gradient-to-br from-[#1690bf] to-[#0f7197] p-4 shadow-xl md:order-none md:p-6">
+            <div className="rounded-2xl bg-white p-4 md:p-5">
+              <img src="/img/bunfest-2026-logo.png" alt="Midwest BunFest" className="mx-auto block w-full max-w-[14rem] md:max-w-xs" />
             </div>
           </div>
           <div>
@@ -77,7 +77,7 @@ export default function BunFest() {
                     This year's theme: {event.theme}
                   </span>
                 )}
-                <p className="mt-3 font-display text-2xl font-black text-ink">Mark your calendars!</p>
+                <p className={`${event.theme ? 'mt-3' : ''} font-display text-2xl font-black text-ink`}>Mark your calendars!</p>
                 <EventWhenWhere e={event} />
                 <Facts info={event.info} />
                 {event.summary && (

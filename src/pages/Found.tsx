@@ -22,19 +22,20 @@ export default function Found() {
             <h2 className="font-display text-xl font-extrabold text-ink">Report it</h2>
             <p className="mt-2 text-base leading-relaxed text-slate-700">
               In Columbus, stray reports go to the CHRS Help Line — they coordinate the Columbus Rabbit Field Rescue
-              volunteers. Include:
+              volunteers.
             </p>
-            <ul className="mt-3 list-disc space-y-1.5 pl-5 text-base text-slate-700">
-              {reportDetails.map((d) => (
-                <li key={d}>{d}</li>
-              ))}
-            </ul>
-            <div className="mt-5">
+            <div className="mt-4">
               <Link to="/found/report" className={btn.orange}>
                 Report it here — with a photo
               </Link>
             </div>
-            <div className="mt-3 flex flex-wrap gap-3">
+            <p className="mt-4 text-base text-slate-700">However you report it, include:</p>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-base text-slate-700">
+              {reportDetails.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+            <div className="mt-4 flex flex-wrap gap-3">
               <a href={`mailto:${foundContacts.ohrrEmail}?subject=Stray%20domestic%20rabbit`} className={btn.outline}>
                 Email OHRR
               </a>

@@ -44,6 +44,19 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* A grid with no column setting (the phone layout of most sections) used an
+   auto column, so one long email address or name made the whole page wider
+   than the phone. One shrinkable column instead; the grid-cols-* utilities
+   still win because they are in the utilities layer. Long words wrap. */
+@layer base {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body {
+    overflow-wrap: break-word;
+  }
+}
 body {
   margin: 0;
   font-family: var(--font-sans);

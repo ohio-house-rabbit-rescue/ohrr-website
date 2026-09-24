@@ -54,7 +54,7 @@ export default function Header() {
 
       {/* The top bar: contact, search, and the one link to the app */}
       <div className="border-b border-slate-100 bg-canvas">
-        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-4 py-1.5 sm:px-5">
+        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-4 sm:px-5">
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
               to="/contact"
@@ -80,9 +80,9 @@ export default function Header() {
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-5 xl:gap-8">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-5 xl:gap-8">
         <Link to="/" className="flex min-w-0 items-center gap-3">
-          <img src="/img/ohrr-mark.png" alt="" className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14" />
+          <img src="/img/ohrr-mark.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-12 sm:w-12" />
           <span className="min-w-0 leading-tight">
             <span className="block font-display text-lg font-black text-brand-blue sm:text-xl xl:whitespace-nowrap xl:text-lg">Ohio House Rabbit Rescue</span>
             <span className="hidden text-xs font-bold uppercase tracking-wider text-brand-orange-ink sm:block">
@@ -117,7 +117,7 @@ export default function Header() {
 
       {/* A laptop too narrow for one row gets the whole menu on a second row */}
       <nav aria-label="Main" className="hidden border-t border-slate-100 lg:block xl:hidden">
-        <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-5 py-1.5">
+        <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-5 py-0.5">
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} className={linkClass}>
               {n.label}

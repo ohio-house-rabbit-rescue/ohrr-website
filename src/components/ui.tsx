@@ -23,7 +23,7 @@ export const ext = { target: '_blank', rel: 'noopener' } as const
 
 export function Section({ children, className = '', id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={`mx-auto max-w-6xl px-5 py-12 md:py-20 ${className}`}>
+    <section id={id} className={`mx-auto max-w-6xl px-5 py-8 md:py-12 ${className}`}>
       {children}
     </section>
   )
@@ -32,7 +32,9 @@ export function Section({ children, className = '', id }: { children: ReactNode;
 /**
  * The page title band. Every page says where it is and offers a way back:
  * "Home › Adopt › Adoption policy". `parent` names the section a sub-page
- * belongs to.
+ * belongs to. Kept short (2026-09-24, OHRR: "the important things above the
+ * fold") — a light band, not a tall coloured app header, so the page's own
+ * content starts on the first screen.
  */
 export function PageHero({
   title,
@@ -43,11 +45,11 @@ export function PageHero({
   subtitle?: string
   parent?: { to: string; label: string }
 }) {
-  const crumb = 'font-semibold text-white/90 underline decoration-white/40 underline-offset-4 hover:decoration-white'
+  const crumb = 'font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-4 hover:decoration-brand-blue'
   return (
-    <div className="bg-gradient-to-b from-brand-blue to-brand-blue-dark text-white">
-      <div className="mx-auto max-w-6xl px-5 py-8 md:py-14">
-        <nav aria-label="You are here" className="no-print mb-3 text-sm text-white/80">
+    <div className="border-b border-brand-blue/10 bg-brand-blue-50">
+      <div className="mx-auto max-w-6xl px-5 py-5 md:py-7">
+        <nav aria-label="You are here" className="no-print mb-1.5 text-sm text-slate-600">
           <Link to="/" className={crumb}>
             Home
           </Link>
@@ -66,10 +68,8 @@ export function PageHero({
           </span>
           <span aria-current="page">{title}</span>
         </nav>
-        <h1 className="font-display text-3xl font-black leading-tight md:text-5xl">{title}</h1>
-        {subtitle && (
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-white/85 md:text-lg">{subtitle}</p>
-        )}
+        <h1 className="font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
       </div>
     </div>
   )
@@ -86,7 +86,8 @@ export function LiveNote({ source }: { source: Source }) {
   )
 }
 
-export function RabbitCard({ r }: { r: Rabbit }) {
+/** `compact`: name and details only, for the home page's row of rabbits. */
+export function RabbitCard({ r, compact = false }: { r: Rabbit; compact?: boolean }) {
   const meta = [r.age, r.sex, r.breed].filter(Boolean).join(' · ')
   return (
     <Link
@@ -102,9 +103,9 @@ export function RabbitCard({ r }: { r: Rabbit }) {
           </div>
         )}
       </div>
-      <div className="p-4">
+      <div className={compact ? 'p-3' : 'p-4'}>
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-display text-lg font-extrabold text-ink">{r.name}</h3>
+          <h3 className={`font-display font-extrabold text-ink ${compact ? 'text-base' : 'text-lg'}`}>{r.name}</h3>
           {r.bonded && (
             <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange-ink">
               Pair
@@ -117,8 +118,8 @@ export function RabbitCard({ r }: { r: Rabbit }) {
           )}
         </div>
         {meta && <p className="mt-0.5 text-sm font-semibold text-slate-500">{meta}</p>}
-        {r.description && <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">{r.description}</p>}
-        <span className="mt-2 inline-block text-sm font-bold text-brand-blue">Meet {r.name} →</span>
+        {!compact && r.description && <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">{r.description}</p>}
+        {!compact && <span className="mt-2 inline-block text-sm font-bold text-brand-blue">Meet {r.name} →</span>}
       </div>
     </Link>
   )
