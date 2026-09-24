@@ -66,14 +66,15 @@ export default function HomeBunnyHelp() {
 
   return (
     <div ref={box} className="relative rounded-xl border border-slate-200 bg-white px-4 py-2.5">
-      <label className="block">
-        <span className="flex items-center gap-3.5">
+      {/* Title and question box share one line on a laptop, to keep the first screen full */}
+      <label className="block lg:flex lg:items-center lg:gap-4">
+        <span className="flex shrink-0 items-center gap-3.5">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue-50 text-brand-blue" aria-hidden="true">
             <Icon name="help" size={22} />
           </span>
           <span className="font-display text-lg font-extrabold leading-snug text-ink">Help with my rabbit</span>
         </span>
-        <span className="relative mt-2 block">
+        <span className="relative mt-2 block lg:mt-0 lg:flex-1">
           <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-blue" />
           <input
             ref={input}

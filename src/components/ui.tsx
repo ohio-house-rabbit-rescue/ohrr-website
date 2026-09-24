@@ -45,7 +45,7 @@ export interface Door {
 
 export function DoorList({ doors, className = '' }: { doors: Door[]; className?: string }) {
   const row =
-    'group flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-brand-blue'
+    'group flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 transition hover:border-brand-blue'
   return (
     <ul className={`grid gap-2.5 ${className}`}>
       {doors.map((d) => {

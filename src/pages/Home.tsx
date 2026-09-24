@@ -29,7 +29,7 @@ function Purpose() {
   // laptop the photos take the right-hand column beside all three.
   return (
     <section className="border-b border-brand-blue/10 bg-brand-blue-50">
-      <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-x-12 lg:gap-y-4">
+      <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:py-6 lg:gap-x-12 lg:gap-y-4">
         <div className="lg:col-start-1 lg:row-start-1">
           {easter && (
             <Link
@@ -45,8 +45,8 @@ function Purpose() {
               <span aria-hidden="true" className="ml-auto font-bold text-brand-blue">→</span>
             </Link>
           )}
-          <p className="text-sm font-extrabold uppercase tracking-wider text-brand-blue">Columbus, Ohio · since 2009</p>
-          <h1 className="mt-2 font-display text-2xl font-black leading-tight text-ink sm:text-4xl">
+          <p className="mb-2 text-sm font-extrabold uppercase tracking-wider text-brand-blue sm:hidden">Columbus, Ohio · since 2009</p>
+          <h1 className="font-display text-2xl font-black leading-tight text-ink sm:text-4xl lg:text-[2.375rem]">
             Rescuing abandoned pet rabbits and finding them homes
           </h1>
         </div>
@@ -129,7 +129,7 @@ function WhatsHappening() {
   const { happening } = useHeroSlides()
   if (happening.length === 0) return null
   return (
-    <Section className="!pb-4 !pt-8 md:!pt-10">
+    <Section className="!pb-4 !pt-6 md:!pt-8 lg:!pt-6">
       <h2 className="font-display text-2xl font-black text-ink sm:text-3xl">What’s happening at OHRR</h2>
       <ul className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {happening.map((s) => (
