@@ -1,7 +1,7 @@
 import { useCareArticles } from '../lib/data'
 import { PageHero, Section, LiveNote, LinkCard, H2 } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
-import { CHRS_SITE, HRS_SITE } from '../lib/constants'
+import { CHRS_SITE, HRS_SITE, RABBIT_READY } from '../lib/constants'
 import { CARE_DISCLAIMER } from '../data/careArticles'
 
 function dedupe<T extends { title: string; externalUrl?: string | null }>(list: T[]): T[] {
@@ -34,6 +34,7 @@ export default function Learn() {
           { to: '/help', icon: 'help', h: 'Bunny Help', p: 'Ask about something your bunny is doing' },
           { to: '/learn/vets', icon: 'phone', h: 'Rabbit-savvy vets', p: 'Across Ohio, including emergency care' },
           { to: '/learn/breeds', icon: 'search', h: 'What kind of bunny do I have?', p: 'Ears, size and coat' },
+          { to: RABBIT_READY, icon: 'heart', h: 'Thinking about getting a rabbit?', p: 'The two-minute check first' },
         ]}
       />
       <PresentedBy surface="care-library" />

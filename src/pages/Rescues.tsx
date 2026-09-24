@@ -61,7 +61,7 @@ export function RescueContact({ r, compact = false }: { r: Rescue; compact?: boo
 
 function RescueCard({ r }: { r: Rescue }) {
   return (
-    <Card className={r.host ? 'ring-1 ring-brand-blue/30' : ''}>
+    <Card className={`flex flex-col ${r.host ? 'ring-1 ring-brand-blue/30' : ''}`}>
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
@@ -88,7 +88,7 @@ function RescueCard({ r }: { r: Rescue }) {
         </div>
       </div>
       <RescueContact r={r} compact />
-      <Link to={`/rescues/${r.id}`} className="mt-3 inline-block text-sm font-bold text-brand-orange">
+      <Link to={`/rescues/${r.id}`} className="mt-auto pt-3 text-sm font-bold text-brand-blue">
         Details →
       </Link>
     </Card>

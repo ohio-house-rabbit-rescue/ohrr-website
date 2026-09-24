@@ -209,12 +209,15 @@ export default function Give() {
           </Card>
         )}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {/* Rows like the Donate row, so different amounts of words never leave half-empty boxes */}
+        <div className="mt-4 space-y-4">
           {top.slice(1).map((w) => (
-            <Card key={w.h}>
-              <h2 className="font-display text-lg font-extrabold text-ink">{w.h}</h2>
-              <p className="mt-1 text-base text-slate-700">{w.p}</p>
-              <div className="mt-4">
+            <Card key={w.h} className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="font-display text-lg font-extrabold text-ink">{w.h}</h2>
+                <p className="mt-1 text-base text-slate-700">{w.p}</p>
+              </div>
+              <div className="shrink-0">
                 {w.href.startsWith('/') ? (
                   <Link to={w.href} className={btn.blue}>
                     {w.cta}

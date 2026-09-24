@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import { RABBIT_READY } from './lib/constants'
 import Home from './pages/Home'
 import Adopt from './pages/Adopt'
 import AdoptRabbit from './pages/AdoptRabbit'
@@ -150,6 +151,7 @@ export default function App() {
         <Route path="/learn/:slug" element={<LearnArticle />} />
         {/* Give / Adopt / About pages brought in from the old site — same table, other sections */}
         <Route path="/info/:slug" element={<LearnArticle />} />
+        <Route path="/thinking-about-a-rabbit" element={<Navigate to={RABBIT_READY} replace />} />
         <Route path="/volunteer" element={<Volunteer />} />
         <Route path="/volunteer/call/:slug" element={<VolunteerCall />} />
         <Route path="/bunfest" element={<BunFest />} />

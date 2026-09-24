@@ -25,7 +25,7 @@ export default function Surrender() {
       <Section>
         <NoDropOffNote link={false} className="mb-6" />
         <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+          <Card className="flex flex-col">
             <h3 className="font-display text-lg font-extrabold text-brand-blue">I found a rabbit outdoors</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
               First, check whether it is a wild cottontail or a domestic rabbit — domestic rabbits cannot
@@ -44,7 +44,7 @@ export default function Surrender() {
               </a>
               .
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-auto flex flex-wrap gap-2 pt-4">
               <Link to="/found" className={btn.orange}>
                 Found a rabbit — what to do
               </Link>
@@ -60,7 +60,7 @@ export default function Surrender() {
             </div>
           </Card>
 
-          <Card>
+          <Card className="flex flex-col">
             <h3 id="surrender" className="font-display text-lg font-extrabold text-brand-blue">I need to surrender a rabbit</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
               If you are considering bringing a rabbit to OHRR, first email{' '}
@@ -71,7 +71,7 @@ export default function Surrender() {
               rabbit, if that is an option. Then read the two policies below and complete the form that fits
               your situation.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-auto flex flex-wrap gap-2 pt-4">
               <Link to={GOOD_SAMARITAN_FORM} className={btn.orange}>
                 Good Samaritan rescue/surrender form
               </Link>

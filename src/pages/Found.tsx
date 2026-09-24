@@ -21,7 +21,8 @@ export default function Found() {
         ]}
       />
       <Section>
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* One column, in the order a finder needs it (a tall box beside a short one read as a mistake) */}
+        <div className="grid max-w-3xl gap-4">
           {/* Fast path: who to contact */}
           <Card className="border-brand-orange/30 bg-brand-orange-50/60">
             <h2 className="font-display text-xl font-extrabold text-ink">Report it</h2>

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useRabbits } from '../lib/data'
 import type { Rabbit } from '../lib/types'
 import { PageHero, Section, RabbitCard, LiveNote, btn, ext, H2, Card, Callout } from '../components/ui'
-import { APPLY, ADOPTION_POLICY_PDF, PETFINDER, ADOPT_A_PET, BUNNY_DATES_ARTICLE, OHRR } from '../lib/constants'
+import { APPLY, ADOPTION_POLICY_PDF, PETFINDER, ADOPT_A_PET, BUNNY_DATES_ARTICLE, OHRR, RABBIT_READY } from '../lib/constants'
 
 // From the OHRR Adoption Policy (revised January 31, 2022).
 const REQS = [
@@ -61,8 +61,8 @@ export default function Adopt() {
         subtitle="Meet the rabbits looking for homes at OHRR. Adoptions are by appointment on Saturdays and Sundays at our Columbus Adoption Center."
         doors={[
           { href: '#rabbits', icon: 'heart', h: 'Meet the rabbits', p: 'Everyone looking for a home right now' },
-          { href: '#how', icon: 'info', h: 'How adopting works', p: 'The steps, and what to have ready' },
-          { to: APPLY, icon: 'book', h: 'Start an application', p: 'The first step to adopting' },
+          { to: RABBIT_READY, icon: 'help', h: 'Is a rabbit right for us?', p: 'The two-minute check, before you decide' },
+          { href: '#how', icon: 'info', h: 'How adopting works', p: 'The steps, and the application' },
         ]}
       />
       <Section>
@@ -128,12 +128,12 @@ export default function Adopt() {
           </div>
         </div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <Card>
+        <div className="mt-12 grid gap-8 border-t border-slate-200 pt-8 md:grid-cols-2 md:gap-0 md:divide-x md:divide-slate-200">
+          <div className="md:pr-8">
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Still deciding?</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
               Start with the honest version:{' '}
-              <Link to="/info/is-a-rabbit-right-for-us" className="font-semibold text-brand-blue">
+              <Link to={RABBIT_READY} className="font-semibold text-brand-blue">
                 Is a rabbit right for us?
               </Link>{' '}
               and{' '}
@@ -155,8 +155,8 @@ export default function Adopt() {
               </a>{' '}
               and we will set up an hour-long appointment where you can learn about being a bunny parent.
             </p>
-          </Card>
-          <Card>
+          </div>
+          <div className="md:pl-8">
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Free bunny matchmaking</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
               Want a friend for your current rabbit? Bring your bunny to the Adoption Center for a
@@ -167,7 +167,7 @@ export default function Adopt() {
               </Link>
               .
             </p>
-          </Card>
+          </div>
         </div>
 
         <Callout className="mt-10">

@@ -252,14 +252,16 @@ export function LinkCard({
   cta?: string
   icon?: IconName
 }) {
+  // Cards in a row match: the summary stops at three lines and the link sits
+  // on the bottom edge, whatever the length of each card's words.
   const cls =
-    'group block rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
+    'group flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
   const inner = (
     <>
       {icon && <IconTile name={icon} className="mb-4" />}
       <h3 className="font-display text-lg font-extrabold text-brand-blue">{h}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p}</p>
-      <span className="mt-2 inline-block text-sm font-bold text-brand-blue">{cta}</span>
+      <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-slate-600">{p}</p>
+      <span className="mt-auto pt-3 text-sm font-bold text-brand-blue">{cta}</span>
     </>
   )
   if (to) {

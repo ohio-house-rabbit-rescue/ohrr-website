@@ -2,6 +2,8 @@ import { Link, useParams } from 'react-router-dom'
 import { useCareArticles } from '../lib/data'
 import { PageHero, Section, LiveNote, btn, ext, PrintButton, ArticleBody, Callout } from '../components/ui'
 import { CARE_DISCLAIMER } from '../data/careArticles'
+import ReadyCheck from '../components/ReadyCheck'
+import { RABBIT_READY } from '../lib/constants'
 
 export default function LearnArticle() {
   const { slug } = useParams()
@@ -19,6 +21,7 @@ export default function LearnArticle() {
   }
 
   const a = articles.find((x) => x.slug === slug)
+  const ready = !!a && `/info/${a.slug}` === RABBIT_READY
   const section = a?.section ?? 'care'
   const back = section === 'give' ? { to: '/give', label: '← Ways to give' } : section === 'adopt' ? { to: '/adopt', label: '← Adopt' } : section === 'about' ? { to: '/about', label: '← About' } : section === 'volunteer' ? { to: '/volunteer', label: '← Volunteer' } : { to: '/learn', label: '← All care articles' }
   if (!a) {
@@ -36,7 +39,19 @@ export default function LearnArticle() {
 
   return (
     <>
-      <PageHero title={a.title} subtitle={a.summary} />
+      <PageHero
+        title={a.title}
+        subtitle={a.summary}
+        doors={
+          ready
+            ? [
+                { href: '#check', icon: 'help', h: 'Take the two-minute check', p: 'Seven honest questions' },
+                { to: '/adopt', icon: 'heart', h: 'Meet the rabbits', p: 'Still a yes? Come and meet them' },
+                { to: '/book/bunny-socialization', icon: 'users', h: 'Spend time with rabbits first', p: 'A socialization shift, from age 6' },
+              ]
+            : undefined
+        }
+      />
       <Section className="print-urls">
         <div className="no-print flex flex-wrap items-center gap-3">
           <Link to={back.to} className={btn.outline}>
@@ -46,6 +61,11 @@ export default function LearnArticle() {
         </div>
         <LiveNote source={source} />
         <p className="print-only font-display text-2xl font-black">{a.title}</p>
+        {ready && (
+          <div className="no-print mt-8 max-w-3xl">
+            <ReadyCheck />
+          </div>
+        )}
 
         <div className="mt-8 grid gap-10 md:grid-cols-3">
           <div className="md:col-span-2">

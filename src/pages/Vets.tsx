@@ -32,7 +32,7 @@ function hostOf(url: string): string {
 function VetCard({ v }: { v: Vet }) {
   const hasStreet = v.address && !/^in-home/i.test(v.address)
   return (
-    <div className="print-break-inside-avoid rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+    <div className="print-break-inside-avoid flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-display text-lg font-extrabold text-ink">{v.name}</h3>
         {v.isEmergency && (
@@ -54,47 +54,50 @@ function VetCard({ v }: { v: Vet }) {
       {v.doctors && <p className="mt-1 text-sm font-semibold text-slate-500">{v.doctors}</p>}
       {v.notes && <p className="mt-1.5 text-sm text-slate-600">{v.notes}</p>}
       {v.givesRhdv2 && v.rhdv2Note && <p className="mt-1.5 text-sm text-slate-600">RHDV2 vaccine: {v.rhdv2Note}</p>}
-      {(v.address || v.city) && (
-        <p className="mt-2 text-sm text-slate-700">
-          {v.address}
-          {v.address && v.city ? <br /> : null}
-          {v.city}
-          {hasStreet && (
-            <>
-              {' '}
-              <a href={mapsHref(v)} {...ext} className="no-print font-semibold text-brand-blue">
-                (map)
-              </a>
-            </>
+      {/* Contact details sit on the bottom edge, so a row of cards lines up */}
+      <div className="mt-auto">
+        {(v.address || v.city) && (
+          <p className="mt-2 text-sm text-slate-700">
+            {v.address}
+            {v.address && v.city ? <br /> : null}
+            {v.city}
+            {hasStreet && (
+              <>
+                {' '}
+                <a href={mapsHref(v)} {...ext} className="no-print font-semibold text-brand-blue">
+                  (map)
+                </a>
+              </>
+            )}
+          </p>
+        )}
+        <p className="mt-2 space-x-3 text-sm">
+          {v.phone && (
+            <a href={telHref(v.phone)} className="font-bold text-brand-blue">
+              {v.phone}
+            </a>
+          )}
+          {v.phone2 && (
+            <a href={telHref(v.phone2)} className="font-bold text-brand-blue">
+              {v.phone2}
+            </a>
           )}
         </p>
-      )}
-      <p className="mt-2 space-x-3 text-sm">
-        {v.phone && (
-          <a href={telHref(v.phone)} className="font-bold text-brand-blue">
-            {v.phone}
-          </a>
+        {v.email && (
+          <p className="mt-1 text-sm">
+            <a href={`mailto:${v.email}`} className="font-semibold text-brand-blue">
+              {v.email}
+            </a>
+          </p>
         )}
-        {v.phone2 && (
-          <a href={telHref(v.phone2)} className="font-bold text-brand-blue">
-            {v.phone2}
-          </a>
+        {v.website && (
+          <p className="mt-1 text-sm">
+            <a href={v.website} {...ext} className="font-semibold text-brand-blue">
+              {hostOf(v.website)}
+            </a>
+          </p>
         )}
-      </p>
-      {v.email && (
-        <p className="mt-1 text-sm">
-          <a href={`mailto:${v.email}`} className="font-semibold text-brand-blue">
-            {v.email}
-          </a>
-        </p>
-      )}
-      {v.website && (
-        <p className="mt-1 text-sm">
-          <a href={v.website} {...ext} className="font-semibold text-brand-blue">
-            {hostOf(v.website)}
-          </a>
-        </p>
-      )}
+      </div>
     </div>
   )
 }

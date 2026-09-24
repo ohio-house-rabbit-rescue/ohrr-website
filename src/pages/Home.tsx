@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useFeaturedRabbits, useEvents } from '../lib/data'
 import { btn, ext, RabbitCard, LiveNote, Section, DoorList, type Door } from '../components/ui'
+import HomeBunnyHelp from '../components/HomeBunnyHelp'
+import { easterAhead } from '../lib/season'
 import PresentedBy from '../components/PresentedBy'
-import { HelpSearchBox } from '../components/HelpSearchBox'
 import { useOrgProfile } from '../lib/orgProfile'
 import { formatDate, isUpcoming } from '../lib/format'
-import { DONATE, OHRR } from '../lib/constants'
+import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
 
 // The home page, built around the rescue's purpose (2026-09-24). OHRR's
 // mission, in its own words on the About page: run the Adoption Center,
@@ -16,15 +17,31 @@ import { DONATE, OHRR } from '../lib/constants'
 // — BunFest, the Hop Shop, news, sponsors — is one quiet line or the footer.
 
 function Purpose() {
+  // Help with my rabbit is a question box (HomeBunnyHelp) rather than a link,
+  // so Bunny Help starts on the first screen.
   const doors: Door[] = [
     { to: '/adopt', icon: 'heart', h: 'Adopt a rabbit', p: 'The rabbits, and how adopting works' },
-    { to: '/help', icon: 'help', h: 'Help with my rabbit', p: 'Bunny Help, care guides and vets' },
     { to: '/surrender', icon: 'mappin', h: 'Found or surrendering a rabbit', p: 'Strays, admissions and surrender' },
   ]
+  const easter = easterAhead()
   return (
     <section className="border-b border-brand-blue/10 bg-brand-blue-50">
-      <div className="mx-auto grid max-w-6xl gap-5 px-5 py-6 md:py-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-12">
+      <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-12">
         <div>
+          {easter && (
+            <Link
+              to={RABBIT_READY}
+              className="mb-4 flex items-center gap-2 rounded-xl border border-brand-orange/40 bg-brand-orange-50 px-4 py-2.5 text-base text-slate-800 hover:border-brand-orange"
+            >
+              <span>
+                <strong className="text-ink">
+                  Easter is {easter.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}. Thinking about a bunny?
+                </strong>{' '}
+                Read this first.
+              </span>
+              <span aria-hidden="true" className="ml-auto font-bold text-brand-blue">→</span>
+            </Link>
+          )}
           <p className="text-sm font-extrabold uppercase tracking-wider text-brand-blue">Columbus, Ohio · since 2009</p>
           <h1 className="mt-2 font-display text-2xl font-black leading-tight text-ink sm:text-4xl">
             Rescuing abandoned pet rabbits and finding them homes
@@ -34,7 +51,10 @@ function Purpose() {
             companions, so fewer are ever given up.
           </p>
         </div>
-        <DoorList doors={doors} />
+        <div className="grid gap-2.5">
+          <DoorList doors={doors} />
+          <HomeBunnyHelp />
+        </div>
       </div>
     </section>
   )
@@ -60,16 +80,21 @@ function Rabbits() {
   )
 }
 
-function AskBunnyHelp() {
+// Before anyone buys or adopts: OHRR's two-minute check (2026-09-24, OHRR's
+// research: rabbits are given up almost always for human reasons).
+function ThinkingAboutARabbit() {
   return (
     <Section className="!py-4 md:!py-6">
-      <div className="rounded-2xl bg-brand-blue-50 p-5 sm:p-7">
-        <h2 className="font-display text-2xl font-black text-ink sm:text-3xl">Something wrong with your bunny?</h2>
-        <p className="mt-2 max-w-2xl text-base text-slate-700">
-          Type what you're seeing — "not eating", "hiding", "wet chin" — and get OHRR's own guidance, the urgent
-          things first. General guidance, not a diagnosis.
-        </p>
-        <HelpSearchBox compact className="mt-4" />
+      <div className="flex flex-col gap-4 rounded-2xl border border-brand-orange/40 bg-brand-orange-50 p-5 sm:p-6 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-2xl">
+          <h2 className="font-display text-2xl font-black text-ink">Thinking about getting a rabbit?</h2>
+          <p className="mt-1 text-base text-slate-700">
+            Read this before Easter, before the pet store, before the kids ask twice. Seven honest questions, two minutes.
+          </p>
+        </div>
+        <Link to={RABBIT_READY} className={`${btn.orange} shrink-0`}>
+          Take the two-minute check
+        </Link>
       </div>
     </Section>
   )
@@ -144,8 +169,8 @@ export default function Home() {
     <>
       <Purpose />
       <Rabbits />
+      <ThinkingAboutARabbit />
       <PresentedBy surface="home" />
-      <AskBunnyHelp />
       <HowToHelp />
       <ThisWeekLine />
     </>

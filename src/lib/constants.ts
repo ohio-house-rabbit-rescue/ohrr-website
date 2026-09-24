@@ -51,6 +51,10 @@ export const OHIO_WILDLIFE_CENTER = 'https://www.ohiowildlifecenter.org/wildlife
 // The live site's SignUp.com links, for reference only:
 //   http://signup.com/go/35ayZe (Bunny Socialization) · http://signup.com/go/WuT2xR (Buncare)
 
+// OHRR's "Is a rabbit right for us?" page (a staff-edited article) with the
+// two-minute check. Flyers and QR codes already print this path — keep it.
+export const RABBIT_READY = '/info/is-a-rabbit-right-for-us'
+
 // The street address appears in a select place or two, as on OHRR's current
 // site: the footer and the Hop Shop page (2026-09-24, OHRR: people need to
 // find it, but with it on Contact and everywhere else they drop rabbits off

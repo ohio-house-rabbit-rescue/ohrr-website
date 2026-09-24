@@ -150,27 +150,29 @@ export default function Volunteer() {
         {opps === null ? (
           <p className="mt-6 text-base text-slate-600">Loading…</p>
         ) : live ? (
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="mt-6 space-y-4">
             {opps.map((o) => {
               const left = remainingLabel(o)
               const full = isFull(o)
               return (
-                <Card key={o.id} className="flex flex-col">
-                  <span className="text-sm font-bold uppercase tracking-wider text-brand-blue">{categoryLabel(o.category)}</span>
-                  <h3 className="mt-1 font-display text-xl font-extrabold text-ink">{o.title}</h3>
-                  {(o.when_text || o.where_text) && (
-                    <p className="mt-1 text-base text-slate-700">{[o.when_text, o.where_text].filter(Boolean).join(' · ')}</p>
-                  )}
-                  {o.detail && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{o.detail}</p>}
-                  {left && <p className={`mt-2 text-base font-bold ${full ? 'text-slate-600' : 'text-brand-orange-ink'}`}>{left}</p>}
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    {!full && <SignupButton category={o.category} title={o.title} />}
-                    {o.contact_email && (
-                      <a href={`mailto:${o.contact_email}`} className="text-base font-semibold text-brand-blue">
-                        Questions? Email {o.contact_email}
-                      </a>
+                <Card key={o.id} className="lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-8">
+                  <div>
+                    <span className="text-sm font-bold uppercase tracking-wider text-brand-blue">{categoryLabel(o.category)}</span>
+                    <h3 className="mt-1 font-display text-xl font-extrabold text-ink">{o.title}</h3>
+                    {(o.when_text || o.where_text) && (
+                      <p className="mt-1 text-base text-slate-700">{[o.when_text, o.where_text].filter(Boolean).join(' · ')}</p>
                     )}
+                    {left && <p className={`mt-2 text-base font-bold ${full ? 'text-slate-600' : 'text-brand-orange-ink'}`}>{left}</p>}
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      {!full && <SignupButton category={o.category} title={o.title} />}
+                      {o.contact_email && (
+                        <a href={`mailto:${o.contact_email}`} className="break-all text-base font-semibold text-brand-blue">
+                          Questions? Email {o.contact_email}
+                        </a>
+                      )}
+                    </div>
                   </div>
+                  {o.detail && <p className="mt-3 whitespace-pre-line text-base text-slate-700 lg:mt-0">{o.detail}</p>}
                 </Card>
               )
             })}
@@ -212,13 +214,13 @@ export default function Volunteer() {
         <div className="mt-12">
           <H2>Two more ways in</H2>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card className="flex flex-col">
               <h3 className="font-display text-xl font-extrabold text-ink">Foster a rabbit</h3>
               <p className="mt-1.5 text-base text-slate-700">
                 A few weeks with a rabbit in your home while they recover or wait for a family. Renters and students
                 welcome — it is the easiest first step there is.
               </p>
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="mt-auto flex flex-wrap gap-3 pt-4">
                 <Link to="/volunteer/foster" className={btn.orange}>
                   I’m interested
                 </Link>
@@ -227,13 +229,13 @@ export default function Volunteer() {
                 </Link>
               </div>
             </Card>
-            <Card>
+            <Card className="flex flex-col">
               <h3 className="font-display text-xl font-extrabold text-ink">Help OHRR online</h3>
               <p className="mt-1.5 text-base text-slate-700">
                 Good with Instagram, TikTok or short video? An hour a week posting from OHRR’s ready-made Share kit
                 reaches the people the rescue is missing. Students: this counts as real experience.
               </p>
-              <div className="mt-4">
+              <div className="mt-auto pt-4">
                 <Link to="/volunteer/interest?role=Social%20media%20%26%20digital%20content" className={btn.blue}>
                   Count me in
                 </Link>
