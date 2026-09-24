@@ -10,6 +10,10 @@
 // be approved — for everything, or just some kinds of volunteering — before
 // they can sign up for shifts that need approval. OHRR's top tier also sees
 // the certificates to consider, and sets the hours that earn one.
+//
+// Update 28: volunteers have a trust level. A trusted volunteer's self-logged
+// hours count straight away (marked self-reported, and staff can still
+// un-confirm them); everyone else's wait here to be confirmed, as before.
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import QRCode from 'qrcode'
@@ -34,6 +38,7 @@ import {
   openCertificateCount,
   pendingApplications,
   saveVolunteer,
+  selfReportedHours,
   setCertificateHours,
   setHoursStatus,
   setSuggestionStatus,
@@ -46,6 +51,7 @@ import {
   VOLUNTEER_STATUS,
   type HoursRow,
   type IssuedLetterRow,
+  type TrustLevel,
   type VolunteerRow,
 } from '../../lib/volunteers/api'
 import {
@@ -89,6 +95,10 @@ export default function Volunteers() {
   const [pending, setPending] = useState<HoursRow[]>([])
   // Applications and "approved for" need update 25's columns; null = still checking.
   const [approvals, setApprovals] = useState<boolean | null>(null)
+  // Trusted volunteers need update 28's column; null = still checking.
+  const [trust, setTrust] = useState<boolean | null>(null)
+  // Self-logged hours that already count (last 30 days); null = not shown (before update 28).
+  const [selfReported, setSelfReported] = useState<HoursRow[] | null>(null)
   // null = not shown (not allowed, or before update 25).
   const [suggestions, setSuggestions] = useState<CertificateSuggestion[] | null>(null)
   const [marks, setMarks] = useState<number[] | null>(null)
@@ -97,16 +107,20 @@ export default function Volunteers() {
   const load = useCallback(async () => {
     if (!orgId || !allowed) return
     try {
-      const [list, unconfirmed, ready, toConsider, hoursMarks] = await Promise.all([
+      const [list, unconfirmed, ready, toConsider, hoursMarks, trustReady, counted] = await Promise.all([
         listVolunteers(orgId),
         unconfirmedHours(orgId),
         columnsReady('volunteers', 'approved_for,review_status,applied_at,application'),
         canCertificates ? certificateSuggestions(orgId) : Promise.resolve(null),
         canCertificates ? certificateHours(orgId) : Promise.resolve(null),
+        columnsReady('volunteers', 'trust_level'),
+        selfReportedHours(orgId),
       ])
       setRows(list)
       setPending(unconfirmed)
       setApprovals(ready)
+      setTrust(trustReady)
+      setSelfReported(trustReady ? counted : null)
       setSuggestions(toConsider)
       setMarks(hoursMarks)
     } catch (e) {
@@ -176,8 +190,8 @@ export default function Volunteers() {
 
       <FormError>{error}</FormError>
       {rows === null && !error && <Spinner />}
-      {rows && shown === 'roster' && <Roster orgId={orgId} rows={rows} approvals={approvals === true} onChanged={load} />}
-      {rows && shown === 'hours' && <ToConfirm rows={rows} pending={pending} onChanged={load} />}
+      {rows && shown === 'roster' && <Roster orgId={orgId} rows={rows} approvals={approvals === true} trust={trust === true} onChanged={load} />}
+      {rows && shown === 'hours' && <ToConfirm rows={rows} pending={pending} selfReported={selfReported} onChanged={load} />}
       {rows && shown === 'certificates' && suggestions && (
         <Certificates orgId={orgId} rows={rows} suggestions={suggestions} marks={marks} by={user?.id ?? null} onChanged={load} />
       )}
@@ -576,7 +590,20 @@ export function CertificatesNotice({ orgId, className }: { orgId: string; classN
 
 /* ================================================================ roster */
 
-function Roster({ orgId, rows, approvals, onChanged }: { orgId: string; rows: VolunteerRow[]; approvals: boolean; onChanged: () => Promise<void> }) {
+function Roster({
+  orgId,
+  rows,
+  approvals,
+  trust,
+  onChanged,
+}: {
+  orgId: string
+  rows: VolunteerRow[]
+  approvals: boolean
+  /** Update 28 has been run: Standard / Trusted. */
+  trust: boolean
+  onChanged: () => Promise<void>
+}) {
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<string | 'new' | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
@@ -617,7 +644,7 @@ function Roster({ orgId, rows, approvals, onChanged }: { orgId: string; rows: Vo
               exportCsv(
                 `ohrr-volunteers-${new Date().toISOString().slice(0, 10)}.csv`,
                 toCsv(
-                  ['Name', 'Status', 'Email', 'Phone', 'Roles', ...(approvals ? ['Approved for'] : []), 'Started', 'Orientation', 'Notes'],
+                  ['Name', 'Status', 'Email', 'Phone', 'Roles', ...(approvals ? ['Approved for'] : []), ...(trust ? ['Trusted'] : []), 'Started', 'Orientation', 'Notes'],
                   rows.map((r) => [
                     r.name,
                     statusLabel(r.status),
@@ -625,6 +652,7 @@ function Roster({ orgId, rows, approvals, onChanged }: { orgId: string; rows: Vo
                     r.phone ?? '',
                     r.roles.join('; '),
                     ...(approvals ? [(r.approved_for ?? []).map(kindLabel).join('; ')] : []),
+                    ...(trust ? [r.trust_level === 'trusted' ? 'Yes' : 'No'] : []),
                     r.started_on ?? '',
                     r.orientation_on ?? '',
                     r.notes ?? '',
@@ -645,6 +673,7 @@ function Roster({ orgId, rows, approvals, onChanged }: { orgId: string; rows: Vo
             orgId={orgId}
             initial={null}
             approvals={approvals}
+            trust={trust}
             onDone={async () => {
               setEditing(null)
               await onChanged()
@@ -669,6 +698,7 @@ function Roster({ orgId, rows, approvals, onChanged }: { orgId: string; rows: Vo
               orgId={orgId}
               initial={r}
               approvals={approvals}
+              trust={trust}
               onDone={async () => {
                 setEditing(null)
                 await onChanged()
@@ -683,6 +713,7 @@ function Roster({ orgId, rows, approvals, onChanged }: { orgId: string; rows: Vo
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-display text-lg font-extrabold text-ink">{r.name}</span>
                   {r.status !== 'active' && <Badge tone="slate">{statusLabel(r.status)}</Badge>}
+                  {trust && r.trust_level === 'trusted' && <Badge tone="blue">Trusted</Badge>}
                   {r.orientation_on && <Badge tone="blue">Orientation done</Badge>}
                   {approvals && r.review_status === 'pending' && <Badge tone="orange">Waiting for approval</Badge>}
                   {approvals && r.review_status === 'declined' && (r.approved_for ?? []).length === 0 && <Badge tone="slate">Application declined</Badge>}
@@ -815,7 +846,7 @@ function VolunteerDetail({ v, approvals, onChanged }: { v: VolunteerRow; approva
                   </span>
                   <span className="block text-sm text-slate-600">
                     {fmtDate(h.on_date)}
-                    {h.source === 'self' ? ' · logged by them' : h.source === 'checkin' ? ' · from a shift' : ' · added by staff'}
+                    {h.source === 'self' ? (h.status === 'confirmed' ? ' · self-reported' : ' · logged by them') : h.source === 'checkin' ? ' · from a shift' : ' · added by staff'}
                     {h.note ? ` · ${h.note}` : ''}
                   </span>
                 </span>
@@ -828,7 +859,17 @@ function VolunteerDetail({ v, approvals, onChanged }: { v: VolunteerRow; approva
                     Confirm
                   </button>
                 ) : (
-                  <Badge tone="blue">Confirmed</Badge>
+                  <>
+                    <Badge tone="blue">Confirmed</Badge>
+                    {/* Update 28: hours can be un-confirmed — e.g. a trusted volunteer's that need another look. */}
+                    <button
+                      type="button"
+                      onClick={() => setHoursStatus(h.id, 'logged').then(load).then(onChanged).catch((e) => setError(errMessage(e)))}
+                      className="inline-flex items-center justify-center rounded-full border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      Un-confirm
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"
@@ -872,6 +913,7 @@ function VolunteerForm({
   orgId,
   initial,
   approvals,
+  trust,
   onDone,
   onCancel,
 }: {
@@ -879,6 +921,8 @@ function VolunteerForm({
   initial: VolunteerRow | null
   /** Show "Approved for" (update 25 has run). */
   approvals: boolean
+  /** Show Standard / Trusted (update 28 has run). */
+  trust: boolean
   onDone: () => Promise<void>
   onCancel: () => void
 }) {
@@ -893,6 +937,7 @@ function VolunteerForm({
     notes: initial?.notes ?? '',
     // Someone staff add by hand is someone they know: approved for everything unless they change it.
     approved_for: initial ? (initial.approved_for ?? []) : [EVERYTHING],
+    trust_level: (initial?.trust_level ?? 'standard') as TrustLevel,
   })
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -917,6 +962,7 @@ function VolunteerForm({
         orientation_on: d.orientation_on || null,
         notes: d.notes.trim() || null,
         ...(approvals ? { approved_for: d.approved_for } : {}),
+        ...(trust ? { trust_level: d.trust_level } : {}),
       })
       await onDone()
     } catch (err) {
@@ -979,6 +1025,32 @@ function VolunteerForm({
             What they can sign up for where a shift or call is for approved volunteers only
             {d.status !== 'active' && d.approved_for.length > 0 ? ' — once they’re Active' : ''}.
           </p>
+        </div>
+      )}
+      {trust && (
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Trust</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="Trust">
+            {(
+              [
+                ['standard', 'Standard'],
+                ['trusted', 'Trusted'],
+              ] as [TrustLevel, string][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={d.trust_level === value}
+                onClick={() => setD({ ...d, trust_level: value })}
+                className={`min-h-[40px] rounded-full px-3.5 text-sm font-bold ${
+                  d.trust_level === value ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-sm text-slate-600">Trusted volunteers’ logged hours count straight away; you can still un-confirm them.</p>
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
@@ -1203,69 +1275,124 @@ function CertificateMarks({
 
 /* ============================================================ to confirm */
 
-function ToConfirm({ rows, pending, onChanged }: { rows: VolunteerRow[]; pending: HoursRow[]; onChanged: () => Promise<void> }) {
+function ToConfirm({
+  rows,
+  pending,
+  selfReported,
+  onChanged,
+}: {
+  rows: VolunteerRow[]
+  pending: HoursRow[]
+  /** Self-logged hours that already count, e.g. a trusted volunteer's (update 28); null before that update. */
+  selfReported: HoursRow[] | null
+  onChanged: () => Promise<void>
+}) {
   const [error, setError] = useState<string | null>(null)
-  const nameOf = (id: string | null) => rows.find((r) => r.id === id)?.name ?? 'Someone'
-
-  if (pending.length === 0) {
-    return (
-      <Card className="space-y-2 text-sm text-slate-600">
-        <p className="text-base font-bold text-ink">Nothing waiting.</p>
-        <p>Hours a volunteer logs for themselves appear here so you can confirm or correct them before they count on a service letter.</p>
-      </Card>
-    )
+  const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows])
+  const nameOf = (h: HoursRow) => (h.volunteer_id ? byId.get(h.volunteer_id)?.name : null) ?? h.name ?? 'Someone'
+  const run = (work: Promise<unknown>) => {
+    setError(null)
+    work.then(onChanged).catch((e) => setError(errMessage(e)))
   }
 
-  return (
-    <div className="space-y-3">
-      <FormError>{error}</FormError>
-      <button
-        type="button"
-        onClick={async () => {
-          try {
-            await Promise.all(pending.map((h) => setHoursStatus(h.id, 'confirmed')))
-            await onChanged()
-          } catch (e) {
-            setError(errMessage(e))
-          }
-        }}
-        className={btn.orange}
-      >
-        <Icon name="check" size={17} className="mr-1" /> Confirm all {pending.length}
-      </button>
-      {pending.map((h) => (
-        <Card key={h.id}>
-          <div className="flex flex-wrap items-start gap-3">
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-lg font-extrabold text-ink">
-                {nameOf(h.volunteer_id)} · {hoursLabel(Number(h.hours))}
-              </span>
-              <span className="block text-base text-slate-700">{h.activity}</span>
-              <span className="block text-sm text-slate-600">
-                {fmtDay(h.on_date)}
-                {h.note ? ` · ${h.note}` : ''}
-              </span>
+  const entry = (h: HoursRow, action: ReactNode, badge?: ReactNode) => (
+    <Card key={h.id}>
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-display text-lg font-extrabold text-ink">
+              {nameOf(h)} · {hoursLabel(Number(h.hours))}
             </span>
-            <button
-              type="button"
-              onClick={() => setHoursStatus(h.id, 'confirmed').then(onChanged).catch((e) => setError(errMessage(e)))}
-              className="inline-flex items-center justify-center rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white"
-            >
-              Confirm
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                window.confirm(`Delete this entry from ${nameOf(h.volunteer_id)}?`) &&
-                deleteHoursEntry(h.id).then(onChanged).catch((e) => setError(errMessage(e)))
-              }
-              className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-sm font-bold text-red-600"
-            >
-              <Icon name="trash" size={15} /> Delete
-            </button>
-          </div>
+            {badge}
+          </span>
+          <span className="block text-base text-slate-700">{h.activity}</span>
+          <span className="block text-sm text-slate-600">
+            {fmtDay(h.on_date)}
+            {h.note ? ` · ${h.note}` : ''}
+          </span>
+        </span>
+        {action}
+        <button
+          type="button"
+          onClick={() => window.confirm(`Delete this entry from ${nameOf(h)}?`) && run(deleteHoursEntry(h.id))}
+          className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-sm font-bold text-red-600"
+        >
+          <Icon name="trash" size={15} /> Delete
+        </button>
+      </div>
+    </Card>
+  )
+
+  return (
+    <div className="space-y-4">
+      <FormError>{error}</FormError>
+      {pending.length === 0 ? (
+        <Card className="space-y-2 text-sm text-slate-600">
+          <p className="text-base font-bold text-ink">Nothing waiting.</p>
+          <p>
+            Hours a volunteer logs for themselves appear here so you can confirm or correct them before they count on a service letter.
+            {selfReported ? ' A trusted volunteer’s hours count straight away — they’re listed below so you can still look them over.' : ''}
+          </p>
         </Card>
-      ))}
+      ) : (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={async () => {
+              setError(null)
+              try {
+                await Promise.all(pending.map((h) => setHoursStatus(h.id, 'confirmed')))
+                await onChanged()
+              } catch (e) {
+                setError(errMessage(e))
+              }
+            }}
+            className={btn.orange}
+          >
+            <Icon name="check" size={17} className="mr-1" /> Confirm all {pending.length}
+          </button>
+          {pending.map((h) =>
+            entry(
+              h,
+              <button
+                type="button"
+                onClick={() => run(setHoursStatus(h.id, 'confirmed'))}
+                className="inline-flex items-center justify-center rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white"
+              >
+                Confirm
+              </button>,
+            ),
+          )}
+        </div>
+      )}
+
+      {/* Update 28: hours that arrived confirmed (a trusted volunteer's), or were confirmed lately — still reviewable. */}
+      {selfReported && selfReported.length > 0 && (
+        <section aria-labelledby="self-reported-heading" className="space-y-3">
+          <div>
+            <h2 id="self-reported-heading" className="font-display text-xl font-extrabold text-ink">
+              Self-reported, already counted ({selfReported.length})
+            </h2>
+            <p className="mt-0.5 max-w-2xl text-sm text-slate-600">
+              Hours volunteers logged for themselves in the last 30 days that already count — a trusted volunteer’s count straight away.
+              Un-confirm any that need another look and they’ll wait above for a confirm.
+            </p>
+          </div>
+          {selfReported.map((h) =>
+            entry(
+              h,
+              <button
+                type="button"
+                onClick={() => run(setHoursStatus(h.id, 'logged'))}
+                className="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Un-confirm
+              </button>,
+              <Badge tone="slate">Self-reported</Badge>,
+            ),
+          )}
+        </section>
+      )}
     </div>
   )
 }

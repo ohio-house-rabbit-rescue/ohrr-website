@@ -1,10 +1,44 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
-import { useStaff, staffInput, Spinner, PasswordInput } from '../lib/staff'
+import { useStaff, staffInput, Spinner, PasswordInput, levelLabel } from '../lib/staff'
+import { myStaffVolunteerPage } from '../lib/volunteers/api'
 import { btn } from './ui'
 import { buildLabel } from '../lib/version'
 import { ForgotPasswordLink } from './ForgotPassword'
+
+/**
+ * "My volunteer hours" (update 28): staff volunteer too. This opens their own
+ * volunteer page — made for them the first time — where they can log hours for
+ * work that isn't a shift and see their totals and signed letter. `available`
+ * is false until update 28 has been run (the level column arrives with the RPC).
+ */
+export function useMyVolunteerHours() {
+  const { membership } = useStaff()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [missing, setMissing] = useState(false)
+  const orgId = membership?.orgId ?? ''
+  const available = Boolean(orgId && membership?.level) && !missing
+
+  const open = async () => {
+    if (!orgId || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const token = await myStaffVolunteerPage(orgId)
+      navigate(`/volunteer/hours/${token}`)
+    } catch (e) {
+      const o = e as { code?: string; message?: string }
+      // The function isn't in the database after all: hide the way in rather than show an error.
+      if (o?.code === 'PGRST202' || /could not find the function/i.test(o?.message ?? '')) setMissing(true)
+      else setError(errMessage(e))
+      setBusy(false)
+    }
+  }
+  return { available, open, busy, error }
+}
 
 function SignIn() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -108,13 +142,18 @@ interface NavItem {
   label: string
   show: boolean
   end?: boolean
+  /** A button rather than a page: it does something, then goes somewhere. */
+  onClick?: () => void
+  busy?: boolean
+  error?: string | null
 }
+type MyHours = ReturnType<typeof useMyVolunteerHours>
 
 /**
  * The staff menu, in groups — thirty tools in one row of buttons was too much
  * to scan. Each group only appears when the person can use something in it.
  */
-function staffGroups(can: Can): { title: string; items: NavItem[] }[] {
+function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavItem[] }[] {
   const shop = can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
   return [
     {
@@ -138,6 +177,14 @@ function staffGroups(can: Can): { title: string; items: NavItem[] }[] {
     {
       title: 'Volunteers',
       items: [
+        {
+          to: '#my-volunteer-hours',
+          label: myHours.busy ? 'Opening…' : 'My volunteer hours',
+          show: myHours.available,
+          onClick: () => void myHours.open(),
+          busy: myHours.busy,
+          error: myHours.error,
+        },
         { to: '/staff/calls', label: 'Volunteer calls', show: can('volunteers.shifts.manage') || can('bookings.manage') },
         { to: '/staff/volunteer', label: 'Volunteer opportunities', show: can('volunteers.shifts.manage') },
         { to: '/staff/volunteers', label: 'Volunteer roster & hours', show: can('volunteers.shifts.manage') || can('bookings.manage') },
@@ -182,17 +229,27 @@ function staffGroups(can: Can): { title: string; items: NavItem[] }[] {
 }
 
 function StaffMenu({ can }: { can: Can }) {
+  const myHours = useMyVolunteerHours()
   return (
     <nav aria-label="Staff tools" className="space-y-5">
-      {staffGroups(can).map((g) => (
+      {staffGroups(can, myHours).map((g) => (
         <div key={g.title}>
           <p className="px-3 text-sm font-extrabold uppercase tracking-wider text-slate-600">{g.title}</p>
           <ul className="mt-1 space-y-0.5">
             {g.items.map((i) => (
               <li key={i.to}>
-                <NavLink to={i.to} end={i.end} className={navClass}>
-                  {i.label}
-                </NavLink>
+                {i.onClick ? (
+                  <>
+                    <button type="button" onClick={i.onClick} disabled={i.busy} className={`${navClass({ isActive: false })} w-full text-left disabled:opacity-60`}>
+                      {i.label}
+                    </button>
+                    {i.error && <p className="px-3 pb-1 text-sm font-semibold text-red-600">{i.error}</p>}
+                  </>
+                ) : (
+                  <NavLink to={i.to} end={i.end} className={navClass}>
+                    {i.label}
+                  </NavLink>
+                )}
               </li>
             ))}
           </ul>
@@ -273,7 +330,8 @@ export default function StaffShell() {
     )
   }
 
-  const role = membership.role[0].toUpperCase() + membership.role.slice(1)
+  // Founder / Board / Lead / Worker once update 28 has been run; Owner / Admin / Staff before.
+  const role = membership.level ? levelLabel(membership.level) : membership.role[0].toUpperCase() + membership.role.slice(1)
 
   return (
     <div className="min-h-screen bg-canvas">

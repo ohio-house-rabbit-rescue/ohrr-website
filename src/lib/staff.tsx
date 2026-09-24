@@ -93,6 +93,43 @@ export const PRESETS: Record<string, Cap[]> = {
   // The till and the door only (the Counter lives in the app, on a phone).
   'Counter volunteer': ['counter.use'],
   'Content Approver': ['social.approve'],
+  // Update 28: someone certified to work the Hop Shop — the till, stock counts and orders, nothing else.
+  'Hop Shop Worker': ['counter.use', 'hopshop.inventory.update', 'hopshop.orders.view'],
+}
+
+/*
+ * Update 28: staff levels, highest first. A level decides who may change whom:
+ * nobody can change the level, permissions or access of someone at their own
+ * level or above (founders can manage founders). Founders are owners and board
+ * members are admins, so every can() check keeps working as before. The
+ * database enforces all of this; the screens only offer what it will allow.
+ */
+export type StaffLevel = 'founder' | 'board' | 'lead' | 'worker'
+export const LEVELS: { value: StaffLevel; label: string; plural: string; blurb: string }[] = [
+  { value: 'founder', label: 'Founder', plural: 'Founders', blurb: 'Everything, including who is on the board' },
+  { value: 'board', label: 'Board', plural: 'Board', blurb: 'Everything; looks after leads and workers' },
+  { value: 'lead', label: 'Lead', plural: 'Leads', blurb: 'Coordinators with the permissions their job needs' },
+  { value: 'worker', label: 'Worker', plural: 'Workers', blurb: 'One job, e.g. the Hop Shop counter' },
+]
+const LEVEL_RANK: Record<StaffLevel, number> = { founder: 4, board: 3, lead: 2, worker: 1 }
+
+export function isStaffLevel(v: unknown): v is StaffLevel {
+  return typeof v === 'string' && v in LEVEL_RANK
+}
+export function levelRank(l: StaffLevel | null | undefined): number {
+  return l ? LEVEL_RANK[l] : 0
+}
+export function levelLabel(l: StaffLevel): string {
+  return LEVELS.find((x) => x.value === l)?.label ?? l
+}
+/** Founders and board members hold every permission (they're owners and admins). */
+export function isFullAccessLevel(l: StaffLevel | null | undefined): boolean {
+  return l === 'founder' || l === 'board'
+}
+/** The levels someone at `mine` may give: any below their own, or any at all for a founder. */
+export function levelsICanGive(mine: StaffLevel | null | undefined): StaffLevel[] {
+  if (!mine) return []
+  return LEVELS.map((l) => l.value).filter((l) => mine === 'founder' || levelRank(l) < levelRank(mine))
 }
 
 export interface Membership {
@@ -100,6 +137,8 @@ export interface Membership {
   orgId: string
   role: string
   status: string
+  /** Update 28 — null until that update has been run. */
+  level: StaffLevel | null
 }
 
 interface StaffValue {
@@ -107,6 +146,8 @@ interface StaffValue {
   loading: boolean
   user: User | null
   membership: Membership | null
+  /** The signed-in person's level (update 28); null before that update, or when not a member. */
+  level: StaffLevel | null
   capabilities: Set<string>
   can: (cap: Cap) => boolean
   refresh: () => Promise<void>
@@ -145,18 +186,23 @@ export function StaffProvider({ children }: { children: ReactNode }) {
       setCapabilities(new Set())
       return
     }
-    const { data: rows } = await supabase
+    // Ask for the level too; before update 28 the column isn't there, so ask again without it.
+    const withLevel = await supabase
       .from('memberships')
-      .select('id, org_id, role, status')
+      .select('id, org_id, role, status, level')
       .eq('status', 'active')
       .limit(1)
-    const r = rows?.[0]
+    let r: { id: string; org_id: string; role: string; status: string; level?: unknown } | undefined = withLevel.data?.[0]
+    if (withLevel.error) {
+      const plain = await supabase.from('memberships').select('id, org_id, role, status').eq('status', 'active').limit(1)
+      r = plain.data?.[0]
+    }
     if (!r) {
       setMembership(null)
       setCapabilities(new Set())
       return
     }
-    const m: Membership = { id: r.id, orgId: r.org_id, role: r.role, status: r.status }
+    const m: Membership = { id: r.id, orgId: r.org_id, role: r.role, status: r.status, level: isStaffLevel(r.level) ? r.level : null }
     setMembership(m)
     if (m.role === 'owner' || m.role === 'admin') {
       setCapabilities(new Set(CAPS))
@@ -197,7 +243,17 @@ export function StaffProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ configured: isConfigured, loading, user, membership, capabilities, can, refresh: loadMembership, signOut }}
+      value={{
+        configured: isConfigured,
+        loading,
+        user,
+        membership,
+        level: membership?.level ?? null,
+        capabilities,
+        can,
+        refresh: loadMembership,
+        signOut,
+      }}
     >
       {children}
     </Ctx.Provider>

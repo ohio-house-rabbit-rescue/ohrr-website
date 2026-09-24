@@ -16,6 +16,8 @@ import type { CertificateSuggestion } from './approval'
 export type VolunteerStatus = 'prospect' | 'active' | 'paused' | 'former'
 export type HoursStatus = 'logged' | 'confirmed'
 export type HoursSource = 'self' | 'staff' | 'checkin'
+/** Update 28: a trusted volunteer's self-logged hours count straight away; a standard one's wait for staff. */
+export type TrustLevel = 'standard' | 'trusted'
 
 export interface VolunteerRow {
   id: string
@@ -46,6 +48,8 @@ export interface VolunteerRow {
   application?: Record<string, unknown> | null
   reviewed_at?: string | null
   reviewed_by?: string | null
+  /** Update 28 — optional because the column isn't there until that update has been run. */
+  trust_level?: TrustLevel
   created_by: string | null
   created_at: string
   updated_at: string
@@ -64,6 +68,8 @@ export interface VolunteerInput {
   notes?: string | null
   /** Only sent once update 25 has added the column. */
   approved_for?: string[]
+  /** Only sent once update 28 has added the column. */
+  trust_level?: TrustLevel
 }
 
 export type ReviewStatus = 'pending' | 'approved' | 'declined'
@@ -165,6 +171,26 @@ export async function unconfirmedHours(orgId: string): Promise<HoursRow[]> {
     .eq('status', 'logged')
     .order('on_date', { ascending: false })
   if (error) throw error
+  return (data ?? []) as HoursRow[]
+}
+
+/**
+ * Hours volunteers logged for themselves that already count — a trusted
+ * volunteer's arrive confirmed (update 28) — logged in the last `days` days,
+ * newest first, so staff can still look them over. null = couldn't be read.
+ */
+export async function selfReportedHours(orgId: string, days = 30): Promise<HoursRow[] | null> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString()
+  const { data, error } = await supabase
+    .from('volunteer_hours_entries')
+    .select('*')
+    .eq('org_id', orgId)
+    .eq('status', 'confirmed')
+    .eq('source', 'self')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (error) return null
   return (data ?? []) as HoursRow[]
 }
 
@@ -308,6 +334,20 @@ export async function setCertificateHours(orgId: string, hours: number[]): Promi
   const { data, error } = await supabase.rpc('set_certificate_hours', { p_org: orgId, p_hours: hours })
   if (error) throw error
   return Number(data ?? 0)
+}
+
+/* ------------------------------------------------ staff who volunteer (28) */
+
+/**
+ * The signed-in staff member's own volunteer page — found by their email, or
+ * made for them the first time (update 28). Returns the private token for
+ * /volunteer/hours/<token>, where they can log hours for work that isn't a shift.
+ */
+export async function myStaffVolunteerPage(orgId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('my_staff_volunteer_page', { p_org: orgId })
+  if (error) throw error
+  if (!data) throw new Error('Your volunteer page couldn’t be opened. Try again in a moment.')
+  return String(data)
 }
 
 /* ------------------------------------------------------ a volunteer's own */

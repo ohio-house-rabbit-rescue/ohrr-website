@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom'
-import { useStaff } from '../../lib/staff'
+import { useStaff, levelLabel } from '../../lib/staff'
+import { useMyVolunteerHours } from '../../components/StaffShell'
 import { ExpiringSponsorsNotice } from './ManageSponsors'
 import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
 import { PostsToApproveNotice } from './Posts'
 import { CERTIFICATES_CAP } from '../../lib/volunteers/api'
 
 export default function StaffDashboard() {
-  const { user, membership, can } = useStaff()
+  const { user, membership, level, can } = useStaff()
   const isAdmin = membership?.role === 'owner' || membership?.role === 'admin'
+  const myHours = useMyVolunteerHours()
 
   const tiles = [
     can('inbox.manage') && {
@@ -154,7 +156,7 @@ export default function StaffDashboard() {
       <div className="flex items-center gap-2">
         <h1 className="font-display text-2xl font-black text-ink">Staff dashboard</h1>
         <span className="rounded-full bg-brand-blue-50 px-2.5 py-0.5 text-xs font-bold text-brand-blue">
-          {membership ? membership.role[0].toUpperCase() + membership.role.slice(1) : ''}
+          {level ? levelLabel(level) : membership ? membership.role[0].toUpperCase() + membership.role.slice(1) : ''}
         </span>
       </div>
       <p className="mt-1 text-sm text-slate-600">
@@ -181,6 +183,22 @@ export default function StaffDashboard() {
             <p className="mt-1.5 text-sm text-slate-600">{t.p}</p>
           </Link>
         ))}
+        {/* Update 28: staff volunteer too — their own page, made for them the first time. */}
+        {myHours.available && (
+          <button
+            type="button"
+            onClick={() => void myHours.open()}
+            disabled={myHours.busy}
+            className="rounded-2xl border border-black/5 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-70"
+          >
+            <span className="block font-display text-lg font-extrabold text-brand-blue">{myHours.busy ? 'Opening…' : 'My volunteer hours'}</span>
+            <span className="mt-1.5 block text-sm text-slate-600">
+              Log the hours you give OHRR — vet runs, fostering, events, anything that isn’t a shift — and see your totals and your signed
+              letter.
+            </span>
+            {myHours.error && <span className="mt-1.5 block text-sm font-semibold text-red-600">{myHours.error}</span>}
+          </button>
+        )}
         {tiles.length === 0 && (
           <p className="text-sm text-slate-600">
             No tools have been turned on for your account yet. An owner can grant access.
@@ -190,7 +208,8 @@ export default function StaffDashboard() {
 
       <p className="mt-8 rounded-2xl bg-brand-blue-50 px-4 py-3 text-sm text-slate-600">
         Anything you change here updates <strong>both this website and the OHRR app</strong> — they
-        share the same live data.{isAdmin ? ' As an owner/admin you have every tool above.' : ''}
+        share the same live data.
+        {isAdmin ? (level ? ' As a founder or board member you have every tool above.' : ' As an owner/admin you have every tool above.') : ''}
       </p>
     </div>
   )
