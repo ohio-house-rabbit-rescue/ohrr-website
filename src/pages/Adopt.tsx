@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { useRabbits } from '../lib/data'
 import type { Rabbit } from '../lib/types'
 import { PageHero, Section, RabbitCard, LiveNote, btn, ext, H2, Card, Callout } from '../components/ui'
+import { OhrrPhoto } from '../components/PhotoStrip'
+import { ADOPTION_PHOTO } from '../data/ohrrPhotos'
 import { APPLY, ADOPTION_POLICY_PDF, PETFINDER, ADOPT_A_PET, BUNNY_DATES_ARTICLE, OHRR, RABBIT_READY } from '../lib/constants'
 
 // From the OHRR Adoption Policy (revised January 31, 2022).
@@ -102,11 +104,17 @@ export default function Adopt() {
         </p>
 
         <div className="mt-12">
-          <H2 id="how">How adopting works</H2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            At OHRR, adoptions are done by appointment on Saturdays and Sundays. Here is the process,
-            step by step.
-          </p>
+          <div className="md:flex md:items-center md:justify-between md:gap-8">
+            <div className="max-w-2xl">
+              <H2 id="how">How adopting works</H2>
+              <p className="mt-2 max-w-2xl text-slate-600">
+                At OHRR, adoptions are done by appointment on Saturdays and Sundays. Here is the process,
+                step by step.
+              </p>
+            </div>
+            {/* The photo on the "Adoption Process for OHRR" post on the current home page */}
+            <OhrrPhoto photo={ADOPTION_PHOTO} className="mt-5 max-w-sm md:mt-0 md:w-72 md:shrink-0" />
+          </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {STEPS.map((s) => (
               <Card key={s.h}>

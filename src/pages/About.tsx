@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LinkCard, VisitNote, NoDropOffNote } from '../components/ui'
 import { APPLY, BE_THE_VOICE_PDF, CAPITAL_PLEDGE_PDF, BUNFEST_SAMPLE, OHRR } from '../lib/constants'
 import { useOrgProfile } from '../lib/orgProfile'
+import { PhotoGrid } from '../components/PhotoStrip'
+import { FAMILY_PHOTOS } from '../data/ohrrPhotos'
 
 // Text from the live About Us pages: Mission and Vision, Background, Volunteer Family,
 // and the Ohio House Rabbit Adoption Center (captured 2026-09-17).
@@ -202,6 +204,7 @@ export default function About() {
         <p className="mt-2 max-w-2xl text-slate-600">
           Thank you to all of our faithful Adoption Center and Midwest BunFest volunteers!
         </p>
+        <PhotoGrid photos={FAMILY_PHOTOS} credit="Photos: Ohio House Rabbit Rescue" className="mt-6" />
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {FAMILY.map((f) => (
             <Card key={f.name}>

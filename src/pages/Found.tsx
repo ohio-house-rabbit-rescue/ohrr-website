@@ -6,6 +6,8 @@
 import { Link } from 'react-router-dom'
 import { PageHero, Section, Card, H2, LinkCard, btn, ext } from '../components/ui'
 import HurtNote from '../components/HurtNote'
+import { OhrrPhoto, PhotoStrip } from '../components/PhotoStrip'
+import { WILD_COTTONTAIL_PHOTO, CATCHING_PHOTOS } from '../data/ohrrPhotos'
 import { foundContacts, wildOrDomestic, reportDetails, catchSteps, babiesWarning, fieldRescue, admissions } from '../data/found'
 
 export default function Found() {
@@ -65,21 +67,26 @@ export default function Found() {
           <div className="space-y-4">
             <HurtNote />
             {/* Domestic or wild */}
-            <Card>
-              <h2 id="wild" className="font-display text-xl font-extrabold text-ink">{wildOrDomestic.heading}</h2>
-              <p className="mt-2 text-base leading-relaxed text-slate-700">{wildOrDomestic.text}</p>
-              <p className="mt-2 text-base leading-relaxed text-slate-700">
-                {wildOrDomestic.wildNote}{' '}
-                <a href={wildOrDomestic.wildUrl} {...ext} className="font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-2">
-                  Ohio Wildlife Center
-                </a>
-              </p>
+            <Card className="sm:flex sm:items-start sm:gap-6">
+              <div className="min-w-0 flex-1">
+                <h2 id="wild" className="font-display text-xl font-extrabold text-ink">{wildOrDomestic.heading}</h2>
+                <p className="mt-2 text-base leading-relaxed text-slate-700">{wildOrDomestic.text}</p>
+                <p className="mt-2 text-base leading-relaxed text-slate-700">
+                  {wildOrDomestic.wildNote}{' '}
+                  <a href={wildOrDomestic.wildUrl} {...ext} className="font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-2">
+                    Ohio Wildlife Center
+                  </a>
+                </p>
+              </div>
+              {/* The picture OHRR's article compares against */}
+              <OhrrPhoto photo={WILD_COTTONTAIL_PHOTO} className="mt-4 max-w-sm sm:mt-1 sm:w-60 sm:shrink-0" />
             </Card>
           </div>
         </div>
 
         {/* Catch steps */}
         <H2 id="catch" className="mt-12">Catching a stray</H2>
+        <PhotoStrip photos={CATCHING_PHOTOS} className="mt-4 max-w-4xl" />
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {catchSteps.map((s, i) => (
             <Card key={s.title} className="flex gap-4">

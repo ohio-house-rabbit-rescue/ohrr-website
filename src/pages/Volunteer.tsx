@@ -1,6 +1,8 @@
 import { useVolunteerOpps } from '../lib/data'
 import { PageHero, Section, btn, ext, H2, Card, Callout } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
+import { PhotoStrip } from '../components/PhotoStrip'
+import { VOLUNTEER_PHOTOS } from '../data/ohrrPhotos'
 import { Link } from 'react-router-dom'
 import { OHRR, CHRS_TIPLINE } from '../lib/constants'
 import { useEffect, useState } from 'react'
@@ -139,6 +141,7 @@ export default function Volunteer() {
           Some volunteers come to us knowing everything about bunnies and some start off knowing nothing at all. We
           truly are one big, happy volunteer family and we would love to have you join us.
         </p>
+        <PhotoStrip photos={VOLUNTEER_PHOTOS} className="mt-6 max-w-3xl" />
 
         <OpenCalls />
 

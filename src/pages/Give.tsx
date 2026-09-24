@@ -17,6 +17,8 @@ import {
   SPAY_IT_FORWARD,
   OHRR,
 } from '../lib/constants'
+import { OhrrPhoto } from '../components/PhotoStrip'
+import { LOLA_PHOTO } from '../data/ohrrPhotos'
 
 interface Way {
   h: string
@@ -230,6 +232,19 @@ export default function Give() {
               </div>
             </Card>
           ))}
+        </div>
+
+        {/* One rescue from OHRR's Veterinary Care Fund stories; every word is from "Lola's Tale" on the live site */}
+        <div className="mt-10 grid items-center gap-5 md:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] md:gap-8">
+          <OhrrPhoto photo={LOLA_PHOTO} className="max-w-lg md:max-w-none" />
+          <div className="max-w-xl">
+            <h2 className="font-display text-xl font-extrabold text-ink">Lola’s tale</h2>
+            <p className="mt-2 text-base leading-relaxed text-slate-700">
+              From OHRR’s Veterinary Care Fund stories. Lola arrived at the Adoption Center in a great deal of pain,
+              with ulcers in both of her eyes. About a week after her surgery she was running around and exploring —
+              and she now lives with her husbun, Obi.
+            </p>
+          </div>
         </div>
 
         <h2 id="shop" className="mt-12 font-display text-2xl font-black text-ink">Give while you shop</h2>

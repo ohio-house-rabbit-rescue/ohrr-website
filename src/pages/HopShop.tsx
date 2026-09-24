@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { useHopShopProducts } from '../lib/data'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LiveNote } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
+import { PhotoStrip } from '../components/PhotoStrip'
+import { HOP_SHOP_PHOTOS } from '../data/ohrrPhotos'
 import { formatPrice } from '../lib/format'
 import { OHRR, AMAZON_WISH_LIST } from '../lib/constants'
 import { useOrgProfile } from '../lib/orgProfile'
@@ -44,6 +46,7 @@ export default function HopShop() {
               only will you be able to purchase healthy and safe products for your bunny, but the profits go to
               support OHRR!
             </p>
+            <PhotoStrip photos={HOP_SHOP_PHOTOS} className="mt-6" />
 
             <H2 id="products" className="mt-10">Products for purchase</H2>
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
