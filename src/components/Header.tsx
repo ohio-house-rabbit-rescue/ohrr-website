@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Icon } from './icons'
-import { TEXT_SIZES, stepTextSize, useTextSize } from '../lib/textSize'
 
 // The site's menu, built around the rescue's purpose (2026-09-24): the menu is
 // the mission — adopt, care and help for the rabbit you have, strays and
@@ -11,7 +10,7 @@ import { TEXT_SIZES, stepTextSize, useTextSize } from '../lib/textSize'
 //
 // The web rules from the design brief still hold: every menu item is visible
 // on a laptop (nothing opens on hover), the phone menu is a labelled button,
-// targets are 44px, and text size is one tap away on every screen.
+// and targets are 44px.
 
 // Everything else OHRR does — the footer's list, repeated in the phone menu,
 // because on a phone the footer is a long way down.
@@ -34,30 +33,6 @@ const NAV = [
   { to: '/about', label: 'About' },
 ]
 
-/** A− / A+ — the same three steps as the app's Settings → Text size. */
-function TextSizeControl() {
-  const size = useTextSize()
-  const i = TEXT_SIZES.findIndex((t) => t.value === size)
-  const b = 'inline-flex h-11 w-11 items-center justify-center font-display text-lg font-black text-ink disabled:opacity-30'
-  return (
-    <div role="group" aria-label="Text size" className="inline-flex items-center rounded-full border border-slate-300 bg-white">
-      <button type="button" onClick={() => stepTextSize(-1)} disabled={i <= 0} aria-label="Smaller text" className={b}>
-        A−
-      </button>
-      <span className="sr-only">{TEXT_SIZES[i]?.label}</span>
-      <button
-        type="button"
-        onClick={() => stepTextSize(1)}
-        disabled={i >= TEXT_SIZES.length - 1}
-        aria-label="Larger text"
-        className={`${b} border-l border-slate-300`}
-      >
-        A+
-      </button>
-    </div>
-  )
-}
-
 export default function Header() {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
@@ -77,10 +52,9 @@ export default function Header() {
         Skip to the page
       </a>
 
-      {/* The top bar: text size, search, and the one link to the app */}
+      {/* The top bar: contact, search, and the one link to the app */}
       <div className="border-b border-slate-100 bg-canvas">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-1.5 sm:px-5">
-          <TextSizeControl />
+        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-4 py-1.5 sm:px-5">
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
               to="/contact"
