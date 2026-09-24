@@ -4,6 +4,7 @@ import { supabase, errMessage } from '../lib/supabase'
 import { useStaff, staffInput, Spinner, PasswordInput } from '../lib/staff'
 import { btn } from './ui'
 import { buildLabel } from '../lib/version'
+import { ForgotPasswordLink } from './ForgotPassword'
 
 function SignIn() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -63,6 +64,7 @@ function SignIn() {
               Password
               <PasswordInput autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
+            {mode === 'signin' && <ForgotPasswordLink email={email} />}
             {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
             <button type="submit" disabled={status === 'working'} className={`${btn.orange} w-full disabled:opacity-60`}>
               {status === 'working' ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -75,7 +77,7 @@ function SignIn() {
             </button>
           </p>
           <p className="mt-2 text-center">
-            <Link to="/" className="text-xs font-semibold text-slate-400 hover:text-slate-600">← Back to the website</Link>
+            <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-brand-blue">← Back to the website</Link>
           </p>
         </>
       )}
@@ -163,7 +165,7 @@ export default function StaffShell() {
             <img src="/img/ohrr-mark.png" alt="OHRR" className="h-9 w-9 object-contain" />
             <span className="leading-tight">
               <span className="block font-display text-sm font-extrabold text-ink">OHRR Staff</span>
-              <span className="block text-[11px] font-semibold text-slate-400">{role}</span>
+              <span className="block text-xs font-semibold text-slate-600">{role}</span>
             </span>
           </Link>
           <nav className="flex flex-wrap items-center gap-1.5">
@@ -183,13 +185,20 @@ export default function StaffShell() {
             {can('volunteers.shifts.manage') && <NavLink to="/staff/volunteer" className={navClass}>Volunteer</NavLink>}
             {can('content.education.edit') && <NavLink to="/staff/care" className={navClass}>Care guides &amp; pages</NavLink>}
             {can('content.education.edit') && <NavLink to="/staff/vets" className={navClass}>Vets</NavLink>}
+            {can('content.education.edit') && <NavLink to="/staff/bunny-help" className={navClass}>Bunny Help</NavLink>}
+            {can('events.bunfest.manage') && <NavLink to="/staff/events" className={navClass}>Events</NavLink>}
+            {can('events.bunfest.manage') && <NavLink to="/staff/sponsors" className={navClass}>Sponsors</NavLink>}
+            {(can('volunteers.shifts.manage') || can('bookings.manage')) && <NavLink to="/staff/volunteers" className={navClass}>Volunteers</NavLink>}
             {(can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && <NavLink to="/staff/items" className={navClass}>Items</NavLink>}
             {(can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && <NavLink to="/staff/hopshop" className={navClass}>Hop Shop</NavLink>}
             {can('events.bunfest.manage') && <NavLink to="/staff/bunfest" className={navClass}>BunFest</NavLink>}
             {can('events.bunfest.manage') && <NavLink to="/staff/raffle-tickets" className={navClass}>Raffle tickets</NavLink>}
+            {can('events.bunfest.manage') && <NavLink to="/staff/auction" className={navClass}>Silent auction</NavLink>}
             {(can('content.education.edit') || can('inbox.manage')) && <NavLink to="/staff/tails" className={navClass}>Happy Tails</NavLink>}
             {(can('staff.invite') || can('staff.permissions.manage')) && <NavLink to="/staff/team" className={navClass}>Team</NavLink>}
             {can('settings.manage') && <NavLink to="/staff/details" className={navClass}>OHRR details</NavLink>}
+            {can('settings.manage') && <NavLink to="/staff/features" className={navClass}>Features</NavLink>}
+            {can('audit.view') && <NavLink to="/staff/activity" className={navClass}>Activity</NavLink>}
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/" className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50">
@@ -205,7 +214,7 @@ export default function StaffShell() {
         <Outlet />
       </main>
       {/* Which update this is — so a volunteer can report "rev 5" and mean it. */}
-      <p className="pb-6 text-center text-xs text-slate-400">OHRR staff tools · {buildLabel}</p>
+      <p className="pb-6 text-center text-xs text-slate-600">OHRR staff tools · {buildLabel}</p>
     </div>
   )
 }

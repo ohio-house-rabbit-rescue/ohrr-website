@@ -1,0 +1,149 @@
+// Staff → Features: the switches an owner or admin uses to turn parts of the
+// app (and the site) on and off for everyone. Desktop mirror of the app's
+// StaffFeatures — the same `app_settings` rows, so a switch flipped here is
+// flipped in the app at once.
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { errMessage } from '../../lib/supabase'
+import { useStaff, Spinner } from '../../lib/staff'
+import { Card } from '../../components/ui'
+import { Icon } from '../../components/icons'
+import { APP_FEATURES, FEATURE_GROUPS, RAFFLE_TICKETS_FLAG, fetchSettings, setSetting, type Json } from '../../lib/settings'
+
+function isEnabled(value: Json | undefined): boolean {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && value.enabled === true)
+}
+
+function Switch({ on, disabled, label, onChange }: { on: boolean; disabled?: boolean; label: string; onChange: (next: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition disabled:opacity-50 ${on ? 'bg-brand-blue' : 'bg-slate-300'}`}
+    >
+      <span className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-7' : 'translate-x-1'}`} />
+    </button>
+  )
+}
+
+export default function Features() {
+  const { user, membership, can } = useStaff()
+  const orgId = membership?.orgId ?? ''
+  const allowed = can('settings.manage')
+
+  const [values, setValues] = useState<Record<string, Json>>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!orgId || !allowed) {
+      setLoading(false)
+      return
+    }
+    setError(null)
+    try {
+      setValues(await fetchSettings(orgId))
+    } catch (e) {
+      setError(errMessage(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [orgId, allowed])
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const toggle = async (key: string, enabled: boolean) => {
+    setBusyKey(key)
+    setError(null)
+    try {
+      await setSetting(key, { enabled }, { orgId, userId: user?.id })
+      setValues((v) => ({ ...v, [key]: { enabled } }))
+    } catch (e) {
+      setError(errMessage(e))
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  if (!allowed) {
+    return (
+      <div>
+        <h1 className="font-display text-2xl font-black text-ink">Features</h1>
+        <p className="mt-3 text-sm text-slate-600">
+          Only an owner or admin can turn features on and off. Ask one of them for the “Change app settings” access if you need it.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-black text-ink">Features</h1>
+        <p className="mt-1 max-w-2xl text-sm text-slate-600">
+          Turn parts of the app on and off for everyone. A change takes effect the next time someone opens the app — no new version needed.
+        </p>
+      </div>
+
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {loading ? (
+        <Spinner label="Loading features…" />
+      ) : (
+        FEATURE_GROUPS.map((group) => {
+          const items = APP_FEATURES.filter((f) => f.group === group)
+          if (items.length === 0) return null
+          return (
+            <section key={group} className="space-y-2.5">
+              <p className="px-1 text-sm font-extrabold uppercase tracking-wider text-slate-600">{group}</p>
+              <Card>
+                <ul className="divide-y divide-slate-100">
+                  {items.map((f) => {
+                    const on = values[f.key] === undefined ? Boolean(f.defaultOn) : isEnabled(values[f.key])
+                    return (
+                      <li key={f.key} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="flex flex-wrap items-center gap-2 font-display text-lg font-extrabold text-ink">
+                            {f.label}
+                            <span className={`rounded-full px-2.5 py-0.5 text-sm font-semibold ${on ? 'bg-brand-orange-50 text-brand-orange-dark' : 'bg-slate-100 text-slate-600'}`}>
+                              {on ? 'On' : 'Off'}
+                            </span>
+                          </p>
+                          <p className="mt-1 text-sm leading-relaxed text-slate-600">{f.description}</p>
+                          {f.key === RAFFLE_TICKETS_FLAG && can('events.bunfest.manage') && (
+                            <p className="mt-1.5 text-sm text-slate-600">
+                              Set the ticket price in{' '}
+                              <Link to="/staff/auction" className="font-bold text-brand-blue">
+                                Silent Auction → Auction setup
+                              </Link>
+                              .
+                            </p>
+                          )}
+                        </div>
+                        <Switch on={on} disabled={busyKey === f.key} label={f.label} onChange={(next) => void toggle(f.key, next)} />
+                      </li>
+                    )
+                  })}
+                </ul>
+              </Card>
+            </section>
+          )
+        })
+      )}
+
+      <Card className="border-slate-200 bg-slate-50/80">
+        <p className="text-sm text-slate-600">
+          Looking for OHRR’s hours, email or address?{' '}
+          <Link to="/staff/details" className="inline-flex items-center gap-1 font-bold text-brand-blue">
+            OHRR details <Icon name="chevron" size={14} />
+          </Link>
+        </p>
+      </Card>
+    </div>
+  )
+}

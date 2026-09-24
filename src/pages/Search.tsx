@@ -76,10 +76,9 @@ export default function Search() {
   const [query, setQuery] = useState(params.get('q') ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Put the cursor in the box on arrival.
   useEffect(() => {
-    if (!query) inputRef.current?.focus()
-    // focus once, on arrival
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    inputRef.current?.focus()
   }, [])
 
   const update = (next: string) => {

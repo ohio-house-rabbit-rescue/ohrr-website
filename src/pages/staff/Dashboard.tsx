@@ -69,6 +69,31 @@ export default function StaffDashboard() {
       p: 'Rabbit Care articles in Learn, plus the Give / Adopt / About pages.',
     },
     can('content.education.edit') && {
+      to: '/staff/bunny-help',
+      h: 'Bunny Help topics',
+      p: 'What the “My bunny is…” search answers with — on the website and in the app.',
+    },
+    can('events.bunfest.manage') && {
+      to: '/staff/events',
+      h: 'Events',
+      p: 'Midwest BunFest and OHRR hoppenings — shown on the Events page here and in the app.',
+    },
+    can('events.bunfest.manage') && {
+      to: '/staff/sponsors',
+      h: 'Sponsors & partners',
+      p: 'Partner roster, perks and “Presented by” placements — on the website and in the app.',
+    },
+    (can('volunteers.shifts.manage') || can('bookings.manage')) && {
+      to: '/staff/volunteers',
+      h: 'Volunteers',
+      p: 'Who volunteers and the hours they’ve given — each person’s private hours link and QR, confirm logged hours, export the roster.',
+    },
+    can('events.bunfest.manage') && {
+      to: '/staff/auction',
+      h: 'Silent auction',
+      p: 'The BunFest auction catalogue: items with photos, sessions, won or available, publish — and the auction setup.',
+    },
+    can('content.education.edit') && {
       to: '/staff/vets',
       h: 'Vets',
       p: 'The rabbit-savvy vet list, emergency and low-cost badges, and which practices give the RHDV2 vaccine.',
@@ -107,6 +132,16 @@ export default function StaffDashboard() {
       to: '/staff/details',
       h: 'OHRR details',
       p: 'Hours, a holiday notice, the email and address, and who signs volunteer-hours letters.',
+    },
+    can('settings.manage') && {
+      to: '/staff/features',
+      h: 'Features',
+      p: 'Turn parts of the app on and off for everyone — the BunFest section, raffle tickets, volunteer self-logged hours.',
+    },
+    can('audit.view') && {
+      to: '/staff/activity',
+      h: 'Activity',
+      p: 'A record of staff and permission changes — who did what, and when.',
     },
   ].filter(Boolean) as { to: string; h: string; p: string }[]
 

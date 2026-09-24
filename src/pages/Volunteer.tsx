@@ -112,6 +112,14 @@ export default function Volunteer() {
 
         <OpenCalls />
 
+        <p className="mt-6 text-base text-slate-700">
+          Already volunteering?{' '}
+          <Link to="/volunteer/hours" className="font-bold text-brand-blue hover:text-brand-blue-dark">
+            See your hours
+          </Link>{' '}
+          — the same page your hours link or QR code opens.
+        </p>
+
         <H2 className="mt-10">Available volunteer positions</H2>
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           {POSITIONS.map((p) => (

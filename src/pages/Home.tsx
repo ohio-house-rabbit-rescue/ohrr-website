@@ -4,6 +4,8 @@ import { btn, RabbitCard, LiveNote, Section, NewsImage, LinkCard } from '../comp
 import type { IconName } from '../components/icons'
 import PresentedBy from '../components/PresentedBy'
 import { HomeHero, FeaturedStrip } from '../components/HomeHero'
+import ThisWeek from '../components/ThisWeek'
+import { HelpSearchBox } from '../components/HelpSearchBox'
 
 function Announcements() {
   const { items, source } = useAnnouncements(3)
@@ -82,17 +84,38 @@ function Featured() {
   )
 }
 
+// "Something wrong with your bunny?" — the app's Bunny Help, right on the
+// front page, because that is the question most people arrive with.
+function AskBunnyHelp() {
+  return (
+    <Section className="!py-10 md:!py-12">
+      <div className="rounded-3xl bg-brand-blue-50 p-6 sm:p-8">
+        <h2 className="font-display text-2xl font-black text-ink sm:text-3xl">Something wrong with your bunny?</h2>
+        <p className="mt-2 max-w-2xl text-base text-slate-700">
+          Type what you're seeing — "not eating", "hiding", "wet chin" — and get OHRR's own guidance, with the urgent things first.
+          It's general guidance, not a diagnosis.
+        </p>
+        <div className="mt-4">
+          <HelpSearchBox />
+        </div>
+      </div>
+    </Section>
+  )
+}
+
 function Teasers() {
   const cards: { to: string; icon: IconName; h: string; p: string }[] = [
     { to: '/events', icon: 'calendar', h: 'Midwest BunFest & events', p: 'Our flagship festival is Sunday, October 25, 2026 in Hilliard — plus other OHRR hoppenings.' },
     { to: '/learn', icon: 'book', h: 'Learn rabbit care', p: 'Diet, litter training, bonding, toys, living space — and rabbit-savvy vets across Ohio.' },
     { to: '/volunteer', icon: 'users', h: 'Volunteer', p: 'Socialize bunnies, help with Buncare, drive vet runs, or rescue strays in the field.' },
     { to: '/give', icon: 'gift', h: 'Ways to give', p: 'Donate, workplace matching, Kroger rewards, the wish list, merch, the license plate, and more.' },
+    { to: '/tails', icon: 'heart', h: 'Happy Tails', p: 'Adoption stories from the families who took a bunny home — and how to share yours.' },
+    { to: '/found', icon: 'mappin', h: 'Found a rabbit?', p: 'Wild or domestic, hurt or well: what to do right now, and how to report a stray to OHRR.' },
   ]
   return (
     <section className="bg-canvas">
       <Section className="!py-12 md:!py-16">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((c) => (
             <LinkCard key={c.to} to={c.to} icon={c.icon} h={c.h} p={c.p} cta="Explore →" />
           ))}
@@ -106,10 +129,11 @@ function AppCTA() {
   return (
     <Section>
       <div className="rounded-3xl bg-ink px-6 py-10 text-center text-white sm:px-12 md:py-12">
-        <h2 className="font-display text-2xl font-black sm:text-3xl">The whole rescue, in one app</h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-white/75 md:text-base">
-          Adoptable rabbits, care guides, rabbit-savvy vets, volunteering, ways to give, and the full
-          Midwest BunFest companion — all in the OHRR app, on your phone.
+        <h2 className="font-display text-2xl font-black sm:text-3xl">The same rescue, in your pocket</h2>
+        <p className="mx-auto mt-3 max-w-xl text-base text-white/85">
+          Everything on this site, laid out for a phone — plus the things only a phone can do: My Bunny with
+          reminders in your calendar, care guides that work offline, and the camera for a found-rabbit report or
+          a Happy Tail.
         </p>
         <Link to="/app" className={`${btn.orange} mt-6`}>
           Open the app
@@ -125,7 +149,9 @@ export default function Home() {
       <HomeHero />
       <PresentedBy surface="home" className="mb-6 md:mb-8" />
       <FeaturedStrip />
+      <AskBunnyHelp />
       <Announcements />
+      <ThisWeek />
       <Stats />
       <Featured />
       <Teasers />

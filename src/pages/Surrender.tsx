@@ -39,7 +39,13 @@ export default function Surrender() {
               .
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link to="/learn/tips-for-catching-a-stray" className={btn.blue}>
+              <Link to="/found" className={btn.orange}>
+                Found a rabbit — what to do
+              </Link>
+              <Link to="/found/report" className={btn.blue}>
+                Report a found rabbit
+              </Link>
+              <Link to="/learn/tips-for-catching-a-stray" className={btn.outline}>
                 Tips for catching a stray
               </Link>
               <a href={`mailto:${CHRS_TIPLINE}`} className={btn.outline}>

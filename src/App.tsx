@@ -52,10 +52,33 @@ import PrintTags from './pages/staff/PrintTags'
 import VolunteerCalls, { VolunteerCallRoute } from './pages/staff/VolunteerCalls'
 import HoursLetter from './pages/staff/HoursLetter'
 import VolunteerCall from './pages/VolunteerCall'
+// Everything the app can do, on the website too (2026-09-23)
+import Help from './pages/Help'
+import HelpTopic from './pages/HelpTopic'
+import Search from './pages/Search'
+import Tails from './pages/Tails'
+import TailDetail from './pages/TailDetail'
+import ShareTail from './pages/ShareTail'
+import Found from './pages/Found'
+import FoundReport from './pages/FoundReport'
+import Rescues from './pages/Rescues'
+import RescueDetail from './pages/RescueDetail'
+import MyHours from './pages/MyHours'
+import BunnyHelp from './pages/staff/BunnyHelp'
+import ManageEvents from './pages/staff/ManageEvents'
+import ManageSponsors from './pages/staff/ManageSponsors'
+import Volunteers from './pages/staff/Volunteers'
+import SilentAuctionManager from './pages/staff/SilentAuction'
+import Features from './pages/staff/Features'
+import Activity from './pages/staff/Activity'
+import ResetPassword from './pages/staff/ResetPassword'
 
 export default function App() {
   return (
     <Routes>
+      {/* The password-reset link lands here signed out, so it sits outside the shell */}
+      <Route path="/staff/reset" element={<ResetPassword />} />
+
       {/* Staff area — its own shell, gated by sign-in + membership */}
       <Route
         path="/staff"
@@ -95,6 +118,13 @@ export default function App() {
         <Route path="tails" element={<HappyTails />} />
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
         <Route path="items/tags" element={<PrintTags />} />
+        <Route path="events" element={<ManageEvents />} />
+        <Route path="sponsors" element={<ManageSponsors />} />
+        <Route path="volunteers" element={<Volunteers />} />
+        <Route path="auction" element={<SilentAuctionManager />} />
+        <Route path="bunny-help" element={<BunnyHelp />} />
+        <Route path="features" element={<Features />} />
+        <Route path="activity" element={<Activity />} />
         <Route path="*" element={<StaffDashboard />} />
       </Route>
 
@@ -133,6 +163,18 @@ export default function App() {
         <Route path="/partners" element={<Partners />} />
         <Route path="/partners/perks" element={<PartnerPerks />} />
         <Route path="/news" element={<News />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/help/:slug" element={<HelpTopic />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/tails" element={<Tails />} />
+        <Route path="/tails/share" element={<ShareTail />} />
+        <Route path="/tails/:id" element={<TailDetail />} />
+        <Route path="/found" element={<Found />} />
+        <Route path="/found/report" element={<FoundReport />} />
+        <Route path="/rescues" element={<Rescues />} />
+        <Route path="/rescues/:id" element={<RescueDetail />} />
+        <Route path="/volunteer/hours" element={<MyHours />} />
+        <Route path="/volunteer/hours/:token" element={<MyHours />} />
         <Route path="/app" element={<GetApp />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<Home />} />

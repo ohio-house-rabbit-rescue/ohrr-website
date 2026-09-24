@@ -22,6 +22,13 @@ export default function Learn() {
       <Section>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <LinkCard
+            to="/help"
+            icon="help"
+            h="Bunny Help — ask a question"
+            p="Not eating, hiding, wet chin, sneezing? Type what you're seeing and get OHRR's own guidance, the urgent things first."
+            cta="Ask Bunny Help →"
+          />
+          <LinkCard
             to="/learn/vets"
             icon="phone"
             h="Find a rabbit-savvy vet"

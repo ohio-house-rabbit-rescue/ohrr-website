@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { MAILING_LIST, OHRR } from '../lib/constants'
 import { ContactRow, ext } from './ui'
+import { useOrgProfile } from '../lib/orgProfile'
 
 const NAV = [
   { to: '/adopt', label: 'Adopt' },
@@ -32,6 +33,8 @@ const MORE = [
 const link = 'inline-block py-0.5 font-semibold text-slate-700 hover:text-brand-blue'
 
 export default function Footer() {
+  // Hours and any holiday notice come from OHRR details, the same row the app reads.
+  const org = useOrgProfile()
   return (
     <footer className="border-t border-black/5 bg-canvas">
       {/* Persistent, subtle contact row — the same three links on every page */}
@@ -54,8 +57,11 @@ export default function Footer() {
             <br />
             {OHRR.cityStateZip}
           </p>
-          <p className="mt-2 text-sm text-slate-600">
-            Hop Shop &amp; Adoption Center: {OHRR.hours}
+          {org.notice && (
+            <p className="mt-2 rounded-lg bg-brand-orange-50 px-3 py-1.5 text-sm font-bold text-brand-orange-dark">{org.notice}</p>
+          )}
+          <p className="mt-2 text-sm text-slate-700">
+            Hop Shop &amp; Adoption Center: {org.hours}
             <br />
             {OHRR.hoursNote}
           </p>

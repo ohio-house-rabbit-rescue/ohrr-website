@@ -3,9 +3,9 @@
 // Shop. Ported from the OHRR app's features/bunnyhelp/pages/HelpTopic.tsx.
 // (The app's "save as a health note" lives in My Bunny, on the phone.)
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { PageHero, Section, Card, H2, LinkCard, btn, ext } from '../components/ui'
+import { PageHero, Section, Card, LinkCard, btn, ext } from '../components/ui'
 import { useCareTopics, useLearnSlugs, learnHref } from '../lib/bunnyhelp/useTopics'
-import { CategoryChip, Disclaimer, EmergencyCard, NotReviewedLine, UrgencyChip, AlertIcon } from '../lib/bunnyhelp/ui'
+import { CategoryChip, Disclaimer, EmergencyCard, NotReviewedLine, UrgencyChip, AlertIcon, WhatToDo } from '../lib/bunnyhelp/ui'
 import { RESOURCES_URL } from '../lib/bunnyhelp/types'
 
 export default function HelpTopic() {
@@ -20,7 +20,11 @@ export default function HelpTopic() {
   if (!topic) {
     return (
       <>
-        <PageHero title="Bunny Help" subtitle={loading ? 'Loading…' : 'That topic isn’t here — it may have been renamed.'} />
+        <PageHero
+          title={loading ? 'Loading…' : 'Topic not found'}
+          subtitle={loading ? undefined : 'That topic isn’t here — it may have been renamed.'}
+          parent={{ to: '/help', label: 'Bunny Help' }}
+        />
         <Section>
           {!loading && (
             <Link to="/help" className={btn.blue}>
@@ -37,7 +41,7 @@ export default function HelpTopic() {
 
   return (
     <>
-      <PageHero title={topic.title} subtitle={topic.summary || undefined} />
+      <PageHero title={topic.title} subtitle={topic.summary || undefined} parent={{ to: '/help', label: 'Bunny Help' }} />
       <Section>
         <div className="flex flex-wrap items-center gap-3">
           <Link to={back} className={btn.outline}>
@@ -70,9 +74,9 @@ export default function HelpTopic() {
             )}
 
             <Card>
-              <H2 className="!text-xl">What to do</H2>
+              <h2 className="font-display text-xl font-extrabold text-ink">What to do</h2>
               <div className="mt-4">
-                <WhatToDoBlock body={topic.what_to_do} />
+                <WhatToDo body={topic.what_to_do} />
               </div>
               <div className="mt-4">
                 <NotReviewedLine topic={topic} />
@@ -117,6 +121,3 @@ export default function HelpTopic() {
     </>
   )
 }
-
-// Keeps the import list above tidy; the renderer lives with the other Bunny Help UI.
-import { WhatToDo as WhatToDoBlock } from '../lib/bunnyhelp/ui'

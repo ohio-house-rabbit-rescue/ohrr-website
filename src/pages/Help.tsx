@@ -117,7 +117,7 @@ export default function Help() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <a href={askOhrrHref(cleaned)} className={btn.blue}>
-                  <Icon name="mail" size={16} className="mr-2" /> Ask OHRR
+                  <Icon name="mail" size={16} /> Ask OHRR
                 </a>
                 <Link to="/learn/vets" className={btn.outline}>
                   Find a vet
@@ -168,7 +168,7 @@ export default function Help() {
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <a href={askOhrrHref(cleaned || 'doing something I have a question about')} className={btn.orange}>
-              <Icon name="mail" size={16} className="mr-2" /> Ask OHRR
+              <Icon name="mail" size={16} /> Ask OHRR
             </a>
             <a href={OHRR.emailHref} className="break-all text-base font-semibold text-brand-blue">
               {OHRR.email}
