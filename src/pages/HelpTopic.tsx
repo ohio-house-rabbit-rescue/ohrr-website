@@ -99,15 +99,6 @@ export default function HelpTopic() {
             {topic.hopshop_note && (
               <LinkCard to="/hop-shop" icon="bag" h="Hop Shop" p={topic.hopshop_note} cta="Visit the Hop Shop →" />
             )}
-            <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-              <p className="font-display text-base font-extrabold text-brand-blue">Keep a health timeline</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                Add your bunny to My Bunny in the OHRR app to keep a dated health timeline — handy at the vet.
-              </p>
-              <Link to="/app" className="mt-2 inline-block text-sm font-bold text-brand-orange">
-                Get the app →
-              </Link>
-            </div>
             <p className="text-sm leading-relaxed text-slate-600">
               Sources: OHRR’s care guides on{' '}
               <a href={RESOURCES_URL} {...ext} className="font-semibold text-brand-blue">

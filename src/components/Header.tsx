@@ -3,32 +3,33 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Icon } from './icons'
 import { TEXT_SIZES, stepTextSize, useTextSize } from '../lib/textSize'
 
-// The site's menu, built to the web rules in the design brief: every page in
-// the menu is visible on a laptop (nothing opens on hover), the phone menu is
-// a labelled button, targets are 44px, and there is a text-size control right
-// where an older visitor looks for one.
+// The site's menu, built around the rescue's purpose (2026-09-24): the menu is
+// the mission — adopt, care and help for the rabbit you have, strays and
+// surrender — then how to help. Events, BunFest, the Hop Shop and news live in
+// the footer. The app is one standing pill in the top bar and is not offered
+// anywhere else on the site (OHRR: most visitors aren't looking for it).
+//
+// The web rules from the design brief still hold: every menu item is visible
+// on a laptop (nothing opens on hover), the phone menu is a labelled button,
+// targets are 44px, and text size is one tap away on every screen.
 
 const NAV = [
   { to: '/adopt', label: 'Adopt' },
-  { to: '/learn', label: 'Learn' },
   { to: '/help', label: 'Bunny Help' },
+  { to: '/learn', label: 'Rabbit care' },
+  { to: '/surrender', label: 'Found / surrender' },
   { to: '/volunteer', label: 'Volunteer' },
   { to: '/give', label: 'Give' },
-  { to: '/events', label: 'Events' },
   { to: '/about', label: 'About' },
 ]
 
 /** A− / A+ — the same three steps as the app's Settings → Text size. */
-function TextSizeControl({ className = '' }: { className?: string }) {
+function TextSizeControl() {
   const size = useTextSize()
   const i = TEXT_SIZES.findIndex((t) => t.value === size)
   const b = 'inline-flex h-11 w-11 items-center justify-center font-display text-lg font-black text-ink disabled:opacity-30'
   return (
-    <div
-      role="group"
-      aria-label="Text size"
-      className={`inline-flex items-center rounded-full border border-slate-200 bg-white ${className}`}
-    >
+    <div role="group" aria-label="Text size" className="inline-flex items-center rounded-full border border-slate-300 bg-white">
       <button type="button" onClick={() => stepTextSize(-1)} disabled={i <= 0} aria-label="Smaller text" className={b}>
         A−
       </button>
@@ -38,7 +39,7 @@ function TextSizeControl({ className = '' }: { className?: string }) {
         onClick={() => stepTextSize(1)}
         disabled={i >= TEXT_SIZES.length - 1}
         aria-label="Larger text"
-        className={`${b} border-l border-slate-200`}
+        className={`${b} border-l border-slate-300`}
       >
         A+
       </button>
@@ -52,7 +53,7 @@ export default function Header() {
   useEffect(() => setOpen(false), [pathname])
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `inline-flex min-h-11 items-center rounded-lg px-3 text-base font-bold transition ${
+    `inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-2 text-base font-bold transition ${
       isActive ? 'bg-brand-blue-50 text-brand-blue' : 'text-slate-700 hover:bg-slate-100 hover:text-brand-blue'
     }`
 
@@ -64,39 +65,49 @@ export default function Header() {
       >
         Skip to the page
       </a>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+
+      {/* The top bar: text size, search, and the one link to the app */}
+      <div className="border-b border-slate-100 bg-canvas">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-1.5 sm:px-5">
+          <TextSizeControl />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/search"
+              aria-label="Search the site"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-base font-bold text-slate-700 hover:bg-white"
+            >
+              <Icon name="search" size={18} />
+              <span className="hidden sm:inline">Search</span>
+            </Link>
+            <Link
+              to="/app"
+              className="inline-flex min-h-11 items-center rounded-full border-2 border-brand-blue/60 bg-white px-4 text-base font-bold text-brand-blue hover:bg-brand-blue-50"
+            >
+              Get our app
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-5 xl:gap-8">
         <Link to="/" className="flex min-w-0 items-center gap-3">
-          <img
-            src="/img/ohrr-mark.png"
-            alt="Ohio House Rabbit Rescue"
-            className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
-          />
+          <img src="/img/ohrr-mark.png" alt="" className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14" />
           <span className="min-w-0 leading-tight">
-            <span className="block font-display text-lg font-black text-brand-blue sm:text-xl">
-              Ohio House Rabbit Rescue
-            </span>
+            <span className="block font-display text-lg font-black text-brand-blue sm:text-xl xl:whitespace-nowrap xl:text-lg">Ohio House Rabbit Rescue</span>
             <span className="hidden text-xs font-bold uppercase tracking-wider text-brand-orange-ink sm:block">
               Columbus, Ohio · est. 2009
             </span>
           </span>
         </Link>
 
-        {/* Laptop: search, text size, the app */}
-        <div className="hidden items-center gap-2 lg:flex">
-          <Link
-            to="/search"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 px-4 text-base font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <Icon name="search" size={18} /> Search
-          </Link>
-          <TextSizeControl />
-          <Link
-            to="/app"
-            className="inline-flex min-h-11 items-center rounded-full bg-brand-orange px-4 text-base font-bold text-ink shadow-sm transition hover:bg-brand-orange-dark"
-          >
-            Open the app
-          </Link>
-        </div>
+        {/* Laptop: every page in the menu, always visible */}
+        <nav aria-label="Main" className="hidden shrink-0 gap-0.5 xl:flex">
+          {NAV.map((n) => (
+            <NavLink key={n.to} to={n.to} className={linkClass}>
+              {n.label}
+            </NavLink>
+          ))}
+        </nav>
 
         {/* Phone and tablet: a labelled Menu button */}
         <button
@@ -113,8 +124,8 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Laptop: every page, always visible */}
-      <nav aria-label="Main" className="hidden border-t border-slate-100 lg:block">
+      {/* A laptop too narrow for one row gets the whole menu on a second row */}
+      <nav aria-label="Main" className="hidden border-t border-slate-100 lg:block xl:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-5 py-1.5">
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} className={linkClass}>
@@ -124,7 +135,6 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* Phone: the same list, opened with the Menu button */}
       {open && (
         <nav id="site-menu" aria-label="Main" className="border-t border-slate-100 bg-white px-4 py-3 lg:hidden">
           <div className="grid gap-1">
@@ -133,18 +143,6 @@ export default function Header() {
                 {n.label}
               </NavLink>
             ))}
-            <NavLink to="/search" className={linkClass}>
-              Search the site
-            </NavLink>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
-            <TextSizeControl />
-            <Link
-              to="/app"
-              className="inline-flex min-h-11 items-center rounded-full bg-brand-orange px-4 text-base font-bold text-ink"
-            >
-              Open the app
-            </Link>
           </div>
         </nav>
       )}

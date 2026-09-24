@@ -3,19 +3,19 @@ import { MAILING_LIST, OHRR } from '../lib/constants'
 import { ContactRow, ext } from './ui'
 import { useOrgProfile } from '../lib/orgProfile'
 
-// The footer after the persona review: one short list of the pages people
-// actually look for at the bottom, not a second copy of the menu.
+// The menu carries the rescue's purpose; the footer carries everything else
+// OHRR does — once, and not as a second copy of the menu.
 const FIND = [
-  { to: '/adopt', label: 'Adopt a rabbit' },
-  { to: '/help', label: 'Bunny Help' },
   { to: '/learn/vets', label: 'Rabbit-savvy vets' },
-  { to: '/found', label: 'Found or surrendering a rabbit' },
-  { to: '/volunteer', label: 'Volunteer' },
-  { to: '/give', label: 'Ways to give' },
+  { to: '/tails', label: 'Happy Tails' },
+  { to: '/events', label: 'Events' },
   { to: '/bunfest', label: 'Midwest BunFest' },
+  { to: '/hop-shop', label: 'Hop Shop' },
+  { to: '/news', label: 'News' },
+  { to: '/rescues', label: 'Rescues near you' },
   { to: '/partners', label: 'Sponsors & partners' },
+  { to: '/impact', label: 'Our impact' },
   { to: '/contact', label: 'Contact us' },
-  { to: '/search', label: 'Search' },
 ]
 
 const link = 'inline-flex min-h-11 items-center font-semibold text-slate-700 hover:text-brand-blue'
@@ -61,7 +61,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-sm font-extrabold uppercase tracking-wider text-slate-600">Find your way</p>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-slate-600">Also at OHRR</p>
           <ul className="mt-2 grid grid-cols-1 text-sm sm:grid-cols-2 md:grid-cols-1">
             {FIND.map((n) => (
               <li key={n.to}>
@@ -89,11 +89,6 @@ export default function Footer() {
             <li>
               <Link to={MAILING_LIST} className={link}>
                 Join the OHRR mailing list
-              </Link>
-            </li>
-            <li>
-              <Link to="/app" className={link}>
-                Get the OHRR app
               </Link>
             </li>
             <li>

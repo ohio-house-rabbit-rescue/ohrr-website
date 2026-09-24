@@ -95,9 +95,6 @@ export default function BunFest() {
               <a href={BUNFEST_SAMPLE} {...ext} className={btn.blue}>
                 The BunFest website
               </a>
-              <Link to="/app" className={btn.outline}>
-                BunFest in the app
-              </Link>
             </div>
             <p className="mt-3 text-sm text-slate-600">
               The schedule, the map, the rabbit rules and everyone who's coming. The current official site is{' '}
