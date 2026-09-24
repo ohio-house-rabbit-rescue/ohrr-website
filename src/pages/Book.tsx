@@ -8,6 +8,9 @@ import { Icon } from '../components/icons'
 import { Spinner } from '../lib/staff'
 import { errMessage, isSupabaseConfigured } from '../lib/supabase'
 import { OHRR } from '../lib/constants'
+import NotifyMe from '../components/NotifyMe'
+import VolunteerGate from '../components/VolunteerGate'
+import { MOBILE_VET_NAME, MOBILE_VET_SLUG } from '../lib/mobileVet'
 import {
   bookSlot,
   bookingByToken,
@@ -45,6 +48,8 @@ export default function Book() {
   const [error, setError] = useState<string | null>(null)
   const [picked, setPicked] = useState<OpenSlot | null>(null)
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null)
+  // Approved-volunteers-only shifts: the email that passed the check (null = not yet).
+  const [volunteer, setVolunteer] = useState<{ email: string; firstName?: string } | null>(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -83,24 +88,39 @@ export default function Book() {
         <Spinner />
       </Section>
     )
-  if (type === null)
+  if (type === null) {
+    const label = slug === MOBILE_VET_SLUG ? MOBILE_VET_NAME : 'Booking'
     return (
       <>
-        <PageHero title="Booking" />
-        <Section>
-          <Card className="max-w-xl">
-            <p className="font-bold text-ink">This isn’t open for booking right now.</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Email{' '}
-              <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
-                {OHRR.email}
-              </a>{' '}
-              and OHRR will help.
+        <PageHero title={label} />
+        <Section className="grid max-w-4xl gap-6 md:grid-cols-2">
+          <div>
+            <p className="text-base font-bold text-ink">There are no times to book yet.</p>
+            <p className="mt-1 text-base text-slate-700">
+              {slug === MOBILE_VET_SLUG ? (
+                <>
+                  OHRR posts the clinic days here as soon as they’re set.{' '}
+                  <Link to="/mobile-vet" className="font-semibold text-brand-blue">
+                    About the mobile vet clinic
+                  </Link>
+                  .
+                </>
+              ) : (
+                <>
+                  Leave your name and OHRR will let you know, or email{' '}
+                  <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
+                    {OHRR.email}
+                  </a>
+                  .
+                </>
+              )}
             </p>
-          </Card>
+          </div>
+          <NotifyMe what={slug} label={label === 'Booking' ? 'booking' : label} />
         </Section>
       </>
     )
+  }
   if (receipt) return <Confirmation receipt={receipt} type={type} />
 
   const reqs = (type.requirements ?? '').split('\n').map((s) => s.trim()).filter(Boolean)
@@ -147,9 +167,17 @@ export default function Book() {
 
         <div>
           {error && <p className="mb-3 text-sm font-semibold text-red-600">{error}</p>}
-          {!picked ? (
+          {type.approval_role && !volunteer ? (
+            <VolunteerGate
+              where={{ type: slug }}
+              role={type.approval_role}
+              onApproved={(email, firstName) => setVolunteer({ email, firstName })}
+            />
+          ) : !picked ? (
             <>
-              <h2 className="font-display text-xl font-black text-ink">Pick a time</h2>
+              <h2 className="font-display text-xl font-black text-ink">
+                {volunteer?.firstName ? `Pick a time, ${volunteer.firstName}` : 'Pick a time'}
+              </h2>
               {slots === null && !error && <Spinner label="Finding open times…" />}
               {slots && byDay.length === 0 && (
                 <Card className="mt-3">
@@ -194,6 +222,11 @@ export default function Book() {
             <BookForm
               type={type}
               slot={picked}
+              lockedEmail={volunteer?.email || undefined}
+              onNotYou={() => {
+                setVolunteer(null)
+                setPicked(null)
+              }}
               initialAnswer={params.get('rabbit') ?? ''}
               onBack={() => setPicked(null)}
               onBooked={(r) => {
@@ -209,8 +242,27 @@ export default function Book() {
   )
 }
 
-function BookForm({ type, slot, initialAnswer, onBack, onBooked, onRefresh }: { type: BookingType; slot: OpenSlot; initialAnswer: string; onBack: () => void; onBooked: (r: BookingReceipt) => void; onRefresh: () => void }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', answer: initialAnswer, notes: '' })
+function BookForm({
+  type,
+  slot,
+  initialAnswer,
+  lockedEmail,
+  onNotYou,
+  onBack,
+  onBooked,
+  onRefresh,
+}: {
+  type: BookingType
+  slot: OpenSlot
+  initialAnswer: string
+  /** An approved volunteer's email, already checked — not editable here. */
+  lockedEmail?: string
+  onNotYou: () => void
+  onBack: () => void
+  onBooked: (r: BookingReceipt) => void
+  onRefresh: () => void
+}) {
+  const [form, setForm] = useState({ name: '', email: lockedEmail ?? '', phone: '', answer: initialAnswer, notes: '' })
   const [party, setParty] = useState(1)
   const [attested, setAttested] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -251,7 +303,20 @@ function BookForm({ type, slot, initialAnswer, onBack, onBooked, onRefresh }: { 
           </label>
           <label className="block text-sm font-semibold text-slate-700">
             Email
-            <input className={input} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
+            <input
+              className={`${input} ${lockedEmail ? 'bg-slate-50 text-slate-600' : ''}`}
+              type="email"
+              required
+              readOnly={!!lockedEmail}
+              value={form.email}
+              onChange={set('email')}
+              autoComplete="email"
+            />
+            {lockedEmail && (
+              <button type="button" onClick={onNotYou} className="mt-1 text-sm font-semibold text-brand-blue">
+                Not you?
+              </button>
+            )}
           </label>
           <label className="block text-sm font-semibold text-slate-700">
             Phone

@@ -9,6 +9,13 @@
 // Totals for this week, this month, this year and every year — and a tidy
 // summary they can save or print, which is what a school, an employer or a
 // scholarship actually asks for.
+//
+// 2026-09-24 (OHRR: "i need also the ability to see what i am scheduled for
+// along with the hours and … a generated PDF with Bev's name signed on it …
+// so the rescue does not have to perform this task"): what they're signed up
+// for, what they're approved for, and their own hours letter as a PDF. The
+// database counts the confirmed hours and records the letter under a code a
+// school or employer can check at /verify. Certificates are OHRR's to give.
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHero, Section, Card, btn, PrintButton } from '../components/ui'
@@ -20,6 +27,20 @@ import { sharePng } from '../lib/share/share'
 import { shareText } from '../lib/share/text'
 import { useFeatureFlag, VOLUNTEER_HOURS_FLAG } from '../lib/settings'
 import { renderHoursCard } from '../lib/volunteers/hoursCard'
+import { savePng } from '../lib/share/share'
+import { canvasToPdf } from '../lib/pdf'
+import { paintLetter } from '../lib/volunteers/paint'
+import { useOrgBits } from '../lib/volunteers/orgBits'
+import { LETTER_KINDS, buildLetter, longDate, type LetterInput, type LetterKind } from '../lib/volunteers/letters'
+import {
+  SELF_SERVE_KINDS,
+  VERIFY_BASE,
+  approvedText,
+  issueMyLetter,
+  verifyLine,
+  type UpcomingItem,
+} from '../lib/volunteers/approval'
+import { downloadBookingIcs, fmtDay as bookingDay, fmtRange } from '../lib/bookings'
 import {
   deleteMyHours,
   forgetToken,
@@ -110,7 +131,17 @@ export default function MyHours() {
   return <Record rec={rec} token={token} onChanged={load} />
 }
 
-function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onChanged: () => Promise<void> }) {
+/** What update 25 adds to the record (the shared MyRecord type predates it). */
+type MyRecordPlus = MyRecord & {
+  approved_for?: string[]
+  review_status?: 'pending' | 'approved' | 'declined' | null
+  hours_for?: string | null
+  letter_details?: Record<string, string>
+  upcoming?: UpcomingItem[]
+}
+
+function Record({ rec: base, token, onChanged }: { rec: MyRecord; token: string; onChanged: () => Promise<void> }) {
+  const rec = base as MyRecordPlus
   const org = useOrgProfile()
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -155,8 +186,11 @@ function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onCha
 
   return (
     <>
-      <PageHero title="My volunteer hours" subtitle={`${rec.name} · ${hoursLabel(rec.totals.all)} for the bunnies`} />
+      <PageHero title="My volunteer page" subtitle={`${rec.name} · ${hoursLabel(rec.totals.all)} for the bunnies`} />
       <Section className="max-w-3xl space-y-8">
+        <ApprovalLine rec={rec} />
+        <ComingUp items={rec.upcoming ?? []} approved={(rec.approved_for ?? []).length > 0} />
+
         {/* The headline numbers */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Total label="This week" value={rec.totals.this_week} />
@@ -198,6 +232,9 @@ function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onCha
           </div>
         )}
 
+        {/* Only once update 25 is in: the record then says what they are approved for. */}
+        {rec.approved_for !== undefined && <LetterMaker rec={rec} token={token} />}
+
         {/* By year */}
         {years.length > 0 && (
           <section className="space-y-3">
@@ -230,7 +267,7 @@ function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onCha
               <PrintButton />
             </div>
             <p className="text-sm text-slate-600">
-              Need it on letterhead? Ask OHRR for a signed service-hours letter — they print it from the same record.
+              Need it on letterhead? Make your signed hours letter above.
             </p>
             {note && <p className="text-base font-bold text-green-700">{note}</p>}
             {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
@@ -258,7 +295,11 @@ function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onCha
                     <span className="block text-sm text-slate-600">
                       {fmtDay(e.on_date)}
                       {e.note ? ` · ${e.note}` : ''}
-                      {e.source === 'checkin' ? ' · from a booked shift' : e.source === 'staff' ? ' · added by OHRR' : ''}
+                      {e.source === 'checkin' || (e.source as string) === 'shift'
+                        ? ' · from a booked shift'
+                        : e.source === 'staff'
+                          ? ' · added by OHRR'
+                          : ''}
                     </span>
                   </span>
                   {e.source === 'self' && e.status === 'logged' && (
@@ -419,5 +460,250 @@ function LogForm({
       </div>
       <p className="text-sm text-slate-600">OHRR sees what you log and confirms it — they can fix anything that’s off.</p>
     </form>
+  )
+}
+
+/* ---- approved for, and what they're signed up for ---- */
+
+function ApprovalLine({ rec }: { rec: MyRecordPlus }) {
+  const approved = rec.approved_for ?? []
+  if (rec.review_status === 'pending') {
+    return (
+      <p className="rounded-2xl bg-brand-orange-50 px-4 py-3 text-base text-slate-700">
+        <strong className="text-ink">Your application is with OHRR.</strong>{' '}
+        {approved.length > 0
+          ? `You can keep signing up for ${approvedText(approved).toLowerCase() === 'everything' ? 'everything' : approvedText(approved)} meanwhile.`
+          : 'You’ll get an email once someone has looked it over.'}
+      </p>
+    )
+  }
+  if (approved.length === 0) return null
+  return (
+    <p className="rounded-2xl bg-brand-blue-50 px-4 py-3 text-base text-slate-700">
+      <strong className="text-ink">Approved for:</strong> {approvedText(approved)}.{' '}
+      <Link to="/volunteer#shifts" className="font-semibold text-brand-blue">
+        Pick a shift
+      </Link>
+    </p>
+  )
+}
+
+function ComingUp({ items, approved }: { items: UpcomingItem[]; approved: boolean }) {
+  if (items.length === 0) {
+    if (!approved) return null
+    return (
+      <section className="space-y-3">
+        <h2 className="font-display text-xl font-black text-ink">Coming up</h2>
+        <Card className="text-base text-slate-700">
+          Nothing booked right now.{' '}
+          <Link to="/volunteer#shifts" className="font-semibold text-brand-blue">
+            Pick a shift
+          </Link>
+        </Card>
+      </section>
+    )
+  }
+  return (
+    <section className="space-y-3">
+      <h2 className="font-display text-xl font-black text-ink">Coming up</h2>
+      <Card className="divide-y divide-slate-100 !py-2">
+        {items.map((b) => (
+          <div key={b.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 py-3">
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-base font-extrabold text-ink">{bookingDay(b.starts_at)}</span>
+              <span className="block text-base text-slate-700">
+                {fmtRange(b.starts_at, b.ends_at)} · {b.what}
+                {b.area ? ` · ${b.area}` : ''}
+              </span>
+              {b.status === 'requested' && <span className="block text-sm text-brand-orange-ink">Waiting for OHRR to confirm</span>}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                downloadBookingIcs({
+                  booking_id: b.id,
+                  status: b.status,
+                  cancel_token: b.cancel_token,
+                  type_name: b.what,
+                  kind: b.kind,
+                  location: b.location,
+                  starts_at: b.starts_at,
+                  ends_at: b.ends_at,
+                  party_size: 1,
+                })
+              }
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-brand-blue"
+            >
+              <Icon name="calendar" size={16} /> Add to calendar
+            </button>
+            <Link to={`/book/cancel/${b.cancel_token}`} className="inline-flex min-h-11 items-center text-sm font-bold text-slate-600">
+              Can’t make it?
+            </Link>
+          </div>
+        ))}
+      </Card>
+    </section>
+  )
+}
+
+/* ---- their own hours letter, as a PDF signed with the director's name ---- */
+
+const PERIODS = [
+  { value: 'year', label: 'This year' },
+  { value: '12', label: 'The last 12 months' },
+  { value: 'last-year', label: 'Last year' },
+  { value: 'all', label: 'All time' },
+  { value: 'custom', label: 'Pick the dates' },
+]
+const isoDay = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+function periodFor(p: string): { from: string; to: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  if (p === 'last-year') return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` }
+  if (p === '12') {
+    const a = new Date(now)
+    a.setFullYear(y - 1)
+    a.setDate(a.getDate() + 1)
+    return { from: isoDay(a), to: isoDay(now) }
+  }
+  if (p === 'all') return { from: '2009-01-01', to: isoDay(now) }
+  return { from: `${y}-01-01`, to: isoDay(now) }
+}
+const FROM_SIGNUP: Record<string, LetterKind> = { school: 'school', military: 'military', workplace: 'workplace', community: 'general', other: 'general' }
+
+function LetterMaker({ rec, token }: { rec: MyRecordPlus; token: string }) {
+  const org = useOrgBits()
+  const kinds = LETTER_KINDS.filter((k) => (SELF_SERVE_KINDS as readonly string[]).includes(k.value))
+  const [kind, setKind] = useState<LetterKind>(FROM_SIGNUP[rec.hours_for ?? ''] ?? 'general')
+  const [period, setPeriod] = useState('year')
+  const [range, setRange] = useState(periodFor('year'))
+  const [details, setDetails] = useState<Record<string, string>>(() => ({ ...(rec.letter_details ?? {}) }))
+  const [busy, setBusy] = useState(false)
+  const [made, setMade] = useState<{ code: string; pending: number; total: number } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const meta = kinds.find((k) => k.value === kind) ?? kinds[0]
+
+  const make = async () => {
+    setBusy(true)
+    setError(null)
+    setMade(null)
+    try {
+      const { from, to } = period === 'custom' ? range : periodFor(period)
+      const asked: Record<string, string> = {}
+      for (const a of meta.ask) if ((details[a.key] ?? '').trim()) asked[a.key] = details[a.key].trim()
+      // The database counts the confirmed hours and records the letter; the page only draws it.
+      const issued = await issueMyLetter(token, kind, from, to, asked)
+      const today = longDate(issued.issuedOn)
+      const input: LetterInput = { kind, name: issued.name, details: asked, from: issued.from, to: issued.to, lines: issued.lines, org, today }
+      const letter = buildLetter(input)
+      const canvas = document.createElement('canvas')
+      await paintLetter(canvas, {
+        date: today,
+        recipient: letter.recipient,
+        title: letter.title,
+        salutation: letter.salutation,
+        paragraphs: letter.paragraphs,
+        table: letter.table ? { lines: issued.lines, total: issued.total } : undefined,
+        closing: letter.closing,
+        signer: letter.signer,
+        signed: true,
+        verify: verifyLine(issued.code),
+        footer: letter.footer,
+        org,
+      })
+      const pdf = await canvasToPdf(canvas, `${letter.title} - ${issued.name}`)
+      savePng(pdf, `ohrr-hours-letter-${issued.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${issued.code}.pdf`)
+      setMade({ code: issued.code, pending: issued.pending, total: issued.total })
+    } catch (e) {
+      setError(errMessage(e))
+    }
+    setBusy(false)
+  }
+
+  return (
+    <section className="space-y-3">
+      <h2 className="font-display text-xl font-black text-ink">Your hours letter</h2>
+      <Card className="space-y-4">
+        <p className="text-base leading-relaxed text-slate-700">
+          A letter on OHRR’s letterhead, signed by {org.signerName || 'OHRR'}, with your confirmed hours — for a school,
+          your unit or your employer. Make one whenever you need it.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-semibold text-slate-700">
+            Who it’s for
+            <select className={input} value={kind} onChange={(e) => setKind(e.target.value as LetterKind)}>
+              {kinds.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-semibold text-slate-700">
+            The hours from
+            <select
+              className={input}
+              value={period}
+              onChange={(e) => {
+                setPeriod(e.target.value)
+                if (e.target.value !== 'custom') setRange(periodFor(e.target.value))
+              }}
+            >
+              {PERIODS.map((x) => (
+                <option key={x.value} value={x.value}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {period === 'custom' && (
+            <>
+              <label className="block text-sm font-semibold text-slate-700">
+                From
+                <input className={input} type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                To
+                <input className={input} type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
+              </label>
+            </>
+          )}
+          {meta.ask.map((a) => (
+            <label key={a.key} className="block text-sm font-semibold text-slate-700">
+              {a.label}
+              <input
+                className={input}
+                value={details[a.key] ?? ''}
+                placeholder={a.placeholder}
+                onChange={(e) => setDetails((d) => ({ ...d, [a.key]: e.target.value }))}
+              />
+            </label>
+          ))}
+        </div>
+        <p className="text-sm text-slate-600">{meta.hint}</p>
+        <button type="button" onClick={() => void make()} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+          <Icon name="printer" size={18} /> {busy ? 'Making your letter…' : 'Make my letter (PDF)'}
+        </button>
+        {error && <p className="text-base font-semibold text-red-600">{error}</p>}
+        {made && (
+          <div className="rounded-xl bg-green-50 px-4 py-3 text-base text-slate-700">
+            <p className="font-bold text-ink">Your letter is ready — it’s in your downloads.</p>
+            <p className="mt-1">
+              It shows {hoursLabel(made.total)} of confirmed hours. A school or employer can check it at{' '}
+              <a href={`${VERIFY_BASE}/${made.code}`} className="font-semibold text-brand-blue">
+                {VERIFY_BASE.replace(/^https:\/\//, '')}
+              </a>{' '}
+              with the code <strong className="font-mono">{made.code}</strong>.
+            </p>
+            {made.pending > 0 && (
+              <p className="mt-1 text-sm">
+                {hoursLabel(made.pending)} you logged in those dates are waiting for OHRR to confirm; they’ll be on your
+                letter once confirmed.
+              </p>
+            )}
+          </div>
+        )}
+      </Card>
+    </section>
   )
 }

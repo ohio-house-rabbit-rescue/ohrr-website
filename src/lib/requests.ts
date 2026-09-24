@@ -14,6 +14,8 @@ export type RequestKind =
   | 'supporter'
   | 'foster-application'
   | 'found-rabbit'
+  | 'notify-me'
+  | 'volunteer-application'
 
 export interface RequestFields {
   name?: string
@@ -43,6 +45,8 @@ function summarize(kind: RequestKind, f: RequestFields): string {
       return pick('bunny') || 'Happy Tail'
     case 'found-rabbit':
       return pick('where', 'condition') || 'Found rabbit'
+    case 'notify-me':
+      return pick('what') || 'Tell me when'
     default:
       return pick('subject') || 'Message'
   }

@@ -130,9 +130,9 @@ export default function Volunteer() {
         title="Volunteer"
         subtitle="Whether you want to get up close with the bunnies or work behind the scenes, we have an opportunity for you. We welcome volunteers of all ages and backgrounds."
         doors={[
-          { href: '#shifts', icon: 'calendar', h: 'Pick a shift', p: 'Socialization, Buncare and more' },
-          { to: '/volunteer/foster', icon: 'home', h: 'Foster a rabbit', p: 'A few weeks in your home' },
-          { to: '/volunteer/hours', icon: 'clock', h: 'My volunteer hours', p: 'Already volunteering? See and print them' },
+          { to: '/volunteer/apply', icon: 'users', h: 'Apply to volunteer', p: 'New? Start here — OHRR reviews every application' },
+          { href: '#shifts', icon: 'calendar', h: 'Pick a shift', p: 'Approved volunteers: socialization, Buncare and more' },
+          { to: '/volunteer/hours', icon: 'clock', h: 'My volunteer page', p: 'What you’re signed up for, your hours, your letter' },
         ]}
       />
       <PresentedBy surface="volunteer" />
@@ -147,8 +147,13 @@ export default function Volunteer() {
 
         <H2 id="shifts" className="mt-10">Shifts and ways to help</H2>
         <p className="mt-2 text-base text-slate-700">
-          Pick a shift and you’re booked — no account. Your hours are recorded when you check in, and you can print
-          your own hours record any time.
+          New here?{' '}
+          <Link to="/volunteer/apply" className="font-semibold text-brand-blue">
+            Apply to volunteer
+          </Link>{' '}
+          first — OHRR reads every application. Once you’re approved, pick a shift with the same email and you’re booked,
+          no account needed. Your hours are recorded when you check in, and your own volunteer page has them, with a
+          signed hours letter whenever you need one.
         </p>
         {opps === null ? (
           <p className="mt-6 text-base text-slate-600">Loading…</p>

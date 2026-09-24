@@ -16,6 +16,8 @@ import { OHRR } from '../lib/constants'
 import { downloadBookingIcs, googleCalendarUrl, type BookingReceipt } from '../lib/bookings'
 import { APP_ORIGIN, HOURS_FOR, fmtDay, fmtHours, fmtShift, lengthText, needText, placesLeft, sourceFrom, whenText, type Call, type HoursFor } from '../lib/volunteers/calls'
 import { loadPublicCall, signUpForCall, type SignUpResult } from '../lib/volunteers/callsApi'
+import { volunteerCheck } from '../lib/volunteers/approval'
+import VolunteerGate from '../components/VolunteerGate'
 
 const input =
   'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-base text-ink outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20'
@@ -33,6 +35,9 @@ export default function VolunteerCall() {
   const [call, setCall] = useState<Call | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<SignUpResult | null>(null)
+  // Approved volunteers only? Asking with no email tells us which kind (or 'open').
+  const [role, setRole] = useState<string | null | undefined>(undefined)
+  const [volunteer, setVolunteer] = useState<{ email: string; firstName?: string } | null>(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -45,6 +50,9 @@ export default function VolunteerCall() {
         setError(errMessage(e))
         setCall(null)
       })
+    volunteerCheck('', { call: slug })
+      .then((r) => setRole(r.state === 'open' || r.state === 'closed' ? null : (r.role ?? null)))
+      .catch(() => setRole(null))
   }, [slug])
 
   if (call === undefined)
@@ -121,11 +129,25 @@ export default function VolunteerCall() {
                 Other ways to volunteer
               </Link>
             </Card>
+          ) : role === undefined ? (
+            <Spinner />
+          ) : role && !volunteer ? (
+            <VolunteerGate
+              where={{ call: slug }}
+              role={role}
+              onApproved={(email, firstName) => setVolunteer({ email, firstName })}
+            />
           ) : (
-            <SignUpForm call={call} source={source} onDone={(r) => {
-              setDone(r)
-              window.scrollTo({ top: 0 })
-            }} />
+            <SignUpForm
+              call={call}
+              source={source}
+              lockedEmail={volunteer?.email || undefined}
+              onNotYou={() => setVolunteer(null)}
+              onDone={(r) => {
+                setDone(r)
+                window.scrollTo({ top: 0 })
+              }}
+            />
           )}
         </div>
       </Section>
@@ -147,11 +169,24 @@ function Fact({ icon, label, value }: { icon: IconName; label: string; value: Re
   )
 }
 
-function SignUpForm({ call, source, onDone }: { call: Call; source: string | null; onDone: (r: SignUpResult) => void }) {
+function SignUpForm({
+  call,
+  source,
+  lockedEmail,
+  onNotYou,
+  onDone,
+}: {
+  call: Call
+  source: string | null
+  /** An approved volunteer's email, already checked — not editable here. */
+  lockedEmail?: string
+  onNotYou: () => void
+  onDone: (r: SignUpResult) => void
+}) {
   const shifts = useMemo(() => (call.shifts ?? []).filter((s) => new Date(s.ends_at) > new Date()), [call.shifts])
   const [picked, setPicked] = useState<string[]>([])
   const [area, setArea] = useState('')
-  const [f, setF] = useState({ name: '', email: '', phone: '' })
+  const [f, setF] = useState({ name: '', email: lockedEmail ?? '', phone: '' })
   const [hoursFor, setHoursFor] = useState<HoursFor | ''>('')
   const [details, setDetails] = useState<Record<string, string>>({})
   const [attested, setAttested] = useState(false)
@@ -272,8 +307,22 @@ function SignUpForm({ call, source, onDone }: { call: Call; source: string | nul
         </div>
         <label className="block text-base font-semibold text-slate-700">
           Email
-          <input className={input} required type="email" autoComplete="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-          <span className="mt-1 block text-sm font-normal text-slate-500">So we can thank you, and keep a record of your hours.</span>
+          <input
+            className={`${input} ${lockedEmail ? 'bg-slate-50 text-slate-600' : ''}`}
+            required
+            type="email"
+            autoComplete="email"
+            readOnly={!!lockedEmail}
+            value={f.email}
+            onChange={(e) => setF({ ...f, email: e.target.value })}
+          />
+          {lockedEmail ? (
+            <button type="button" onClick={onNotYou} className="mt-1 block text-sm font-semibold text-brand-blue">
+              Not you?
+            </button>
+          ) : (
+            <span className="mt-1 block text-sm font-normal text-slate-500">So we can thank you, and keep a record of your hours.</span>
+          )}
         </label>
       </section>
 

@@ -22,6 +22,8 @@ export interface BookingType {
   confirm_mode: 'auto' | 'staff'
   ask_reason: string | null
   attest_text: string | null
+  /** Approved volunteers of this kind only ('socialization' …); null = anyone (update 25). */
+  approval_role?: string | null
   is_published: boolean
   sort_order: number
   /** Standing weekly schedule; the database keeps `auto_weeks` weeks of times filled from it. */

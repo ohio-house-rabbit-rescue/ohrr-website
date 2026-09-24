@@ -6,7 +6,8 @@ import HomeBunnyHelp from '../components/HomeBunnyHelp'
 import { easterAhead } from '../lib/season'
 import PresentedBy from '../components/PresentedBy'
 import { useOrgProfile } from '../lib/orgProfile'
-import { formatDate, isUpcoming } from '../lib/format'
+import { formatDate, formatShortDate, isUpcoming } from '../lib/format'
+import { useMobileVet } from '../lib/mobileVet'
 import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
 
 // The home page, built around the rescue's purpose (2026-09-24). OHRR's
@@ -20,9 +21,23 @@ import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
 function Purpose() {
   // Help with my rabbit is a question box (HomeBunnyHelp) rather than a link,
   // so Bunny Help starts on the first screen.
+  // OHRR's own mobile vet clinic is one of the things it does, so it's one of
+  // the doors (2026-09-24, OHRR: "the viewability of the mobile vet on the home
+  // page as something we do"); the next clinic day shows once staff publish
+  // dates in Staff → Bookings → Mobile vet clinic.
+  const vet = useMobileVet()
+  const nextClinic = vet.slots[0]
   const doors: Door[] = [
     { to: '/adopt', icon: 'heart', h: 'Adopt a rabbit', p: 'The rabbits, and how adopting works' },
     { to: '/surrender', icon: 'mappin', h: 'Found or surrendering a rabbit', p: 'Strays, admissions and surrender' },
+    {
+      to: '/mobile-vet',
+      icon: 'stethoscope',
+      h: 'Mobile vet clinic',
+      p: nextClinic
+        ? `Next clinic ${formatShortDate(nextClinic.starts_at).replace(/, \d{4}$/, '')} · nail trims, checkups`
+        : 'Nail trims, wellness checks, microchips',
+    },
   ]
   const easter = easterAhead()
   // Phone order: title, the rabbits' photos, the doors, then the sentence. On a

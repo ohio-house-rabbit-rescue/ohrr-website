@@ -50,8 +50,19 @@ export type IconName =
   // Website only: the footer's social links as icons (the app does not need them yet)
   | 'facebook'
   | 'instagram'
+  // Website only: OHRR's mobile vet clinic
+  | 'stethoscope'
 
 const paths: Record<IconName, ReactNode> = {
+  stethoscope: (
+    <>
+      <path d="M11 2v2" />
+      <path d="M5 2v2" />
+      <path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1" />
+      <path d="M8 15a6 6 0 0 0 12 0v-3" />
+      <circle cx="20" cy="10" r="2" />
+    </>
+  ),
   facebook: <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />,
   instagram: (
     <>

@@ -12,6 +12,9 @@ import { BreedGuide, BreedDetail } from './pages/Breeds'
 import Volunteer from './pages/Volunteer'
 import BunFest from './pages/BunFest'
 import SilentAuction from './pages/SilentAuction'
+import MobileVet from './pages/MobileVet'
+import VolunteerApply from './pages/VolunteerApply'
+import VerifyLetter from './pages/VerifyLetter'
 import { BunFestSchedule, BunFestTopic, BunFestVendors } from './pages/BunFestMore'
 import Events from './pages/Events'
 import Give from './pages/Give'
@@ -49,7 +52,7 @@ import ManageVets from './pages/staff/ManageVets'
 import OrgDetails from './pages/staff/OrgDetails'
 import Impact from './pages/Impact'
 import Book, { BookCancel } from './pages/Book'
-import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest, VolunteerInterest } from './pages/Forms'
+import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
 import VolunteerCalls, { VolunteerCallRoute } from './pages/staff/VolunteerCalls'
 import HoursLetter from './pages/staff/HoursLetter'
@@ -146,7 +149,10 @@ export default function App() {
         <Route path="/impact" element={<Impact />} />
         <Route path="/support/become-a-supporter" element={<BecomeSupporter />} />
         <Route path="/volunteer/foster" element={<FosterInterest />} />
-        <Route path="/volunteer/interest" element={<VolunteerInterest />} />
+        <Route path="/volunteer/interest" element={<VolunteerApply />} />
+        <Route path="/volunteer/apply" element={<VolunteerApply />} />
+        <Route path="/verify" element={<VerifyLetter />} />
+        <Route path="/verify/:code" element={<VerifyLetter />} />
         <Route path="/learn" element={<Learn />} />
         <Route path="/learn/vets" element={<Vets />} />
         <Route path="/learn/breeds" element={<BreedGuide />} />
@@ -159,6 +165,7 @@ export default function App() {
         <Route path="/volunteer/call/:slug" element={<VolunteerCall />} />
         <Route path="/bunfest" element={<BunFest />} />
         <Route path="/bunfest/silent-auction" element={<SilentAuction />} />
+        <Route path="/mobile-vet" element={<MobileVet />} />
         <Route path="/bunfest/schedule" element={<BunFestSchedule />} />
         <Route path="/bunfest/vendors" element={<BunFestVendors />} />
         <Route path="/bunfest/p/:slug" element={<BunFestTopic />} />
