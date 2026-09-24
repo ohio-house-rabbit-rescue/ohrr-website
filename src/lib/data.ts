@@ -402,7 +402,13 @@ function inWindow(s: { startsAt?: string | null; endsAt?: string | null }, now =
 // Home-page hero slides (max 3) and featured cards (max 4) from the shared
 // `hero_slides` table — highest sort_order first, only within their date window.
 // Falls back to the built-in seed when the table is missing or empty.
-export function useHeroSlides(): { hero: HeroSlide[]; featured: HeroSlide[]; loaded: boolean; source: Source } {
+export function useHeroSlides(): {
+  hero: HeroSlide[]
+  featured: HeroSlide[]
+  happening: HeroSlide[]
+  loaded: boolean
+  source: Source
+} {
   const [slides, setSlides] = useState<HeroSlide[] | null>(null)
   const [source, setSource] = useState<Source>('sample')
   useEffect(() => {
@@ -425,7 +431,7 @@ export function useHeroSlides(): { hero: HeroSlide[]; featured: HeroSlide[]; loa
         if (!error && active && rows.length > 0) {
           setSlides(
             rows.map((r) => {
-              const placement = r.placement === 'featured' ? 'featured' : 'hero'
+              const placement = r.placement === 'featured' || r.placement === 'happening' ? r.placement : 'hero'
               const seed = seedFor(placement, r.cta_url)
               return {
                 id: r.id,
@@ -457,10 +463,18 @@ export function useHeroSlides(): { hero: HeroSlide[]; featured: HeroSlide[]; loa
       active = false
     }
   }, [])
-  const all = (slides ?? sampleHeroSlides).filter((s) => inWindow(s)).sort((a, b) => b.sortOrder - a.sortOrder)
+  const byOrder = (a: HeroSlide, b: HeroSlide) => b.sortOrder - a.sortOrder
+  const all = (slides ?? sampleHeroSlides).filter((s) => inWindow(s)).sort(byOrder)
+  // "What's happening" picture cards: OHRR's live ones once staff add any (update
+  // 23 opens the group), else the current site's posts bundled in data/heroSlides.
+  const liveHappening = all.filter((s) => s.placement === 'happening')
+  const happening = liveHappening.length
+    ? liveHappening
+    : sampleHeroSlides.filter((s) => s.placement === 'happening' && inWindow(s)).sort(byOrder)
   return {
     hero: all.filter((s) => s.placement === 'hero').slice(0, 3),
     featured: all.filter((s) => s.placement === 'featured').slice(0, 4),
+    happening: happening.slice(0, 4),
     loaded: slides !== null,
     source,
   }

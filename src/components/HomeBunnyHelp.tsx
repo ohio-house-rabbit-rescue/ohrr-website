@@ -99,7 +99,7 @@ export default function HomeBunnyHelp() {
       {open && (
         <div
           id="home-bunny-help"
-          className="mt-3 space-y-4 lg:absolute lg:right-0 lg:top-full lg:z-30 lg:mt-2 lg:max-h-[70vh] lg:w-[56rem] lg:max-w-[calc(100vw-2.5rem)] lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white lg:p-5 lg:shadow-xl"
+          className="mt-3 space-y-4 lg:absolute lg:left-0 lg:top-full lg:z-30 lg:mt-2 lg:max-h-[70vh] lg:w-[56rem] lg:max-w-[calc(100vw-2.5rem)] lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white lg:p-5 lg:shadow-xl"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-display text-base font-extrabold text-brand-blue">Bunny Help — OHRR’s own guidance, never a diagnosis</p>

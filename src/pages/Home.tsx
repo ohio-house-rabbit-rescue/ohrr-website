@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
-import { useFeaturedRabbits, useEvents } from '../lib/data'
-import { btn, ext, RabbitCard, LiveNote, Section, DoorList, type Door } from '../components/ui'
+import { useRabbits, useEvents, useHeroSlides } from '../lib/data'
+import type { HeroSlide, Rabbit } from '../lib/types'
+import { btn, ext, Section, DoorList, type Door } from '../components/ui'
 import HomeBunnyHelp from '../components/HomeBunnyHelp'
 import { easterAhead } from '../lib/season'
 import PresentedBy from '../components/PresentedBy'
@@ -13,8 +14,8 @@ import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
 // rescue abandoned pet rabbits, find them homes, and teach people to care for
 // rabbits as indoor companions. So the page is: what OHRR is and the three
 // doors a visitor comes for (adopt · help with my rabbit · found or
-// surrendering one), the rabbits, Bunny Help, and how to help. Everything else
-// — BunFest, the Hop Shop, news, sponsors — is one quiet line or the footer.
+// surrendering one), the rabbits' own photos, what's happening (picture cards),
+// and how to help. Real photos and artwork lead; the words stay short.
 
 function Purpose() {
   // Help with my rabbit is a question box (HomeBunnyHelp) rather than a link,
@@ -24,10 +25,12 @@ function Purpose() {
     { to: '/surrender', icon: 'mappin', h: 'Found or surrendering a rabbit', p: 'Strays, admissions and surrender' },
   ]
   const easter = easterAhead()
+  // Phone order: title, the rabbits' photos, the doors, then the sentence. On a
+  // laptop the photos take the right-hand column beside all three.
   return (
     <section className="border-b border-brand-blue/10 bg-brand-blue-50">
-      <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-12">
-        <div>
+      <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-x-12 lg:gap-y-4">
+        <div className="lg:col-start-1 lg:row-start-1">
           {easter && (
             <Link
               to={RABBIT_READY}
@@ -46,37 +49,130 @@ function Purpose() {
           <h1 className="mt-2 font-display text-2xl font-black leading-tight text-ink sm:text-4xl">
             Rescuing abandoned pet rabbits and finding them homes
           </h1>
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-700">
-            We run the Ohio House Rabbit Adoption Center in Columbus and teach people to care for rabbits as indoor
-            companions, so fewer are ever given up.
-          </p>
         </div>
-        <div className="grid gap-2.5">
+        <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-center">
+          <RabbitPhotos />
+        </div>
+        <div className="grid gap-2.5 lg:col-start-1 lg:row-start-3">
           <DoorList doors={doors} />
           <HomeBunnyHelp />
         </div>
+        <p className="max-w-2xl text-base leading-relaxed text-slate-700 lg:col-start-1 lg:row-start-2">
+          We run the Ohio House Rabbit Adoption Center in Columbus and teach people to care for rabbits as indoor
+          companions, so fewer are ever given up.
+        </p>
       </div>
     </section>
   )
 }
 
-function Rabbits() {
-  const { rabbits, source } = useFeaturedRabbits(4)
+// OHRR's own rabbits, the first thing a visitor sees (2026-09-24, OHRR: the page
+// needs imagery that catches the eye). Live photos from the adoptable list, so the
+// faces change as rabbits find homes. A swipeable row on a phone, 2×2 on a laptop.
+function RabbitPhotos() {
+  const { rabbits } = useRabbits()
+  const all = rabbits ?? []
+  const withPhotos = all.filter((r) => r.photo)
+  if (rabbits !== null && withPhotos.length === 0) return null
+  const tile = (r: Rabbit, i: number) => (
+    <Link
+      key={r.id}
+      to={`/adopt/rabbit/${r.id}`}
+      className={`group relative block aspect-square shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-200 ring-1 ring-black/5 ${
+        i >= 4 ? 'lg:hidden' : ''
+      } w-28 lg:w-auto`}
+    >
+      <img
+        src={r.photo}
+        alt={`${r.name}, a rabbit looking for a home at OHRR`}
+        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+        loading={i < 4 ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pb-2 pt-8 font-display text-base font-extrabold text-white lg:text-lg">
+        {r.name}
+      </span>
+    </Link>
+  )
   return (
-    <Section className="!py-6 md:!py-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-display text-2xl font-black text-ink">Rabbits looking for homes</h2>
-        <Link to="/adopt" className="text-base font-bold text-brand-blue hover:text-brand-blue-dark">
-          See all the rabbits →
-        </Link>
-      </div>
-      <LiveNote source={source} />
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        {(rabbits ?? []).map((r) => (
-          <RabbitCard key={r.id} r={r} compact />
+    <div>
+      {rabbits === null ? (
+        <div className="flex gap-2.5 overflow-hidden lg:grid lg:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="aspect-square w-28 shrink-0 animate-pulse rounded-2xl bg-slate-200 lg:w-auto" />
+          ))}
+        </div>
+      ) : (
+        <div className="-mx-5 flex snap-x gap-2.5 overflow-x-auto px-5 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0 lg:pb-0">
+          {withPhotos.slice(0, 8).map(tile)}
+          {/* On a phone the way to all of them is the last tile of the row */}
+          <Link
+            to="/adopt"
+            className="flex aspect-square w-28 shrink-0 snap-start items-center justify-center rounded-2xl bg-white p-3 text-center font-display text-base font-extrabold text-brand-blue ring-1 ring-brand-blue/20 lg:hidden"
+          >
+            {all.length > 0 ? `Meet all ${all.length} →` : 'Meet them all →'}
+          </Link>
+        </div>
+      )}
+      <Link to="/adopt" className="mt-2.5 hidden min-h-11 items-center text-base font-bold text-brand-blue hover:text-brand-blue-dark lg:inline-flex">
+        {all.length > 0 ? `Meet all ${all.length} rabbits looking for homes →` : 'Meet the rabbits →'}
+      </Link>
+    </div>
+  )
+}
+
+// "What's happening at OHRR": picture cards like the current site's post grid —
+// events, fundraisers and news, each with its own artwork. Staff pick them in
+// Staff → Homepage features (the "What's happening" group); an event's card
+// hides itself after its end date.
+function WhatsHappening() {
+  const { happening } = useHeroSlides()
+  if (happening.length === 0) return null
+  return (
+    <Section className="!pb-4 !pt-8 md:!pt-10">
+      <h2 className="font-display text-2xl font-black text-ink sm:text-3xl">What’s happening at OHRR</h2>
+      <ul className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        {happening.map((s) => (
+          <li key={s.id}>
+            <HappeningCard s={s} />
+          </li>
         ))}
-      </div>
+      </ul>
     </Section>
+  )
+}
+
+function HappeningCard({ s }: { s: HeroSlide }) {
+  const cls =
+    'group flex h-full flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
+  const inner = (
+    <>
+      {/* Artwork is never cropped: logos and shirt designs keep their words */}
+      <span className="flex aspect-[4/3] items-center justify-center bg-white p-3">
+        {s.imageUrl ? (
+          <img src={s.imageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />
+        ) : (
+          <span className="h-full w-full rounded-xl bg-brand-blue-50" />
+        )}
+      </span>
+      <span className="flex flex-1 flex-col border-t border-slate-100 p-3 sm:p-4">
+        <span className="line-clamp-3 font-display text-base font-extrabold leading-snug text-ink group-hover:text-brand-blue sm:text-lg">
+          {s.headline}
+        </span>
+        {s.subline && <span className="mt-1 hidden line-clamp-3 text-sm text-slate-600 sm:block">{s.subline}</span>}
+        {s.ctaLabel && <span className="mt-auto pt-2 text-sm font-bold text-brand-blue">{s.ctaLabel} →</span>}
+      </span>
+    </>
+  )
+  const to = s.ctaUrl ?? '/news'
+  return to.startsWith('/') ? (
+    <Link to={to} className={cls}>
+      {inner}
+    </Link>
+  ) : (
+    <a href={to} {...ext} className={cls}>
+      {inner}
+    </a>
   )
 }
 
@@ -168,7 +264,7 @@ export default function Home() {
   return (
     <>
       <Purpose />
-      <Rabbits />
+      <WhatsHappening />
       <ThinkingAboutARabbit />
       <PresentedBy surface="home" />
       <HowToHelp />

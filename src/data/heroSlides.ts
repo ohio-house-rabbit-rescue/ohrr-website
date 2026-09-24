@@ -9,6 +9,60 @@ import type { IconName } from '../components/icons'
 // shows a fixed line icon so people see and remember its purpose. A photo is only for
 // things that ARE content — real rabbits, auction items, artwork, the BunFest logo.
 export const sampleHeroSlides: HeroSlide[] = [
+  // "What's happening at OHRR" — the website home's picture cards: the posts on
+  // the current OHRR home page, with their own artwork (bundled, never hotlinked).
+  // The same five are seeded into the live table by update 23, where staff edit them.
+  {
+    id: 's-happening-bunfest',
+    placement: 'happening',
+    sortOrder: 50,
+    headline: 'Midwest BunFest is Sunday, October 25th!',
+    subline: 'Binky On! 10am – 4pm at The Makoy in Hilliard: rescues, vendors, a silent auction, raffle, bunny spa and educational sessions all day.',
+    imageUrl: '/img/bunfest-2026-logo.png',
+    ctaLabel: 'About BunFest',
+    ctaUrl: '/bunfest',
+    endsAt: '2026-10-25T23:59:00-04:00',
+  },
+  {
+    id: 's-happening-beach',
+    placement: 'happening',
+    sortOrder: 40,
+    headline: 'Beach Bunny Vibes – new OHRR merch',
+    subline: 'A retro beach cruiser, a surfboard and a cool bunny. Proceeds help OHRR care for rabbits waiting for their forever families.',
+    imageUrl: '/img/news/beach-bunny-vibes.jpg',
+    ctaLabel: 'Shop the shirt',
+    ctaUrl: 'https://www.bonfire.com/beach-bunny-vibes/',
+  },
+  {
+    id: 's-happening-tshirt',
+    placement: 'happening',
+    sortOrder: 30,
+    headline: 'They Still Talk About You',
+    subline: 'A shirt that honors the rabbits we’ve loved and lost. All proceeds support OHRR’s adoption activities.',
+    imageUrl: '/img/news/they-still-talk-about-you-shirt.png',
+    ctaLabel: 'Shop the shirt',
+    ctaUrl: 'https://www.bonfire.com/they-still-talk-about-you/',
+  },
+  {
+    id: 's-happening-plate',
+    placement: 'happening',
+    sortOrder: 20,
+    headline: 'Drive for the Bunnies',
+    subline: 'The official OHRR license plate, with a Dutch rabbit. OHRR receives a portion of each sale.',
+    imageUrl: '/img/news/license-plate-drive-for-the-bunnies.jpg',
+    ctaLabel: 'About the plate',
+    ctaUrl: '/info/license-plate',
+  },
+  {
+    id: 's-happening-kroger',
+    placement: 'happening',
+    sortOrder: 10,
+    headline: 'Link OHRR to your Kroger card',
+    subline: 'Every shopping trip donates to the rescue rabbits, at no cost to you.',
+    imageUrl: '/img/news/kroger-community-rewards.jpg',
+    ctaLabel: 'Link your card',
+    ctaUrl: '/info/kroger-rewards',
+  },
   {
     id: 's-hero-bunfest',
     placement: 'hero',

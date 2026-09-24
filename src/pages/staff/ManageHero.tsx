@@ -8,7 +8,7 @@ import { slideVisual } from '../../data/heroSlides'
 // Home-page hero slides + featured cards (shared `hero_slides` table — the app's home
 // screen reads the same rows). Follows the Announcements manager pattern.
 
-type Placement = 'hero' | 'featured'
+type Placement = 'hero' | 'featured' | 'happening'
 
 interface Row {
   id: string
@@ -165,8 +165,9 @@ function Form({ initial, userId, submitLabel, onSubmit, onCancel }: { initial: D
         <label className="block text-sm font-semibold text-slate-700">
           Placement
           <select className={staffInput} value={d.placement} onChange={(e) => setD({ ...d, placement: e.target.value as Placement })}>
-            <option value="hero">Hero (big slide at the top — up to 3 shown)</option>
-            <option value="featured">Featured card (the app's home screen — up to 4 shown)</option>
+            <option value="hero">Big card (top of the app’s Home — up to 3 shown)</option>
+            <option value="featured">Featured card (the app’s Home — up to 4 shown)</option>
+            <option value="happening">What’s happening (picture card on the website home — up to 4 shown)</option>
           </select>
         </label>
         <label className="block text-sm font-semibold text-slate-700">
@@ -295,8 +296,13 @@ export default function ManageHero() {
   if (!allowed) return <p className="text-slate-600">You don't have access to manage the homepage.</p>
 
   const groups: { key: Placement; title: string; hint: string }[] = [
-    { key: 'hero', title: 'Hero slides', hint: 'The big slide at the top of the home page. Up to 3 are shown, highest sort order first.' },
-    { key: 'featured', title: 'Featured cards', hint: 'The cards on the app’s home screen. Up to 4 are shown, highest sort order first.' },
+    {
+      key: 'happening',
+      title: 'What’s happening (website home)',
+      hint: 'Picture cards on the website’s home page: news, fundraisers, events — like the current site’s grid. Up to 4 are shown, highest sort order first. Give an event an end date and its card hides itself afterwards. Add a picture to every card.',
+    },
+    { key: 'hero', title: 'Big cards (app)', hint: 'The swipeable cards at the top of the app’s Home. Up to 3 are shown, highest sort order first.' },
+    { key: 'featured', title: 'Featured cards (app)', hint: 'The row after them on the app’s Home. Up to 4 are shown, highest sort order first.' },
   ]
 
   return (
@@ -305,8 +311,8 @@ export default function ManageHero() {
         <h1 className="font-display text-2xl font-black text-ink">Homepage features</h1>
       </div>
       <p className="mt-1 text-sm text-slate-600">
-        The hero slides (shown one at a time beside the OHRR introduction on the website home page) and the featured cards on the app’s home screen. <strong>Also drives the app's home screen.</strong> Until
-        you add any, both show the built-in defaults.
+        The picture cards under “What’s happening at OHRR” on the website’s home page, and the big and featured cards on the app’s
+        home screen. Until you add any, each shows the built-in defaults.
       </p>
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}

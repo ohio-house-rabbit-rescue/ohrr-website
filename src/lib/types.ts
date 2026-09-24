@@ -127,7 +127,8 @@ export interface RafflePrize {
 // Shared with the OHRR app (Supabase `hero_slides`) — the home-page hero and featured strip.
 export interface HeroSlide {
   id: string
-  placement: 'hero' | 'featured'
+  /** hero / featured: the app's home screen. happening: the website home's picture cards. */
+  placement: 'hero' | 'featured' | 'happening'
   headline: string
   subline?: string | null
   imageUrl?: string | null
