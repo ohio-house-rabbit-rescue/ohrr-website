@@ -33,6 +33,8 @@ import {
   type AuctionItem,
   type AuctionSettings,
 } from '../../lib/auction'
+import { listSuppliers, type Supplier } from '../../lib/hopshop'
+import { vendorRecordsReady } from '../../lib/companies'
 
 // Small local stand-ins for the app's shell pieces (as Bookings.tsx does).
 function Badge({ children, tone = 'blue' }: { children: ReactNode; tone?: 'blue' | 'orange' | 'slate' }) {
@@ -166,6 +168,8 @@ interface Draft {
   is_published: boolean
   sort_order: string
   photo_url: string | null
+  /** The company in the supplier / vendor list that gave it (update 27). Undefined = leave as it is. */
+  donor_supplier_id?: string
 }
 
 const emptyDraft: Draft = {
@@ -189,6 +193,8 @@ function draftFrom(i: AuctionItem): Draft {
     is_published: i.is_published,
     sort_order: String(i.sort_order),
     photo_url: i.photo_url,
+    // Only there once update 27 has run; until then the row has no such column.
+    donor_supplier_id: 'donor_supplier_id' in i ? ((i as AuctionItem & { donor_supplier_id: string | null }).donor_supplier_id ?? '') : undefined,
   }
 }
 
@@ -203,7 +209,29 @@ function draftToRow(d: Draft) {
     is_published: d.is_published,
     sort_order: Number.isFinite(sort) ? sort : 0,
     photo_url: d.photo_url,
+    ...(d.donor_supplier_id !== undefined ? { donor_supplier_id: d.donor_supplier_id || null } : {}),
   }
+}
+
+/** The companies a "Given by" can name — null until update 27 has run (then the picker stays hidden). */
+function useDonorCompanies(orgId: string): Supplier[] | null {
+  const [list, setList] = useState<Supplier[] | null>(null)
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      if (!orgId || !(await vendorRecordsReady())) return
+      try {
+        const all = await listSuppliers(orgId)
+        if (live) setList(all)
+      } catch {
+        /* the picker simply stays hidden */
+      }
+    })()
+    return () => {
+      live = false
+    }
+  }, [orgId])
+  return list
 }
 
 function ItemForm({
@@ -222,7 +250,13 @@ function ItemForm({
   const [draft, setDraft] = useState<Draft>(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const companies = useDonorCompanies(orgId)
   const set = (k: keyof Draft) => (e: { target: { value: string } }) => setDraft((d) => ({ ...d, [k]: e.target.value }))
+  const pickCompany = (id: string) => {
+    const name = companies?.find((c) => c.id === id)?.name
+    // An empty "Donated by" takes the company's name; one already typed is left alone.
+    setDraft((d) => ({ ...d, donor_supplier_id: id, donated_by: d.donated_by.trim() || !name ? d.donated_by : name }))
+  }
 
   const submit = async (e: { preventDefault(): void }) => {
     e.preventDefault()
@@ -253,10 +287,43 @@ function ItemForm({
         Description
         <textarea className={staffInput} rows={3} value={draft.description} onChange={set('description')} />
       </label>
-      <label className="block text-sm font-semibold text-slate-700">
-        Donated by
-        <input className={staffInput} value={draft.donated_by} onChange={set('donated_by')} />
-      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-semibold text-slate-700">
+          Donated by <span className="font-normal text-slate-500">(visitors see this)</span>
+          <input className={staffInput} value={draft.donated_by} onChange={set('donated_by')} />
+        </label>
+        {companies && (
+          <label className="block text-sm font-semibold text-slate-700">
+            Given by (company) <span className="font-normal text-slate-500">· optional, team only</span>
+            <select className={staffInput} value={draft.donor_supplier_id ?? ''} onChange={(e) => pickCompany(e.target.value)}>
+              <option value="">— not a company in our list —</option>
+              {companies.some((c) => c.is_vendor) && (
+                <optgroup label="BunFest vendors">
+                  {companies
+                    .filter((c) => c.is_vendor)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              {companies.some((c) => !c.is_vendor) && (
+                <optgroup label="Suppliers and others">
+                  {companies
+                    .filter((c) => !c.is_vendor)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+            </select>
+            <span className="mt-1 block text-xs font-normal text-slate-500">Puts the item on that company’s card under “Given to OHRR”.</span>
+          </label>
+        )}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm font-semibold text-slate-700">
