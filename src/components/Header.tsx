@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Icon } from './icons'
+import { AMAZON_WISH_LIST, DONATE } from '../lib/constants'
+
+const HELP_PILL =
+  'inline-flex min-h-9 items-center rounded-full border border-brand-blue/25 bg-white px-3 text-sm font-bold text-brand-blue transition hover:border-brand-blue hover:bg-brand-blue-50'
 
 // The site's menu, built around the rescue's purpose (2026-09-24): the menu is
 // the mission — adopt, care and help for the rabbit you have, strays and
 // surrender — then how to help. Events, BunFest, the Hop Shop and news live in
 // the footer. The app is one standing pill in the top bar and is not offered
 // anywhere else on the site (OHRR: most visitors aren't looking for it).
+// Donate is an orange pill beside it on every page, and on a laptop the rest
+// of the bar holds the other ways to help as small pills (2026-09-24, OHRR: "a
+// more prominent visual on things like the donate … a small box or pill").
+// The wish list opens Amazon itself.
 //
 // The web rules from the design brief still hold: every menu item is visible
 // on a laptop (nothing opens on hover), the phone menu is a labelled button,
@@ -60,7 +68,22 @@ export default function Header() {
 
       {/* The top bar: contact, search, and the one link to the app */}
       <div className="border-b border-slate-100 bg-canvas">
-        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-4 sm:px-5">
+        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-4 sm:px-5 xl:justify-between">
+          <div className="hidden items-center gap-1.5 xl:flex" aria-label="Ways to help">
+            <span className="mr-1 text-xs font-extrabold uppercase tracking-wider text-brand-orange-ink">Help the rabbits</span>
+            <a href={AMAZON_WISH_LIST} target="_blank" rel="noopener" className={HELP_PILL}>
+              Wish list
+            </a>
+            <Link to="/volunteer/foster" className={HELP_PILL}>
+              Foster
+            </Link>
+            <Link to="/hop-shop" className={HELP_PILL}>
+              Hop Shop
+            </Link>
+            <Link to="/give" className={HELP_PILL}>
+              All ways to give
+            </Link>
+          </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
               to="/contact"
@@ -78,10 +101,19 @@ export default function Header() {
             </Link>
             <Link
               to="/app"
-              className="inline-flex min-h-11 items-center rounded-full border-2 border-brand-blue/60 bg-white px-4 text-base font-bold text-brand-blue hover:bg-brand-blue-50"
+              className="inline-flex min-h-11 items-center rounded-full border-2 border-brand-blue/60 bg-white px-3 text-base font-bold text-brand-blue hover:bg-brand-blue-50 sm:px-4"
             >
               Get our app
             </Link>
+            <a
+              href={DONATE}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-brand-orange px-4 text-base font-extrabold text-ink shadow-sm transition hover:bg-brand-orange-dark"
+            >
+              <Icon name="heart" size={17} />
+              Donate
+            </a>
           </div>
         </div>
       </div>
