@@ -80,6 +80,8 @@ export interface EventItem {
   body?: string | null
   theme?: string | null
   url?: string | null
+  /** Admission, parking, the rabbit rule, links — edited per year in Staff → BunFest. */
+  info?: Record<string, unknown> | null
 }
 
 // Shared with the OHRR app (Supabase `vets`).

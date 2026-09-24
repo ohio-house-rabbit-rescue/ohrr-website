@@ -33,7 +33,7 @@ export function AlertIcon({ size = 16, className = '' }: { size?: number; classN
 const urgencyTone: Record<TopicUrgency, string> = {
   emergency: 'bg-red-600 text-white',
   'vet-today': 'bg-red-50 text-red-700 ring-1 ring-red-200',
-  watch: 'bg-brand-orange-50 text-brand-orange-dark ring-1 ring-brand-orange/30',
+  watch: 'bg-brand-orange-50 text-brand-orange-ink ring-1 ring-brand-orange/30',
   tip: 'bg-brand-blue-50 text-brand-blue',
 }
 

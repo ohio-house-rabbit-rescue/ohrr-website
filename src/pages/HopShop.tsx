@@ -65,7 +65,7 @@ export default function HopShop() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <h3 className="font-display text-base font-extrabold text-ink">{p.name}</h3>
-                          {p.price_cents > 0 && <span className="text-sm font-bold text-brand-orange-dark">{formatPrice(p.price_cents)}</span>}
+                          {p.price_cents > 0 && <span className="text-sm font-bold text-brand-orange-ink">{formatPrice(p.price_cents)}</span>}
                         </div>
                         {p.description && <p className="mt-1.5 text-sm text-slate-600">{p.description}</p>}
                         {p.in_stock === false && <p className="mt-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Sold out — ask at the counter</p>}

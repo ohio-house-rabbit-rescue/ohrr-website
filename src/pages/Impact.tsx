@@ -60,6 +60,20 @@ export default function Impact() {
       <PageHero title="Our impact" subtitle="What your gifts, hours and adoptions added up to." />
       <Section>
         {years && years.length === 0 && (
+          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+            {[
+              { n: '2009', t: 'Founded by longtime rabbit owner Beverly May.' },
+              { n: '900+', t: 'Rabbits offered for surrender each year in Central Ohio alone.' },
+              { n: '25–30', t: 'Rabbits housed at a time at the Ohio House Rabbit Adoption Center.' },
+            ].map((s) => (
+              <Card key={s.n}>
+                <p className="font-display text-3xl font-black text-brand-blue">{s.n}</p>
+                <p className="mt-1 text-base text-slate-700">{s.t}</p>
+              </Card>
+            ))}
+          </div>
+        )}
+        {years && years.length === 0 && (
           <Card className="max-w-xl">
             <p className="font-bold text-ink">This year’s numbers are being counted.</p>
             <p className="mt-1 text-sm text-slate-600">

@@ -33,7 +33,7 @@ export default function Contact() {
           <Card>
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Hop Shop hours</h3>
             {org.notice && (
-              <p className="mt-2 rounded-xl bg-brand-orange-50 px-3 py-2 text-sm font-bold text-brand-orange-dark">{org.notice}</p>
+              <p className="mt-2 rounded-xl bg-brand-orange-50 px-3 py-2 text-sm font-bold text-brand-orange-ink">{org.notice}</p>
             )}
             <p className="mt-2 text-base font-semibold text-slate-700">{org.hopshop_hours}</p>
             <p className="mt-1 text-sm text-slate-600">{OHRR.hoursNote}</p>

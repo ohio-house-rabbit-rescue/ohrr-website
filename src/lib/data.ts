@@ -244,6 +244,7 @@ interface EventRow {
   body: string | null
   theme: string | null
   url: string | null
+  info?: unknown
 }
 
 function mapEvent(r: EventRow): EventItem {
@@ -260,6 +261,7 @@ function mapEvent(r: EventRow): EventItem {
     body: r.body,
     theme: r.theme,
     url: r.url,
+    info: r.info && typeof r.info === 'object' ? (r.info as Record<string, unknown>) : null,
   }
 }
 
@@ -273,7 +275,7 @@ export function useEvents(): { events: EventItem[] | null; source: Source } {
       if (isConfigured) {
         const { data, error } = await supabase
           .from('events')
-          .select('id,slug,title,starts_at,ends_at,venue,address,city,summary,body,theme,url')
+          .select('id,slug,title,starts_at,ends_at,venue,address,city,summary,body,theme,url,info')
           .eq('is_published', true)
           .order('sort_order', { ascending: true })
           .order('starts_at', { ascending: true })

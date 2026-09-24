@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useRabbits } from '../lib/data'
+import type { Rabbit } from '../lib/types'
 import { PageHero, Section, RabbitCard, LiveNote, btn, ext, H2, Card, Callout } from '../components/ui'
 import { APPLY, ADOPTION_POLICY_PDF, PETFINDER, ADOPT_A_PET, BUNNY_DATES_ARTICLE, OHRR } from '../lib/constants'
 
@@ -30,6 +31,27 @@ const STEPS = [
   },
 ]
 
+/**
+ * A bonded pair is two records that must go home together ("Adopted together
+ * with Pierce"); the list shows them as one card, named for both.
+ */
+function pairUp(list: Rabbit[]): Rabbit[] {
+  const out: Rabbit[] = []
+  const used = new Set<string>()
+  for (const r of list) {
+    if (used.has(r.id)) continue
+    const mateName = (r.tags ?? []).map((t) => /adopted together with (.+)/i.exec(t)?.[1]?.trim()).find(Boolean)
+    const mate = mateName ? list.find((o) => o.id !== r.id && o.name.toLowerCase() === mateName.toLowerCase()) : undefined
+    if (mate) {
+      used.add(mate.id)
+      out.push({ ...r, name: `${r.name} & ${mate.name}` })
+    } else {
+      out.push(r)
+    }
+  }
+  return out
+}
+
 export default function Adopt() {
   const { rabbits, source } = useRabbits(60)
   return (
@@ -57,7 +79,7 @@ export default function Adopt() {
           <p className="mt-6 text-slate-600">No rabbits to show right now — check back soon!</p>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rabbits.map((r) => (
+            {pairUp(rabbits).map((r) => (
               <RabbitCard key={r.id} r={r} />
             ))}
           </div>
@@ -105,13 +127,28 @@ export default function Adopt() {
           <Card>
             <h3 className="font-display text-lg font-extrabold text-brand-blue">Still deciding?</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-              If you are in the early stages of deciding whether a rabbit is the right pet for you,
-              email{' '}
+              Start with the honest version:{' '}
+              <Link to="/info/is-a-rabbit-right-for-us" className="font-semibold text-brand-blue">
+                Is a rabbit right for us?
+              </Link>{' '}
+              and{' '}
+              <Link to="/learn/cost-of-a-house-rabbit" className="font-semibold text-brand-blue">
+                what a house rabbit really costs
+              </Link>
+              . Then try it for real: a family socialization shift at the Adoption Center is open to children 6 and up
+              with an adult.
+            </p>
+            <div className="mt-3">
+              <Link to="/book/bunny-socialization" className={btn.blue}>
+                Book a socialization shift
+              </Link>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Or email{' '}
               <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
                 {OHRR.email}
-              </a>
-              . We will contact you to set up an hour-long appointment where you can learn about
-              being a bunny parent.
+              </a>{' '}
+              and we will set up an hour-long appointment where you can learn about being a bunny parent.
             </p>
           </Card>
           <Card>

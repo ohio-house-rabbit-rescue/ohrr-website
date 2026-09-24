@@ -4,13 +4,29 @@ import PresentedBy from '../components/PresentedBy'
 import { CHRS_SITE, HRS_SITE } from '../lib/constants'
 import { CARE_DISCLAIMER } from '../data/careArticles'
 
+function dedupe<T extends { title: string; externalUrl?: string | null }>(list: T[]): T[] {
+  const key = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const keep = new Set<T>()
+  const seen = new Set<string>()
+  for (const a of [...list].sort((x, y) => Number(!!x.externalUrl) - Number(!!y.externalUrl))) {
+    const k = key(a.title)
+    if (seen.has(k)) continue
+    seen.add(k)
+    keep.add(a)
+  }
+  return list.filter((a) => keep.has(a))
+}
+
 // Shown as the featured cards at the top, so they are left out of the article grid.
 const FEATURED = new Set(['bunny-living-space', 'tips-for-catching-a-stray'])
 
 export default function Learn() {
   const { articles: all, source } = useCareArticles()
   // Learn shows care guides; the Give / Adopt / About pages live at /info/<slug>.
-  const articles = all && all.filter((a) => (a.section ?? 'care') === 'care')
+  // The live list and the bundled one can carry the same guide under two slugs
+  // (one OHRR's own page, one a link to the source) — show each title once,
+  // preferring the guide that opens on this site.
+  const articles = all && dedupe(all.filter((a) => (a.section ?? 'care') === 'care'))
 
   return (
     <>
@@ -75,7 +91,7 @@ export default function Learn() {
                     cta={`Read on ${a.externalSource ?? 'their site'} →`}
                   />
                 ) : (
-                  <LinkCard key={a.slug} to={`/learn/${a.slug}`} h={a.title} p={a.summary} cta="Read more →" />
+                  <LinkCard key={a.slug} to={`/learn/${a.slug}`} h={a.title} p={a.summary} cta="Read this guide →" />
                 ),
               )}
             </div>

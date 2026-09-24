@@ -9,10 +9,11 @@ import { Icon, type IconName } from './icons'
 // for older visitors), and their text is never smaller than 16px.
 export const btn = {
   orange:
-    'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-orange px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-orange-dark',
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-orange px-5 py-2.5 text-sm font-bold text-ink shadow-sm transition hover:bg-brand-orange-dark',
   blue: 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-blue-dark',
+  // Outline buttons are blue: orange text on white does not meet the contrast rule.
   outline:
-    'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-brand-orange/70 px-5 py-2.5 text-sm font-bold text-brand-orange-dark transition hover:bg-brand-orange-50',
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-brand-blue/60 px-5 py-2.5 text-sm font-bold text-brand-blue transition hover:bg-brand-blue-50',
   white:
     'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand-blue shadow-sm transition hover:bg-white/90',
 }
@@ -74,20 +75,13 @@ export function PageHero({
   )
 }
 
+// Live content needs no caption. Sample content says so, once, plainly.
 export function LiveNote({ source }: { source: Source }) {
+  if (source === 'live') return null
   return (
     <p className="mt-3 flex items-start gap-1.5 text-sm font-semibold text-slate-600">
-      {source === 'live' ? (
-        <>
-          <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-          Live — synced from OHRR's system (the same data the app shows).
-        </>
-      ) : (
-        <>
-          <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-amber-400" />
-          Sample data — the live list appears here automatically as staff add it in the app.
-        </>
-      )}
+      <span className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+      Sample entries — real ones replace these as OHRR adds them.
     </p>
   )
 }
@@ -112,7 +106,7 @@ export function RabbitCard({ r }: { r: Rabbit }) {
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-display text-lg font-extrabold text-ink">{r.name}</h3>
           {r.bonded && (
-            <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange-dark">
+            <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange-ink">
               Pair
             </span>
           )}
@@ -124,7 +118,7 @@ export function RabbitCard({ r }: { r: Rabbit }) {
         </div>
         {meta && <p className="mt-0.5 text-sm font-semibold text-slate-500">{meta}</p>}
         {r.description && <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">{r.description}</p>}
-        <span className="mt-2 inline-block text-sm font-bold text-brand-orange">Meet {r.name} →</span>
+        <span className="mt-2 inline-block text-sm font-bold text-brand-blue">Meet {r.name} →</span>
       </div>
     </Link>
   )
@@ -161,7 +155,7 @@ export function IconTile({
   size?: 'md' | 'lg' | 'fill'
   className?: string
 }) {
-  const color = tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-dark' : 'bg-brand-blue-50 text-brand-blue'
+  const color = tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-ink' : 'bg-brand-blue-50 text-brand-blue'
   const box = size === 'fill' ? 'aspect-[4/3] w-full' : size === 'lg' ? 'h-16 w-16 rounded-2xl' : 'h-12 w-12 rounded-xl'
   return (
     <div aria-hidden="true" className={`flex shrink-0 items-center justify-center ${color} ${box} ${className}`}>
@@ -198,7 +192,7 @@ export function LinkCard({
       {icon && <IconTile name={icon} className="mb-4" />}
       <h3 className="font-display text-lg font-extrabold text-brand-blue">{h}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p}</p>
-      <span className="mt-2 inline-block text-sm font-bold text-brand-orange">{cta}</span>
+      <span className="mt-2 inline-block text-sm font-bold text-brand-blue">{cta}</span>
     </>
   )
   if (to) {

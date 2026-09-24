@@ -82,7 +82,7 @@ function RescueCard({ r }: { r: Rescue }) {
           )}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {r.host && <span className={`${badge} bg-brand-blue-50 text-brand-blue`}>Host</span>}
-            {r.atBunfest && <span className={`${badge} bg-brand-orange-50 text-brand-orange-dark`}>At BunFest</span>}
+            {r.atBunfest && <span className={`${badge} bg-brand-orange-50 text-brand-orange-ink`}>At BunFest</span>}
             {r.region && <span className={`${badge} bg-slate-100 text-slate-600`}>{r.region}</span>}
           </div>
         </div>

@@ -225,7 +225,7 @@ function SignUpForm({ call, source, onDone }: { call: Call; source: string | nul
                   </span>
                   <span className="font-display text-lg font-extrabold text-ink">{fmtShift(s)}</span>
                 </span>
-                <span className={`text-sm font-bold ${full ? 'text-slate-500' : left <= 1 ? 'text-brand-orange-dark' : 'text-slate-600'}`}>
+                <span className={`text-sm font-bold ${full ? 'text-slate-500' : left <= 1 ? 'text-brand-orange-ink' : 'text-slate-600'}`}>
                   {full ? 'Full' : `${left} of ${s.capacity} places left`}
                 </span>
               </button>

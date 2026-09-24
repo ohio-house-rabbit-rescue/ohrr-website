@@ -166,7 +166,7 @@ function Form({ initial, userId, submitLabel, onSubmit, onCancel }: { initial: D
           Placement
           <select className={staffInput} value={d.placement} onChange={(e) => setD({ ...d, placement: e.target.value as Placement })}>
             <option value="hero">Hero (big slide at the top — up to 3 shown)</option>
-            <option value="featured">Featured card (strip under the hero — up to 4 shown)</option>
+            <option value="featured">Featured card (the app's home screen — up to 4 shown)</option>
           </select>
         </label>
         <label className="block text-sm font-semibold text-slate-700">
@@ -296,7 +296,7 @@ export default function ManageHero() {
 
   const groups: { key: Placement; title: string; hint: string }[] = [
     { key: 'hero', title: 'Hero slides', hint: 'The big slide at the top of the home page. Up to 3 are shown, highest sort order first.' },
-    { key: 'featured', title: 'Featured cards', hint: 'The strip of cards under the hero. Up to 4 are shown, highest sort order first.' },
+    { key: 'featured', title: 'Featured cards', hint: 'The cards on the app’s home screen. Up to 4 are shown, highest sort order first.' },
   ]
 
   return (
@@ -305,7 +305,7 @@ export default function ManageHero() {
         <h1 className="font-display text-2xl font-black text-ink">Homepage features</h1>
       </div>
       <p className="mt-1 text-sm text-slate-600">
-        The hero slides and featured cards on the website home page. <strong>Also drives the app's home screen.</strong> Until
+        The hero slides (shown one at a time beside the OHRR introduction on the website home page) and the featured cards on the app’s home screen. <strong>Also drives the app's home screen.</strong> Until
         you add any, both show the built-in defaults.
       </p>
 

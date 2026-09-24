@@ -8,6 +8,8 @@
   --color-brand-orange: #eb891c;
   --color-brand-orange-dark: #cf7512;
   --color-brand-orange-50: #fdf1e3;
+  /* Orange as text needs to be darker than the brand orange to be readable. */
+  --color-brand-orange-ink: #9a5208;
 
   --color-ink: #2f3a45;
   --color-canvas: #f7f4ee;

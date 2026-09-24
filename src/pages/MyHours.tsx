@@ -87,7 +87,7 @@ export default function MyHours() {
         <PageHero title="My volunteer hours" subtitle="Your own record of the time you’ve given OHRR." />
         <Section>
           <Card className="max-w-xl space-y-3">
-            <p className="font-display text-lg font-extrabold text-ink">This link isn’t working.</p>
+            <p className="font-display text-lg font-extrabold text-ink">You need your private link.</p>
             <p className="text-base leading-relaxed text-slate-700">
               Your hours open from a private link OHRR gives you — ask any staff member for it, or for the QR code to
               scan. It keeps your record to you.
@@ -166,7 +166,7 @@ function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onCha
         </div>
 
         {pending > 0 && (
-          <p className="rounded-2xl bg-brand-orange-50 px-4 py-3 text-base font-semibold text-brand-orange-dark">
+          <p className="rounded-2xl bg-brand-orange-50 px-4 py-3 text-base font-semibold text-brand-orange-ink">
             {pending} {pending === 1 ? 'entry is' : 'entries are'} waiting for OHRR to confirm. They still count in your
             totals; a service letter uses the confirmed ones.
           </p>
@@ -252,7 +252,7 @@ function Record({ rec, token, onChanged }: { rec: MyRecord; token: string; onCha
                       <span className="font-display text-base font-extrabold text-ink">{hoursLabel(e.hours)}</span>
                       <span className="text-base text-slate-700">{e.activity}</span>
                       {e.status === 'logged' && (
-                        <span className="rounded-full bg-brand-orange-50 px-2.5 py-0.5 text-sm font-bold text-brand-orange-dark">Waiting</span>
+                        <span className="rounded-full bg-brand-orange-50 px-2.5 py-0.5 text-sm font-bold text-brand-orange-ink">Waiting</span>
                       )}
                     </span>
                     <span className="block text-sm text-slate-600">
@@ -311,7 +311,7 @@ function Total({ label, value, tone = 'blue' }: { label: string; value: number; 
   return (
     <div className={`rounded-2xl border p-4 ${tone === 'orange' ? 'border-brand-orange/30 bg-brand-orange-50/60' : 'border-slate-200 bg-white'}`}>
       <p className="text-sm font-bold uppercase tracking-wide text-slate-600">{label}</p>
-      <p className={`mt-0.5 font-display text-3xl font-black ${tone === 'orange' ? 'text-brand-orange-dark' : 'text-brand-blue'}`}>
+      <p className={`mt-0.5 font-display text-3xl font-black ${tone === 'orange' ? 'text-brand-orange-ink' : 'text-brand-blue'}`}>
         {value % 1 === 0 ? value : value.toFixed(1)}
         <span className="ml-1.5 text-sm font-bold text-slate-600">{value === 1 ? 'hour' : 'hours'}</span>
       </p>

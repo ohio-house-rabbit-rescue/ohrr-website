@@ -40,7 +40,7 @@ function Doors() {
   return (
     <Tile icon="home" kicker="The doors this week">
       {org.notice && (
-        <p className="mb-1 rounded-lg bg-brand-orange-50 px-3 py-1.5 text-base font-bold text-brand-orange-dark">{org.notice}</p>
+        <p className="mb-1 rounded-lg bg-brand-orange-50 px-3 py-1.5 text-base font-bold text-brand-orange-ink">{org.notice}</p>
       )}
       <p className="text-base text-ink">{org.hours}</p>
       <p className="mt-1 text-sm text-slate-700">{OHRR.address}</p>

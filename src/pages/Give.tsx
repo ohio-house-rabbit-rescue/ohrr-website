@@ -135,76 +135,115 @@ const WAYS: Way[] = [
   },
 ]
 
+const TOP = ['Donate online', 'See what your gift does', 'OHRR Legacy Fund']
+const SHOP = ['Kroger Community Rewards', 'Amazon Wish List', 'OHRR merch store', 'Midwest BunFest 2026 merchandise', 'Online affiliates']
+
+function Row({ w }: { w: Way }) {
+  const internal = w.href.startsWith('/')
+  const secondaryInternal = w.secondary?.href.startsWith('/')
+  return (
+    <li className="flex flex-col gap-3 py-5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 max-w-2xl">
+        <h3 className="font-display text-lg font-extrabold text-ink">{w.h}</h3>
+        <p className="mt-1 text-base text-slate-700">{w.p}</p>
+        {w.extra && <p className="mt-1 text-base text-slate-700">{w.extra}</p>}
+        {w.secondary &&
+          (secondaryInternal ? (
+            <Link to={w.secondary.href} className="mt-1 inline-block text-base font-semibold text-brand-blue">
+              {w.secondary.label}
+            </Link>
+          ) : (
+            <a
+              href={w.secondary.href}
+              {...(w.secondary.href.startsWith('mailto:') ? {} : ext)}
+              className="mt-1 inline-block break-all text-base font-semibold text-brand-blue"
+            >
+              {w.secondary.label}
+            </a>
+          ))}
+      </div>
+      {internal ? (
+        <Link to={w.href} className={`${btn.outline} shrink-0`}>
+          {w.cta}
+        </Link>
+      ) : (
+        <a href={w.href} {...ext} className={`${btn.outline} shrink-0`}>
+          {w.cta}
+        </a>
+      )}
+    </li>
+  )
+}
+
 export default function Give() {
+  const by = (names: string[]) => names.map((n) => WAYS.find((w) => w.h === n)).filter((w): w is Way => !!w)
+  const top = by(TOP)
+  const shop = by(SHOP)
+  const more = WAYS.filter((w) => !TOP.includes(w.h) && !SHOP.includes(w.h))
+  const donate = top[0]
+
   return (
     <>
       <PageHero
         title="Ways to give"
-        subtitle={`Every gift is tax-deductible — OHRR is a 501(c)(3) nonprofit (EIN ${OHRR.ein}). Here is every way to support the bunnies.`}
+        subtitle="Every gift goes to the bunnies: vet care, food, and the Adoption Center. OHRR is a 501(c)(3), so your donation is tax deductible."
       />
       <Section>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {WAYS.map((w) => (
-            <Card key={w.h} className="flex flex-col overflow-hidden">
-              {w.image && (
-                <div className="-mx-5 -mt-5 mb-4 aspect-[4/3] border-b border-black/5 bg-white">
-                  <img
-                    src={w.image}
-                    alt={w.imageAlt ?? w.h}
-                    loading="lazy"
-                    className={`h-full w-full ${w.imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
-                  />
-                </div>
-              )}
-              <h3 className="font-display text-lg font-extrabold text-brand-blue">{w.h}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{w.p}</p>
-              {w.extra && <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{w.extra}</p>}
-              <div className="mt-4 flex flex-wrap gap-2 pt-1">
+        {donate && (
+          <Card className="border-2 border-brand-orange/60 bg-brand-orange-50/40">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="font-display text-2xl font-black text-ink">{donate.h}</h2>
+                <p className="mt-2 text-base text-slate-700">{donate.p}</p>
+                <p className="mt-1 text-sm text-slate-700">Opens OHRR’s donation page in a new tab.</p>
+              </div>
+              <a href={donate.href} {...ext} className={`${btn.orange} shrink-0 !px-7 !py-3 !text-base`}>
+                {donate.cta}
+              </a>
+            </div>
+          </Card>
+        )}
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {top.slice(1).map((w) => (
+            <Card key={w.h}>
+              <h2 className="font-display text-lg font-extrabold text-ink">{w.h}</h2>
+              <p className="mt-1 text-base text-slate-700">{w.p}</p>
+              <div className="mt-4">
                 {w.href.startsWith('/') ? (
-                  <Link to={w.href} className={btn.orange}>
+                  <Link to={w.href} className={btn.blue}>
                     {w.cta}
                   </Link>
                 ) : (
-                  <a href={w.href} {...(w.href.startsWith('mailto:') ? {} : ext)} className={btn.orange}>
+                  <a href={w.href} {...ext} className={btn.blue}>
                     {w.cta}
                   </a>
                 )}
-                {w.secondary &&
-                  (w.secondary.href.startsWith('/') ? (
-                    <Link to={w.secondary.href} className={btn.outline}>
-                      {w.secondary.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={w.secondary.href}
-                      {...(w.secondary.href.startsWith('mailto:') ? {} : ext)}
-                      className={btn.outline}
-                    >
-                      {w.secondary.label}
-                    </a>
-                  ))}
               </div>
             </Card>
           ))}
-          <Card className="flex flex-col">
-            <h3 className="font-display text-lg font-extrabold text-brand-blue">Shop the Hop Shop</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-              Pellets, hay, litter, hidey houses, treats, toys and bunny apparel at the Adoption Center,
-              Saturdays and Sundays noon – 4:00 pm. Profits support OHRR.
-            </p>
-            <div className="mt-4 pt-1">
-              <Link to="/hop-shop" className={btn.blue}>
-                About the Hop Shop
-              </Link>
-            </div>
-          </Card>
         </div>
 
+        <h2 className="mt-12 font-display text-2xl font-black text-ink">Give while you shop</h2>
+        <p className="mt-1 text-base text-slate-700">Costs you nothing extra — a share comes to the bunnies.</p>
+        <ul className="mt-2 divide-y divide-slate-200">
+          {shop.map((w) => (
+            <Row key={w.h} w={w} />
+          ))}
+        </ul>
+
+        <h2 className="mt-12 font-display text-2xl font-black text-ink">More ways to help</h2>
+        <ul className="mt-2 divide-y divide-slate-200">
+          {more.map((w) => (
+            <Row key={w.h} w={w} />
+          ))}
+        </ul>
+
         <Callout className="mt-10">
-          <p className="text-sm leading-relaxed text-slate-700">
-            Thank you for your contribution to OHRR! Please remember that OHRR is a 501(c)(3) organization
-            (EIN {OHRR.ein}). Your donation is tax deductible. Questions about giving? Email{' '}
-            <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
+          <p className="text-base text-slate-700">
+            Thank you for your contribution to OHRR! OHRR is a 501(c)(3) organization (EIN {OHRR.ein}); your donation
+            is tax deductible. Questions about giving? Email{' '}
+            <a href={OHRR.emailHref} className="break-all font-semibold text-brand-blue">
               {OHRR.email}
             </a>
             .

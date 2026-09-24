@@ -75,7 +75,7 @@ export default function Header() {
             <span className="block font-display text-lg font-black text-brand-blue sm:text-xl">
               Ohio House Rabbit Rescue
             </span>
-            <span className="hidden text-xs font-bold uppercase tracking-wider text-brand-orange-dark sm:block">
+            <span className="hidden text-xs font-bold uppercase tracking-wider text-brand-orange-ink sm:block">
               Columbus, Ohio · est. 2009
             </span>
           </span>
@@ -92,7 +92,7 @@ export default function Header() {
           <TextSizeControl />
           <Link
             to="/app"
-            className="inline-flex min-h-11 items-center rounded-full bg-brand-orange px-4 text-base font-bold text-white shadow-sm transition hover:bg-brand-orange-dark"
+            className="inline-flex min-h-11 items-center rounded-full bg-brand-orange px-4 text-base font-bold text-ink shadow-sm transition hover:bg-brand-orange-dark"
           >
             Open the app
           </Link>
@@ -141,7 +141,7 @@ export default function Header() {
             <TextSizeControl />
             <Link
               to="/app"
-              className="inline-flex min-h-11 items-center rounded-full bg-brand-orange px-4 text-base font-bold text-white"
+              className="inline-flex min-h-11 items-center rounded-full bg-brand-orange px-4 text-base font-bold text-ink"
             >
               Open the app
             </Link>

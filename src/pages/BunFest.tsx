@@ -16,6 +16,40 @@ const FEATURES = [
   { h: 'Chillaxabun Lounge', p: 'A quiet place where your bunny can chill, equipped with hay, water and a hidey house.' },
 ]
 
+/** Admission and the rabbit rule from the event's own record, when staff have set them. */
+function Facts({ info }: { info?: Record<string, unknown> | null }) {
+  if (!info) return null
+  const admission = Array.isArray(info.admission)
+    ? (info.admission as { who?: string; price?: string }[]).filter((a) => a?.who && a?.price)
+    : []
+  const rule = typeof info.rabbit_rule === 'string' ? info.rabbit_rule : ''
+  const tickets = typeof info.tickets_url === 'string' ? info.tickets_url : ''
+  if (admission.length === 0 && !rule) return null
+  return (
+    <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm text-slate-700 sm:grid-cols-2">
+      {admission.length > 0 && (
+        <div>
+          <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Admission</dt>
+          <dd className="mt-0.5 font-semibold">{admission.map((a) => `${a.who} ${a.price}`).join(' · ')}</dd>
+          {tickets && (
+            <dd>
+              <a href={tickets} {...ext} className="font-semibold text-brand-blue">
+                Buy tickets
+              </a>
+            </dd>
+          )}
+        </div>
+      )}
+      {rule && (
+        <div>
+          <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Bringing your rabbit</dt>
+          <dd className="mt-0.5">{rule}</dd>
+        </div>
+      )}
+    </dl>
+  )
+}
+
 export default function BunFest() {
   const { event, source, loading } = useBunFestEvent()
 
@@ -26,7 +60,6 @@ export default function BunFest() {
   return (
     <>
       <PageHero title={event?.title ?? 'Midwest BunFest'} subtitle={subtitle} />
-      <PresentedBy surface="bunfest" />
       <Section>
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="rounded-3xl bg-gradient-to-br from-[#1690bf] to-[#0f7197] p-6 shadow-xl">
@@ -40,12 +73,13 @@ export default function BunFest() {
             ) : event ? (
               <>
                 {event.theme && (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-brand-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-orange-dark">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-brand-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-orange-ink">
                     This year's theme: {event.theme}
                   </span>
                 )}
                 <p className="mt-3 font-display text-2xl font-black text-ink">Mark your calendars!</p>
                 <EventWhenWhere e={event} />
+                <Facts info={event.info} />
                 {event.summary && (
                   <p className="mt-4 text-base leading-relaxed text-slate-600">{event.summary}</p>
                 )}
@@ -102,6 +136,7 @@ export default function BunFest() {
           </div>
         )}
 
+        <PresentedBy surface="bunfest" className="mt-10" />
         <p className="mt-10 text-xs leading-relaxed text-slate-600">
           Midwest BunFest is hosted and sponsored by Ohio House Rabbit Rescue. The 2026 "Binky On!" logo is by
           tattoo artist Jillian Lisska.

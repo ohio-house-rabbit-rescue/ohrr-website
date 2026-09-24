@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LinkCard } from '../components/ui'
 import { APPLY, BE_THE_VOICE_PDF, CAPITAL_PLEDGE_PDF, BUNFEST_SAMPLE, OHRR } from '../lib/constants'
+import { useOrgProfile } from '../lib/orgProfile'
 
 // Text from the live About Us pages: Mission and Vision, Background, Volunteer Family,
 // and the Ohio House Rabbit Adoption Center (captured 2026-09-17).
@@ -68,6 +69,7 @@ const FAMILY = [
 ]
 
 export default function About() {
+  const org = useOrgProfile()
   return (
     <>
       <PageHero
@@ -180,7 +182,7 @@ export default function About() {
               </p>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{OHRR.landmark}</p>
               <p className="mt-3 text-sm text-slate-700">
-                Hop Shop &amp; Adoption Center: <strong>{OHRR.hours}</strong>
+                Hop Shop &amp; Adoption Center: <strong>{org.hours}</strong>
                 <br />
                 {OHRR.hoursNote}
               </p>

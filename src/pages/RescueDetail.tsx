@@ -64,12 +64,12 @@ export default function RescueDetail() {
           )}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {r.host && (
-              <span className="inline-flex items-center rounded-full bg-brand-orange-50 px-2.5 py-0.5 text-sm font-bold text-brand-orange-dark">
+              <span className="inline-flex items-center rounded-full bg-brand-orange-50 px-2.5 py-0.5 text-sm font-bold text-brand-orange-ink">
                 Host of Midwest BunFest
               </span>
             )}
             {r.atBunfest && !r.host && (
-              <span className="inline-flex items-center rounded-full bg-brand-orange-50 px-2.5 py-0.5 text-sm font-bold text-brand-orange-dark">
+              <span className="inline-flex items-center rounded-full bg-brand-orange-50 px-2.5 py-0.5 text-sm font-bold text-brand-orange-ink">
                 At BunFest this year
               </span>
             )}

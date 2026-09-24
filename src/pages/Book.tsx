@@ -281,6 +281,11 @@ function BookForm({ type, slot, initialAnswer, onBack, onBooked, onRefresh }: { 
           </label>
         )}
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+        <p className="text-base text-slate-700">
+          {type.confirm_mode === 'staff'
+            ? 'You’ll see “Request sent” straight away; OHRR confirms the time with you by email.'
+            : 'You’ll see “You’re booked” straight away. Your hours are recorded when you check in, and you can print your hours record any time.'}
+        </p>
         <button type="submit" disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
           {busy ? 'Booking…' : type.confirm_mode === 'staff' ? 'Request this time' : 'Book it'}
         </button>

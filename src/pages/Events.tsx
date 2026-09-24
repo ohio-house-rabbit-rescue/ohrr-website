@@ -44,33 +44,25 @@ function EventCard({ e }: { e: EventItem }) {
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-display text-lg font-extrabold text-brand-blue">{e.title}</h3>
         {e.theme && (
-          <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange-dark">
+          <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange-ink">
             Theme: {e.theme}
           </span>
         )}
       </div>
       <EventWhenWhere e={e} />
       {e.summary && <p className="mt-3 text-sm leading-relaxed text-slate-600">{e.summary}</p>}
-      {isBunFest && (
-        <p className="mt-2 text-sm text-slate-600">
-          Preview the items that will be up for silent auction at Midwest BunFest 2026.
-        </p>
-      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
-        {isBunFest && (
-          <>
-            <Link to="/bunfest" className={btn.blue}>
-              About Midwest BunFest
-            </Link>
-            <Link to="/bunfest/silent-auction" className={btn.outline}>
-              Silent auction preview
-            </Link>
-          </>
-        )}
-        {e.url && (
-          <a href={e.url} {...ext} className={btn.outline}>
-            More information
-          </a>
+        {isBunFest ? (
+          <Link to="/bunfest" className={btn.blue}>
+            Plan your BunFest day
+          </Link>
+        ) : (
+          e.url && (
+            <a href={e.url} {...ext} className={btn.blue}>
+              Event details
+            </a>
+          )
         )}
       </div>
     </Card>

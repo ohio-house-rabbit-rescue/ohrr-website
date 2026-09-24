@@ -1,5 +1,5 @@
 import { useVolunteerOpps } from '../lib/data'
-import { PageHero, Section, LiveNote, btn, ext, H2, Card, Callout } from '../components/ui'
+import { PageHero, Section, btn, ext, H2, Card, Callout } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { Link } from 'react-router-dom'
 import { OHRR, CHRS_TIPLINE } from '../lib/constants'
@@ -88,9 +88,39 @@ const OTHER_NEEDS = [
   'Marketing',
 ]
 
+/** Where each kind of shift is booked — the same path the typed list used. */
+function signup(category: string, title: string): { to?: string; href?: string; label: string } {
+  switch (category) {
+    case 'socialization':
+      return { to: '/book/bunny-socialization', label: 'Pick a socialization shift' }
+    case 'buncare':
+      return { to: '/book/buncare-shift', label: 'Pick a Buncare shift' }
+    case 'vet-transport':
+      return { href: `${OHRR.emailHref}?subject=${encodeURIComponent('Vet delivery & pick-up volunteer')}`, label: 'Email to join the vet-run list' }
+    case 'field-rescue':
+      return { href: `mailto:${CHRS_TIPLINE}`, label: 'Email the CHRS Help Line' }
+    default:
+      return { to: `/volunteer/interest?role=${encodeURIComponent(categoryLabel(category))}&item=${encodeURIComponent(title)}`, label: 'Sign up' }
+  }
+}
+
+function SignupButton({ category, title, primary = true }: { category: string; title: string; primary?: boolean }) {
+  const s = signup(category, title)
+  const cls = primary ? btn.orange : btn.outline
+  return s.to ? (
+    <Link to={s.to} className={cls}>
+      {s.label}
+    </Link>
+  ) : (
+    <a href={s.href} className={cls}>
+      {s.label}
+    </a>
+  )
+}
+
 export default function Volunteer() {
   const opps = useVolunteerOpps()
-  const isLive = !!opps && opps.length > 0
+  const live = opps !== null && opps.length > 0
 
   return (
     <>
@@ -100,64 +130,95 @@ export default function Volunteer() {
       />
       <PresentedBy surface="volunteer" />
       <Section>
-        <p className="max-w-3xl text-slate-600">
-          Some volunteers come to us knowing everything about bunnies and some start off knowing nothing at
-          all. We truly are one big, happy volunteer family and we would love to have you join us.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-2xl text-base text-slate-700">
+            Some volunteers come to us knowing everything about bunnies and some start off knowing nothing at all. We
+            truly are one big, happy volunteer family and we would love to have you join us.
+          </p>
+          <Link to="/volunteer/hours" className={btn.outline}>
+            Already volunteering? See your hours
+          </Link>
+        </div>
 
         <OpenCalls />
 
-        <p className="mt-6 text-base text-slate-700">
-          Already volunteering?{' '}
-          <Link to="/volunteer/hours" className="font-bold text-brand-blue hover:text-brand-blue-dark">
-            See your hours
-          </Link>{' '}
-          — the same page your hours link or QR code opens.
+        <H2 className="mt-10">Shifts and ways to help</H2>
+        <p className="mt-2 text-base text-slate-700">
+          Pick a shift and you’re booked — no account. Your hours are recorded when you check in, and you can print
+          your own hours record any time.
         </p>
-
-        <H2 className="mt-10">Available volunteer positions</H2>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          {POSITIONS.map((p) => (
-            <Card key={p.title} className="flex flex-col">
-              <h3 className="font-display text-lg font-extrabold text-brand-blue">{p.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p.summary}</p>
-              <p className="mt-3 text-xs font-extrabold uppercase tracking-wider text-slate-600">Requirements</p>
-              <ul className="mt-1.5 space-y-1.5">
-                {p.requirements.map((r) => (
-                  <li key={r} className="flex gap-2 text-sm text-slate-700">
-                    <span className="text-brand-orange">●</span>
-                    <span>{r}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-sm text-slate-600">
-                <span className="font-bold text-slate-700">Location:</span> {p.location}
-              </p>
-              {p.note && <p className="mt-2 text-sm text-slate-600">{p.note}</p>}
-              <div className="mt-4">
-                {p.signup.to ? (
-                  <Link to={p.signup.to} className={btn.orange}>
-                    {p.signup.label}
-                  </Link>
-                ) : (
-                  <a href={p.signup.href} {...(p.signup.external ? ext : {})} className={btn.orange}>
-                    {p.signup.label}
-                  </a>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+        {opps === null ? (
+          <p className="mt-6 text-base text-slate-600">Loading…</p>
+        ) : live ? (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {opps.map((o) => {
+              const left = remainingLabel(o)
+              const full = isFull(o)
+              return (
+                <Card key={o.id} className="flex flex-col">
+                  <span className="text-sm font-bold uppercase tracking-wider text-brand-blue">{categoryLabel(o.category)}</span>
+                  <h3 className="mt-1 font-display text-xl font-extrabold text-ink">{o.title}</h3>
+                  {(o.when_text || o.where_text) && (
+                    <p className="mt-1 text-base text-slate-700">{[o.when_text, o.where_text].filter(Boolean).join(' · ')}</p>
+                  )}
+                  {o.detail && <p className="mt-2 whitespace-pre-line text-base text-slate-700">{o.detail}</p>}
+                  {left && <p className={`mt-2 text-base font-bold ${full ? 'text-slate-600' : 'text-brand-orange-ink'}`}>{left}</p>}
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    {!full && <SignupButton category={o.category} title={o.title} />}
+                    {o.contact_email && (
+                      <a href={`mailto:${o.contact_email}`} className="text-base font-semibold text-brand-blue">
+                        Questions? Email {o.contact_email}
+                      </a>
+                    )}
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {POSITIONS.map((p) => (
+              <Card key={p.title} className="flex flex-col">
+                <h3 className="font-display text-xl font-extrabold text-ink">{p.title}</h3>
+                <p className="mt-1.5 text-base text-slate-700">{p.summary}</p>
+                <ul className="mt-3 space-y-1.5">
+                  {p.requirements.map((r) => (
+                    <li key={r} className="flex gap-2 text-base text-slate-700">
+                      <span className="text-brand-orange">●</span>
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-base text-slate-700">
+                  <span className="font-bold">Where:</span> {p.location}
+                </p>
+                {p.note && <p className="mt-2 text-base text-slate-700">{p.note}</p>}
+                <div className="mt-4">
+                  {p.signup.to ? (
+                    <Link to={p.signup.to} className={btn.orange}>
+                      {p.signup.label}
+                    </Link>
+                  ) : (
+                    <a href={p.signup.href} {...(p.signup.external ? ext : {})} className={btn.orange}>
+                      {p.signup.label}
+                    </a>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
         <div className="mt-12">
           <H2>Two more ways in</H2>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <Card>
-              <h3 className="font-display text-lg font-extrabold text-brand-blue">Foster a rabbit</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                A few weeks with a rabbit in your home while they recover or wait for a family. Renters and students welcome — it is the easiest first step there is.
+              <h3 className="font-display text-xl font-extrabold text-ink">Foster a rabbit</h3>
+              <p className="mt-1.5 text-base text-slate-700">
+                A few weeks with a rabbit in your home while they recover or wait for a family. Renters and students
+                welcome — it is the easiest first step there is.
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <Link to="/volunteer/foster" className={btn.orange}>
                   I’m interested
                 </Link>
@@ -167,9 +228,10 @@ export default function Volunteer() {
               </div>
             </Card>
             <Card>
-              <h3 className="font-display text-lg font-extrabold text-brand-blue">Help OHRR online</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                Good with Instagram, TikTok or short video? An hour a week posting from OHRR’s ready-made Share kit reaches the people the rescue is missing. Students: this counts as real experience.
+              <h3 className="font-display text-xl font-extrabold text-ink">Help OHRR online</h3>
+              <p className="mt-1.5 text-base text-slate-700">
+                Good with Instagram, TikTok or short video? An hour a week posting from OHRR’s ready-made Share kit
+                reaches the people the rescue is missing. Students: this counts as real experience.
               </p>
               <div className="mt-4">
                 <Link to="/volunteer/interest?role=Social%20media%20%26%20digital%20content" className={btn.blue}>
@@ -180,72 +242,18 @@ export default function Volunteer() {
           </div>
         </div>
 
-        <div className="mt-12">
-          <H2>Other volunteer needs</H2>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {OTHER_NEEDS.map((n) => (
-              <li key={n} className="flex gap-2.5 text-sm text-slate-700">
-                <span className="text-brand-orange">●</span> {n}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 text-sm text-slate-600">
-            Please{' '}
-            <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
-              contact us
-            </a>{' '}
-            if you would like more information on any of the above opportunities or think you may be able to
-            help OHRR in any other way.
-          </p>
-        </div>
+        <p className="mt-10 max-w-3xl text-base text-slate-700">
+          OHRR also needs help with {OTHER_NEEDS.slice(0, -1).map((n) => n.toLowerCase()).join(', ')} and{' '}
+          {OTHER_NEEDS[OTHER_NEEDS.length - 1].toLowerCase()}. If one of those is you,{' '}
+          <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
+            email {OHRR.email}
+          </a>
+          .
+        </p>
 
-        {isLive && (
-          <div className="mt-12">
-            <H2>Open shifts</H2>
-            <LiveNote source="live" />
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {opps!.map((o) => {
-                const left = remainingLabel(o)
-                const full = isFull(o)
-                const role = categoryLabel(o.category)
-                return (
-                  <Card key={o.id}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-display text-lg font-extrabold text-ink">{o.title}</h3>
-                      <span className="rounded-full bg-brand-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue">{role}</span>
-                      {o.spots && <span className="text-sm font-bold text-brand-orange-dark">{o.spots}</span>}
-                    </div>
-                    {o.when_text && <p className="mt-1 text-base text-slate-700">{o.when_text}</p>}
-                    {o.where_text && <p className="text-sm text-slate-600">{o.where_text}</p>}
-                    {o.detail && <p className="mt-1.5 whitespace-pre-line text-sm text-slate-600">{o.detail}</p>}
-                    {left && (
-                      <p className={`mt-2 text-base font-bold ${full ? 'text-slate-600' : 'text-brand-orange-dark'}`}>{left}</p>
-                    )}
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
-                      {!full && (
-                        <Link
-                          to={`/volunteer/interest?role=${encodeURIComponent(role)}&item=${encodeURIComponent(o.title)}`}
-                          className={btn.blue}
-                        >
-                          Sign up
-                        </Link>
-                      )}
-                      {o.contact_email && (
-                        <a href={`mailto:${o.contact_email}`} className="text-sm font-semibold text-brand-blue">
-                          Questions? Email {o.contact_email}
-                        </a>
-                      )}
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        <Callout className="mt-12 text-center">
+        <Callout className="mt-10 text-center">
           <h2 className="font-display text-xl font-extrabold text-brand-blue">Group visits</h2>
-          <p className="mt-2 text-slate-700">
+          <p className="mt-2 text-base text-slate-700">
             Bunny Socialization is open to groups. To schedule a group visit, email{' '}
             <a href={OHRR.emailHref} className="font-semibold text-brand-blue">
               {OHRR.email}
@@ -258,7 +266,6 @@ export default function Volunteer() {
   )
 }
 
-/** Volunteer calls still taking people — what's needed right now, first. */
 function OpenCalls() {
   const [calls, setCalls] = useState<OpenCall[]>([])
   useEffect(() => {
@@ -283,7 +290,7 @@ function OpenCalls() {
                 </p>
                 {c.location && <p className="text-sm text-slate-500">{c.location}</p>}
                 {c.summary && <p className="mt-1.5 text-sm text-slate-600">{c.summary}</p>}
-                <p className="mt-3 text-base font-bold text-brand-orange-dark">
+                <p className="mt-3 text-base font-bold text-brand-orange-ink">
                   {left > 0 ? `${left} ${left === 1 ? 'place' : 'places'} left — sign up` : 'Full — thank you!'}
                 </p>
               </Card>

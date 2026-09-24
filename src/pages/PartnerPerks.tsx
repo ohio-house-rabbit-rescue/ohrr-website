@@ -26,7 +26,7 @@ function PerkCard({ s }: { s: Sponsor }) {
           {show ? (
             <p className="text-sm text-slate-600">
               Code:{' '}
-              <span className="select-all rounded-lg bg-brand-orange-50 px-2.5 py-1 font-display text-base font-black tracking-wider text-brand-orange-dark">
+              <span className="select-all rounded-lg bg-brand-orange-50 px-2.5 py-1 font-display text-base font-black tracking-wider text-brand-orange-ink">
                 {s.perkCode}
               </span>
             </p>

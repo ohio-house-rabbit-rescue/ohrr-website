@@ -84,7 +84,7 @@ export default function AdoptRabbit() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-display text-4xl font-black text-ink">{r.name}</h1>
             {r.bonded && (
-              <span className="rounded-full bg-brand-orange-50 px-3 py-1 text-sm font-bold text-brand-orange-dark">
+              <span className="rounded-full bg-brand-orange-50 px-3 py-1 text-sm font-bold text-brand-orange-ink">
                 Bonded pair
               </span>
             )}

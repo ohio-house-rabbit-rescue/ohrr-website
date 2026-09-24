@@ -10,7 +10,7 @@ import { Icon } from '../components/icons'
 import { EXAMPLE_QUESTIONS } from '../components/HelpSearchBox'
 import { useCareTopics } from '../lib/bunnyhelp/useTopics'
 import { buildIndex, cleanQuery, hasEmergency, searchTopics } from '../lib/bunnyhelp/search'
-import { Disclaimer, EmergencyCard, TopicRow } from '../lib/bunnyhelp/ui'
+import { Disclaimer, EMERGENCY_VET, EmergencyCard, TopicRow } from '../lib/bunnyhelp/ui'
 import { CATEGORIES, CATEGORY_LABEL, URGENCY_RANK, askOhrrHref, type TopicCategory } from '../lib/bunnyhelp/types'
 import { OHRR } from '../lib/constants'
 
@@ -91,6 +91,18 @@ export default function Help() {
             </div>
           )}
 
+          {!emergency && (
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-base text-amber-950">
+              <strong>Emergency tonight?</strong> {EMERGENCY_VET.name},{' '}
+              <a href={EMERGENCY_VET.phoneHref} className="font-bold text-brand-blue">
+                {EMERGENCY_VET.phone}
+              </a>{' '}
+              — {EMERGENCY_VET.note.toLowerCase()} ·{' '}
+              <Link to="/learn/vets" className="font-bold text-brand-blue">
+                all rabbit-savvy vets
+              </Link>
+            </p>
+          )}
           {emergency && <EmergencyCard />}
 
           {active && results.length > 0 && (
