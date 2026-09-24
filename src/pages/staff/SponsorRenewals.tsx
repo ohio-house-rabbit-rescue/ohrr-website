@@ -58,10 +58,12 @@ const SURFACE_LABEL: Record<string, string> = {
   'my-bunny': 'My Bunny',
 }
 
+// Opens on six months: sponsorships tend to end together (every 2026 one ends
+// Dec 31), and asking early gives time to hear back before the term runs out.
 const WINDOWS = [
   { days: 30, label: 'Next 30 days' },
-  { days: 60, label: 'Next 60 days' },
   { days: 90, label: 'Next 90 days' },
+  { days: 183, label: 'Next 6 months' },
   { days: 0, label: 'All' },
 ] as const
 /** Ended sponsorships stay on the list this long — they may still renew. */
@@ -135,7 +137,9 @@ function renewalMailto(it: Item): string {
   const body = [
     `Hello ${first},`,
     '',
-    `Thank you for sponsoring Ohio House Rabbit Rescue. Your current sponsorship runs through ${fmt(it.s.term_end, 'long')}.`,
+    it.days < 0
+      ? `Thank you for sponsoring Ohio House Rabbit Rescue. Your sponsorship ran through ${fmt(it.s.term_end, 'long')}.`
+      : `Thank you for sponsoring Ohio House Rabbit Rescue. Your current sponsorship runs through ${fmt(it.s.term_end, 'long')}.`,
     '',
     "We would love to have you with us again. Would you like to continue for next year? Just reply to this email and we'll take care of the rest.",
     '',
@@ -432,7 +436,7 @@ export default function SponsorRenewals() {
   const [noTable, setNoTable] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [windowDays, setWindowDays] = useState<number>(90)
+  const [windowDays, setWindowDays] = useState<number>(183)
   const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
@@ -616,7 +620,7 @@ export default function SponsorRenewals() {
             <p className="mt-4 rounded-2xl bg-brand-blue-50 px-5 py-4 text-base text-slate-700">
               {windowDays === 0
                 ? 'No sponsorship has an end date yet. Set one in Staff → Sponsors (Term ends) and it will show here.'
-                : `No sponsorships end in the next ${windowDays} days. Try a longer window.`}
+                : `No sponsorships end in the ${windowLabel.toLowerCase()}. Try a longer window.`}
             </p>
           ) : (
             <ul className="mt-4 space-y-3">
