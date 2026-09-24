@@ -221,7 +221,7 @@ export function ContactForm() {
         <button type="submit" disabled={status === 'busy'} className={`${btn.orange} disabled:opacity-60`}>
           {status === 'busy' ? 'Sending…' : 'Send message'}
         </button>
-        <p className="text-xs text-slate-500">For anything urgent about a rabbit’s health, call a rabbit-savvy vet rather than waiting for a reply.</p>
+        <p className="text-xs text-slate-600">For anything urgent about a rabbit’s health, call a rabbit-savvy vet rather than waiting for a reply.</p>
       </Card>
     </form>
   )

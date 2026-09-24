@@ -122,7 +122,7 @@ export default function Book() {
             {type.confirm_mode === 'staff' && <p className="mt-2 text-sm text-slate-700">You pick a time; OHRR confirms it with you by phone or email.</p>}
             {reqs.length > 0 && (
               <>
-                <p className="mt-4 text-xs font-extrabold uppercase tracking-wider text-slate-400">Requirements</p>
+                <p className="mt-4 text-xs font-extrabold uppercase tracking-wider text-slate-600">Requirements</p>
                 <ul className="mt-1.5 space-y-1.5">
                   {reqs.map((r) => (
                     <li key={r} className="flex gap-2 text-sm text-slate-700">
@@ -134,7 +134,7 @@ export default function Book() {
               </>
             )}
           </Card>
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-4 text-xs text-slate-600">
             Prefer the phone? The OHRR app books the same times and can remind you on your phone.
           </p>
         </div>
@@ -172,7 +172,7 @@ export default function Book() {
                             className="rounded-xl border-2 border-slate-200 bg-white px-3.5 py-2.5 text-left transition hover:border-brand-blue"
                           >
                             <span className="block text-sm font-extrabold text-ink">{fmtRange(s.starts_at, s.ends_at)}</span>
-                            <span className="block text-xs text-slate-500">
+                            <span className="block text-xs text-slate-600">
                               {type.kind === 'shift' ? `${left} spot${left === 1 ? '' : 's'} left` : 'Open'}
                               {s.note ? ` · ${s.note}` : ''}
                             </span>

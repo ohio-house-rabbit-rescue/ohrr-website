@@ -56,7 +56,7 @@ export default function LearnArticle() {
               </a>
             )}
             {a.sourceUrl && (
-              <p className="mt-8 text-xs text-slate-400">
+              <p className="mt-8 text-xs text-slate-600">
                 Adapted from the article on{' '}
                 <a href={a.sourceUrl} {...ext} className="font-semibold text-slate-500">
                   ohiohouserabbitrescue.org
@@ -81,7 +81,7 @@ export default function LearnArticle() {
                 Vet directory →
               </Link>
             </div>
-            <p className="text-xs leading-relaxed text-slate-400">{CARE_DISCLAIMER}</p>
+            <p className="text-xs leading-relaxed text-slate-600">{CARE_DISCLAIMER}</p>
           </aside>
         </div>
       </Section>

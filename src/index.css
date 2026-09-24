@@ -14,6 +14,29 @@
 
   --font-sans: "Open Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: "Nunito", ui-sans-serif, system-ui, sans-serif;
+
+  /* The older-visitor rule from the design brief: body text is 18px, not 14,
+     and nothing a visitor needs to read is under 16px. The usual Tailwind
+     steps are moved up so the pages keep their classes: text-base is 18px,
+     text-sm is 16px, and text-xs (15px) is kept for small print. */
+  --text-xs: 0.9375rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.55;
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.65;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.4375rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 2.125rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 2.625rem;
+  --text-4xl--line-height: 1.15;
+  --text-5xl: 3.125rem;
+  --text-5xl--line-height: 1.1;
 }
 
 html {
@@ -22,7 +45,26 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.65;
   color: var(--color-ink);
+}
+
+/* A keyboard user always sees where they are. */
+:focus-visible {
+  outline: 3px solid var(--color-brand-orange);
+  outline-offset: 2px;
+}
+
+/* Nothing moves for anyone who asked their device to reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Print only: clean, ink-friendly pages for the vet list, adoption policy and

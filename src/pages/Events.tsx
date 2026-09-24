@@ -16,13 +16,13 @@ export function EventWhenWhere({ e }: { e: EventItem }) {
   return (
     <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm text-slate-700 sm:grid-cols-2">
       <div>
-        <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-400">When</dt>
+        <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-600">When</dt>
         <dd className="mt-0.5 font-semibold">{formatDate(e.startsAt)}</dd>
         <dd>{formatTimeRange(e)}</dd>
       </div>
       {(e.venue || e.address) && (
         <div>
-          <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Where</dt>
+          <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Where</dt>
           {e.venue && <dd className="mt-0.5 font-semibold">{e.venue}</dd>}
           {e.address && (
             <dd>

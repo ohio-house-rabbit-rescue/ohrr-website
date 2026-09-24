@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { STAFF_URL, MAILING_LIST, OHRR } from '../lib/constants'
+import { MAILING_LIST, OHRR } from '../lib/constants'
 import { ContactRow, ext } from './ui'
 
 const NAV = [
@@ -13,18 +13,23 @@ const NAV = [
 ]
 
 const MORE = [
-  { to: '/bunfest', label: 'Midwest BunFest' },
+  { to: '/help', label: 'Bunny Help — ask a question' },
+  { to: '/tails', label: 'Happy Tails — adoption stories' },
+  { to: '/found', label: 'Found a rabbit?' },
+  { to: '/surrender', label: 'Surrendering a rabbit' },
   { to: '/learn/vets', label: 'Rabbit-savvy vets' },
-  { to: '/adopt/policy', label: 'Adoption policy' },
-  { to: '/contact', label: 'Contact us' },
+  { to: '/rescues', label: 'Rescues near you' },
+  { to: '/bunfest', label: 'Midwest BunFest' },
   { to: '/hop-shop', label: 'Hop Shop' },
-  { to: '/partners', label: 'Partners' },
-  { to: '/surrender', label: 'Found a rabbit? Need to surrender?' },
+  { to: '/adopt/policy', label: 'Adoption policy' },
+  { to: '/partners', label: 'Sponsors & partners' },
   { to: '/news', label: 'News' },
+  { to: '/contact', label: 'Contact us' },
+  { to: '/search', label: 'Search the site' },
   { to: '/app', label: 'Get the OHRR app' },
 ]
 
-const link = 'font-semibold text-slate-600 hover:text-brand-blue'
+const link = 'inline-block py-0.5 font-semibold text-slate-700 hover:text-brand-blue'
 
 export default function Footer() {
   return (
@@ -62,7 +67,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Explore</p>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-slate-600">Explore</p>
           <ul className="mt-3 space-y-2 text-sm">
             {NAV.map((n) => (
               <li key={n.to}>
@@ -75,7 +80,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">More</p>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-slate-600">More</p>
           <ul className="mt-3 space-y-2 text-sm">
             {MORE.map((n) => (
               <li key={n.to}>
@@ -88,7 +93,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Connect</p>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-slate-600">Connect</p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
               <a href={OHRR.facebook} {...ext} className={link}>
@@ -111,20 +116,20 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <a href={STAFF_URL} {...ext} className={link}>
+              <Link to="/staff" className={link}>
                 Staff &amp; owner sign-in
-              </a>
+              </Link>
             </li>
           </ul>
-          <p className="mt-5 text-xs leading-relaxed text-slate-400">
+          <p className="mt-5 text-xs leading-relaxed text-slate-600">
             501(c)(3) nonprofit · EIN {OHRR.ein} · Donations are tax-deductible
           </p>
         </div>
       </div>
-      <div className="border-t border-black/5 py-5 text-center text-xs text-slate-400">
+      <div className="border-t border-black/5 py-5 text-center text-xs text-slate-600">
         © Ohio House Rabbit Rescue · Columbus, Ohio · a modern preview on the same live system as the
         app ·{' '}
-        <Link to="/privacy" className="font-semibold text-slate-500 hover:text-brand-blue">
+        <Link to="/privacy" className="font-semibold text-slate-700 hover:text-brand-blue">
           Privacy
         </Link>
       </div>

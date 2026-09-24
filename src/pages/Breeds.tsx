@@ -26,7 +26,7 @@ function Pills<T extends string>({ options, value, onChange }: { options: { key:
 
 function Credits() {
   return (
-    <details className="mt-12 text-xs text-slate-500">
+    <details className="mt-12 text-xs text-slate-600">
       <summary className="cursor-pointer font-bold text-slate-600">Photo credits &amp; sources</summary>
       <p className="mt-2">Breed facts follow each breed’s Wikipedia article and the ARBA recognised-breeds list (checked 2026-09-21). Photos are freely licensed Wikimedia Commons images:</p>
       <ul className="mt-2 space-y-1">
@@ -110,7 +110,7 @@ export function BreedGuide() {
                 </div>
                 <div className="p-4">
                   <p className="font-display text-base font-extrabold text-ink">{b.name}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-0.5 text-xs text-slate-600">
                     {b.ears === 'lop' ? 'Lop ears' : 'Upright ears'} · {SIZE_LABEL[b.size]}
                   </p>
                 </div>
@@ -161,24 +161,24 @@ export function BreedDetail() {
           </div>
           <div className="space-y-5">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">How to tell</p>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">How to tell</p>
               <p className="mt-1 text-base leading-relaxed text-slate-700">{b.look}</p>
             </div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Grown weight</p>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Grown weight</p>
               <p className="mt-1 text-base text-slate-700">{b.weight}</p>
             </div>
             {b.colours && (
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Colours</p>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Colours</p>
                 <p className="mt-1 text-base text-slate-700">{b.colours}</p>
               </div>
             )}
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Where it comes from</p>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Where it comes from</p>
               <p className="mt-1 text-base leading-relaxed text-slate-700">{b.origin}</p>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               Facts from{' '}
               <a href={b.source} target="_blank" rel="noopener noreferrer" className="underline">
                 Wikipedia
@@ -205,7 +205,7 @@ export function BreedDetail() {
                   <img src={o.photo} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-ink">{o.name}</span>
-                    <span className="block text-xs text-slate-500">{SIZE_LABEL[o.size]}</span>
+                    <span className="block text-xs text-slate-600">{SIZE_LABEL[o.size]}</span>
                   </span>
                 </Link>
               ))}

@@ -118,7 +118,7 @@ export default function Volunteer() {
             <Card key={p.title} className="flex flex-col">
               <h3 className="font-display text-lg font-extrabold text-brand-blue">{p.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p.summary}</p>
-              <p className="mt-3 text-xs font-extrabold uppercase tracking-wider text-slate-400">Requirements</p>
+              <p className="mt-3 text-xs font-extrabold uppercase tracking-wider text-slate-600">Requirements</p>
               <ul className="mt-1.5 space-y-1.5">
                 {p.requirements.map((r) => (
                   <li key={r} className="flex gap-2 text-sm text-slate-700">

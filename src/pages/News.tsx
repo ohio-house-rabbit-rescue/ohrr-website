@@ -34,7 +34,7 @@ export default function News() {
                       )}
                       <div className="min-w-0 flex-1">
                         {a.createdAt && (
-                          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">
                             {formatShortDate(a.createdAt)}
                           </p>
                         )}

@@ -43,7 +43,7 @@ export default function Privacy() {
         subtitle="How Ohio House Rabbit Rescue handles your information on this website and in the OHRR app — in plain English."
       />
       <Section className="print-urls">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
           Draft — pending OHRR board review · Last updated: {UPDATED}
         </p>
         <p className="print-only mt-2 font-display text-2xl font-black">Ohio House Rabbit Rescue — Privacy Policy</p>

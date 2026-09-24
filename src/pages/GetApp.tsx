@@ -4,14 +4,20 @@ import QRCode from 'qrcode'
 import { PageHero, Section, btn, ext, H2, Card, Callout, IconTile } from '../components/ui'
 import { APP_URL } from '../lib/constants'
 
+// What the app does that only a phone can, then what it shares with this site.
+const APP_ONLY = [
+  { h: 'My Bunny', p: 'Your own rabbits, with vet visits, medicine and nail-trim reminders that go straight into your phone calendar. It stays on your phone.' },
+  { h: 'Works offline', p: 'Care guides, the vet list and Bunny Help open without a signal once you have used them.' },
+  { h: 'Camera and share sheet', p: 'Send a found-rabbit report or a Happy Tail with a photo from the camera, and share a rabbit straight to Facebook or Instagram.' },
+  { h: 'For OHRR volunteers', p: 'Scan an item, the till and the BunFest door — the phone-side staff tools.' },
+]
 const FEATURES = [
-  { h: 'Adoptable rabbits', p: 'The same live list as this site, with photos and details.' },
-  { h: 'Care guides', p: 'Diet, litter training, bonding, living space and more — readable offline once loaded.' },
-  { h: 'Find a rabbit-savvy vet', p: "OHRR's vet list across Ohio, with tap-to-call numbers." },
-  { h: 'Events, including Midwest BunFest', p: 'Dates, venues, and the full BunFest companion.' },
-  { h: 'Volunteer shifts', p: 'Open opportunities and how to sign up.' },
-  { h: 'Ways to give', p: 'Every way to support the bunnies, in one place.' },
-  { h: 'Announcements', p: "OHRR's latest news, as staff post it." },
+  { h: 'Adoptable rabbits', p: 'The same live list as this site, with photos and each rabbit’s story.' },
+  { h: 'Bunny Help', p: 'Type what’s wrong (“not eating”, “hiding”) and get OHRR’s own guidance, ranked by how urgent it is.' },
+  { h: 'Care guides and rabbit-savvy vets', p: 'The same articles and vet list, laid out for a phone.' },
+  { h: 'Events, including Midwest BunFest', p: 'Dates, venues, and the full BunFest companion: schedule, map, vendors, rescues.' },
+  { h: 'Volunteering', p: 'Book a shift, answer a call for help, and see your own hours.' },
+  { h: 'Happy Tails, news and ways to give', p: 'Adoption stories, announcements, and every way to support the bunnies.' },
 ]
 
 export default function GetApp() {
@@ -44,7 +50,7 @@ export default function GetApp() {
           <a href={APP_URL} {...ext} className={`${btn.orange} !px-7 !py-3 !text-base`}>
             Open the app
           </a>
-          <span className="text-sm text-slate-500">{APP_URL.replace('https://', '')}</span>
+          <span className="text-sm text-slate-700">{APP_URL.replace('https://', '')}</span>
         </div>
 
         <div className="mt-12 grid items-start gap-10 md:grid-cols-2">
@@ -56,7 +62,19 @@ export default function GetApp() {
               updates the moment OHRR staff make a change. It is for anyone who has a rabbit, wants one, or
               helps the rescue: adopters, volunteers, supporters, and Midwest BunFest visitors.
             </p>
-            <ul className="mt-5 space-y-2.5">
+            <h3 className="mt-6 font-display text-lg font-extrabold text-brand-blue">Only in the app</h3>
+            <ul className="mt-3 space-y-2.5">
+              {APP_ONLY.map((f) => (
+                <li key={f.h} className="flex gap-2.5 text-sm text-slate-700">
+                  <span className="text-brand-orange">●</span>
+                  <span>
+                    <strong>{f.h}</strong> — {f.p}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <h3 className="mt-6 font-display text-lg font-extrabold text-brand-blue">Shared with this website</h3>
+            <ul className="mt-3 space-y-2.5">
               {FEATURES.map((f) => (
                 <li key={f.h} className="flex gap-2.5 text-sm text-slate-700">
                   <span className="text-brand-orange">●</span>
@@ -91,7 +109,7 @@ export default function GetApp() {
               {qr ? (
                 <img src={qr} alt={`QR code that opens ${APP_URL}`} width={264} height={264} />
               ) : (
-                <span className="text-sm text-slate-400">{APP_URL}</span>
+                <span className="text-sm text-slate-600">{APP_URL}</span>
               )}
             </div>
           </Callout>

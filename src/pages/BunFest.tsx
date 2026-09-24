@@ -102,7 +102,7 @@ export default function BunFest() {
           </div>
         )}
 
-        <p className="mt-10 text-xs leading-relaxed text-slate-400">
+        <p className="mt-10 text-xs leading-relaxed text-slate-600">
           Midwest BunFest is hosted and sponsored by Ohio House Rabbit Rescue. The 2026 "Binky On!" logo is by
           tattoo artist Jillian Lisska.
         </p>

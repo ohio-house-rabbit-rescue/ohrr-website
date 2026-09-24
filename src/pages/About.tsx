@@ -194,7 +194,7 @@ export default function About() {
                   Directions
                 </a>
               </p>
-              <p className="mt-4 text-xs text-slate-400">
+              <p className="mt-4 text-xs text-slate-600">
                 501(c)(3) nonprofit · EIN {OHRR.ein} · {OHRR.phone}
               </p>
             </Callout>

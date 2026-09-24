@@ -14,7 +14,7 @@ function PerkCard({ s }: { s: Sponsor }) {
         <SponsorLogo name={s.name} logoUrl={s.logoUrl} className="h-12 max-w-[140px] text-xl" />
         <div className="min-w-0">
           <h3 className="font-display text-base font-extrabold text-ink">{s.name}</h3>
-          <p className="text-xs font-semibold text-slate-400">{TIER_LABEL[s.tier]}</p>
+          <p className="text-xs font-semibold text-slate-600">{TIER_LABEL[s.tier]}</p>
         </div>
       </div>
       <p className="mt-4 font-display text-lg font-extrabold text-brand-blue">{s.perkTitle}</p>

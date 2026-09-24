@@ -16,7 +16,7 @@ export default function Layout() {
     <div className="min-h-screen bg-white text-ink">
       <ScrollToTop />
       <Header />
-      <main>
+      <main id="main">
         <Outlet />
       </main>
       <Footer />

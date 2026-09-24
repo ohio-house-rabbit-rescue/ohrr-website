@@ -48,7 +48,7 @@ function ItemCard({ item }: { item: RaffleItem }) {
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">Won</span>
           )}
         </div>
-        {item.donatedBy && <p className="mt-0.5 text-sm font-semibold text-slate-400">Donated by {item.donatedBy}</p>}
+        {item.donatedBy && <p className="mt-0.5 text-sm font-semibold text-slate-600">Donated by {item.donatedBy}</p>}
         {typeof item.valueCents === 'number' && (
           <p className="mt-1 text-sm text-slate-600">Value: {formatPrice(item.valueCents)}</p>
         )}
@@ -86,7 +86,7 @@ function PrizeCard({ prize }: { prize: RafflePrize }) {
           <h3 className="font-display text-base font-extrabold text-ink">{prize.title}</h3>
           {drawn && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">Drawn</span>}
         </div>
-        {prize.donatedBy && <p className="mt-0.5 text-sm font-semibold text-slate-400">Donated by {prize.donatedBy}</p>}
+        {prize.donatedBy && <p className="mt-0.5 text-sm font-semibold text-slate-600">Donated by {prize.donatedBy}</p>}
         {typeof prize.valueCents === 'number' && <p className="mt-1 text-sm text-slate-600">Value: {formatPrice(prize.valueCents)}</p>}
         {prize.description && <p className="mt-1.5 text-sm text-slate-600">{prize.description}</p>}
       </div>

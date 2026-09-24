@@ -99,7 +99,7 @@ export default function Learn() {
           </p>
         </div>
 
-        <p className="mt-8 text-xs leading-relaxed text-slate-400">{CARE_DISCLAIMER}</p>
+        <p className="mt-8 text-xs leading-relaxed text-slate-600">{CARE_DISCLAIMER}</p>
       </Section>
     </>
   )

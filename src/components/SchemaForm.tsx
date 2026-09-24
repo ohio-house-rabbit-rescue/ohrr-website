@@ -38,7 +38,7 @@ export function Field({ f, values, setVal, toggle }: { f: FormField; values: Val
             )
           })}
         </div>
-        {f.help && <p className="mt-1 text-xs text-slate-500">{f.help}</p>}
+        {f.help && <p className="mt-1 text-xs text-slate-600">{f.help}</p>}
       </div>
     )
   }

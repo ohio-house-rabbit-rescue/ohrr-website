@@ -85,7 +85,7 @@ export default function Contact() {
             Join the OHRR mailing list
           </Link>
         </div>
-        <p className="mt-8 text-xs text-slate-400">
+        <p className="mt-8 text-xs text-slate-600">
           Ohio House Rabbit Rescue is a 501(c)(3) nonprofit · EIN {OHRR.ein}
         </p>
       </Section>

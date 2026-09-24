@@ -138,7 +138,7 @@ export function HomeHero() {
                   <path d="M9 6l6 6-6 6" />
                 </svg>
               </button>
-              <span className="text-xs font-semibold text-slate-400">
+              <span className="text-xs font-semibold text-slate-600">
                 {i + 1} / {count}
               </span>
             </div>
@@ -151,7 +151,7 @@ export function HomeHero() {
           </div>
           <div className="absolute -bottom-4 -left-2 rounded-2xl bg-white px-4 py-2.5 shadow-xl">
             <p className="font-display text-xl font-black text-brand-orange">Since 2009</p>
-            <p className="text-[11px] font-semibold text-slate-500">rescuing rabbits in Central Ohio</p>
+            <p className="text-xs font-semibold text-slate-500">rescuing rabbits in Central Ohio</p>
           </div>
         </div>
       </div>
