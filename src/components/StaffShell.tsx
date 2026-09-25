@@ -56,6 +56,12 @@ function SignIn() {
       if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
+        // An email that already has an account comes back with no identities and no session.
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          setMode('signin')
+          setError('That email already has an account. Sign in instead, or use “Forgot your password?”.')
+          return
+        }
         if (!data.session) {
           setCheckEmail(true)
           return
@@ -99,6 +105,9 @@ function SignIn() {
               <PasswordInput autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
             {mode === 'signin' && <ForgotPasswordLink email={email} />}
+            {mode === 'signup' && (
+              <p className="text-sm text-slate-600">After you create your account, you’ll enter the invite code a founder or board member gave you.</p>
+            )}
             {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
             <button type="submit" disabled={status === 'working'} className={`${btn.orange} w-full disabled:opacity-60`}>
               {status === 'working' ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -218,6 +227,7 @@ function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavIte
     {
       title: 'Settings',
       items: [
+        { to: '/staff/account', label: 'My account', show: true },
         { to: '/staff/team', label: 'Team', show: can('staff.invite') || can('staff.permissions.manage') },
         { to: '/staff/details', label: 'OHRR details', show: can('settings.manage') },
         { to: '/staff/features', label: 'Features', show: can('settings.manage') },
@@ -319,8 +329,8 @@ export default function StaffShell() {
       <div className="mx-auto max-w-md px-5 py-16 text-center">
         <h1 className="font-display text-xl font-extrabold text-ink">Join the OHRR team</h1>
         <p className="mt-2 text-sm text-slate-600">
-          You're signed in as <strong>{user.email}</strong>, but this account isn't an OHRR staff member yet.
-          Enter the invite code an owner gave you — or the owner's setup code.
+          You're signed in as <strong>{user.email}</strong>, but this account isn't on the OHRR team yet.
+          Ask a founder or board member for an invite code (they make one in Staff → Team → Invite) and enter it here.
         </p>
         <JoinByCode onJoined={refresh} />
         <div className="mt-4 flex flex-wrap justify-center gap-3">
@@ -349,6 +359,12 @@ export default function StaffShell() {
             <span className="hidden lg:inline-flex">
               <BackToSite />
             </span>
+            <Link
+              to="/staff/account"
+              className="inline-flex min-h-11 items-center rounded-full border-2 border-slate-300 px-4 text-base font-bold text-slate-700 hover:bg-slate-50"
+            >
+              My account
+            </Link>
             <button
               onClick={signOut}
               className="inline-flex min-h-11 items-center rounded-full border-2 border-slate-300 px-4 text-base font-bold text-slate-700 hover:bg-slate-50"

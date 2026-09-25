@@ -9,6 +9,7 @@ import Learn from './pages/Learn'
 import LearnArticle from './pages/LearnArticle'
 import LegacyFund from './pages/LegacyFund'
 import StaffGuardians from './pages/staff/Guardians'
+import MyAccount from './pages/staff/MyAccount'
 import Vets from './pages/Vets'
 import { BreedGuide, BreedDetail } from './pages/Breeds'
 import Volunteer from './pages/Volunteer'
@@ -130,6 +131,7 @@ export default function App() {
         <Route path="sponsors" element={<ManageSponsors />} />
         <Route path="sponsors/renewals" element={<SponsorRenewals />} />
         <Route path="guardians" element={<StaffGuardians />} />
+        <Route path="account" element={<MyAccount />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />
         <Route path="bunny-help" element={<BunnyHelp />} />
