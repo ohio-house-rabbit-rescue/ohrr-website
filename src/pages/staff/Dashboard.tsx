@@ -201,7 +201,7 @@ export default function StaffDashboard() {
         )}
         {tiles.length === 0 && (
           <p className="text-sm text-slate-600">
-            No tools have been turned on for your account yet. An owner can grant access.
+            No tools have been turned on for your account yet. Whoever brought you on can switch some on.
           </p>
         )}
       </div>
@@ -209,7 +209,7 @@ export default function StaffDashboard() {
       <p className="mt-8 rounded-2xl bg-brand-blue-50 px-4 py-3 text-sm text-slate-600">
         Anything you change here updates <strong>both this website and the OHRR app</strong> — they
         share the same live data.
-        {isAdmin ? (level ? ' As a founder or board member you have every tool above.' : ' As an owner/admin you have every tool above.') : ''}
+        {isAdmin ? (level ? ' You hold every task, so you have every tool above.' : ' As an owner/admin you have every tool above.') : ''}
       </p>
     </div>
   )

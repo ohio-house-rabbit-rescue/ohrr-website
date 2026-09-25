@@ -6,7 +6,7 @@
 // could change their email or password without signing out. Same as the app's
 // screen. No database change: save_member_profile always lets you save your own.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { useStaff, staffInput, Spinner, PasswordInput, LEVELS, PERMISSION_CATALOG, isFullAccessLevel } from '../../lib/staff'
+import { useStaff, staffInput, Spinner, PasswordInput, LEVELS, PERMISSION_CATALOG, isFullAccessLevel, longDate } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { uploadSiteImage } from '../../lib/images'
 import { btn, Card } from '../../components/ui'
@@ -75,6 +75,8 @@ export default function MyAccount() {
             {level ? level.label : membership.role[0].toUpperCase() + membership.role.slice(1)}
             {level && <span className="ml-2 text-sm font-semibold text-slate-500">{level.blurb}</span>}
           </p>
+          {/* Update 30: access for a set time, e.g. BunFest weekend. */}
+          {membership.accessUntil && <p className="mt-1 text-sm font-semibold text-slate-700">Your access ends on {longDate(membership.accessUntil)}.</p>}
           {fullAccess ? (
             <p className="mt-2 text-sm text-slate-700">You can do everything in the staff area.</p>
           ) : mine.length > 0 ? (

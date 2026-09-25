@@ -2,7 +2,7 @@
 // the app's StaffActivity (gated on audit.view; the same `audit_log` table).
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
-import { useStaff, Spinner } from '../../lib/staff'
+import { useStaff, Spinner, parseLevel, levelLabel, shortDate } from '../../lib/staff'
 import { Card } from '../../components/ui'
 import type { Json } from '../../lib/settings'
 
@@ -25,6 +25,9 @@ const ACTION_LABELS: Record<string, string> = {
   grant_permission: 'granted a capability',
   revoke_permission: 'revoked a capability',
   set_membership_status: 'changed a member’s status',
+  // Updates 28 and 30: levels, and access that ends on a date.
+  set_member_level: 'changed a member’s level',
+  set_member_access_until: 'set when a member’s access ends',
 }
 
 function actionLabel(action: string) {
@@ -37,6 +40,11 @@ function detailSummary(e: Entry): string | null {
   if (!d || typeof d !== 'object' || Array.isArray(d)) return null
   if (typeof d.key === 'string') return d.key
   if (typeof d.status === 'string') return d.status
+  if (typeof d.to === 'string') {
+    const lv = parseLevel(d.to)
+    return `to ${lv ? levelLabel(lv) : d.to}`
+  }
+  if ('until' in d) return typeof d.until === 'string' ? `until ${shortDate(d.until)}` : 'no end date'
   if (typeof d.preset === 'string') return `preset: ${d.preset}`
   if (Array.isArray(d.capabilities) && d.capabilities.length) return d.capabilities.join(', ')
   return null

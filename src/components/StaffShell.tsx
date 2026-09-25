@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
-import { useStaff, staffInput, Spinner, PasswordInput, levelLabel } from '../lib/staff'
+import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate } from '../lib/staff'
 import { myStaffVolunteerPage } from '../lib/volunteers/api'
 import { btn } from './ui'
 import { buildLabel } from '../lib/version'
@@ -106,7 +106,7 @@ function SignIn() {
             </label>
             {mode === 'signin' && <ForgotPasswordLink email={email} />}
             {mode === 'signup' && (
-              <p className="text-sm text-slate-600">After you create your account, you’ll enter the invite code a founder or board member gave you.</p>
+              <p className="text-sm text-slate-600">After you create your account, you’ll enter the invite code you were given.</p>
             )}
             {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
             <button type="submit" disabled={status === 'working'} className={`${btn.orange} w-full disabled:opacity-60`}>
@@ -314,7 +314,7 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
 }
 
 export default function StaffShell() {
-  const { configured, loading, user, membership, can, signOut, refresh } = useStaff()
+  const { configured, loading, user, membership, accessEndedOn, can, signOut, refresh } = useStaff()
   const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
   useEffect(() => setMenuOpen(false), [pathname])
@@ -328,10 +328,19 @@ export default function StaffShell() {
     return (
       <div className="mx-auto max-w-md px-5 py-16 text-center">
         <h1 className="font-display text-xl font-extrabold text-ink">Join the OHRR team</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          You're signed in as <strong>{user.email}</strong>, but this account isn't on the OHRR team yet.
-          Ask a founder or board member for an invite code (they make one in Staff → Team → Invite) and enter it here.
-        </p>
+        {/* Update 30: access can end on a date. An invite code can extend it. */}
+        {accessEndedOn ? (
+          <p className="mt-2 text-sm text-slate-600">
+            You're signed in as <strong>{user.email}</strong>. Your access ended on {longDate(accessEndedOn)}. Ask a founder or admin to
+            extend it.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-slate-600">
+            You're signed in as <strong>{user.email}</strong>, but this account isn't on the OHRR team yet.
+            Ask whoever is bringing you on — a founder, an admin or a lead — for an invite code (they make one in Staff → Team) and enter
+            it here.
+          </p>
+        )}
         <JoinByCode onJoined={refresh} />
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <BackToSite />
@@ -341,7 +350,7 @@ export default function StaffShell() {
     )
   }
 
-  // Founder / Board / Lead / Worker once update 28 has been run; Owner / Admin / Staff before.
+  // Developer / Founder / Board / Admin 1–3 / Lead / Volunteer 1–3 once the levels are in; Owner / Admin / Staff before update 28.
   const role = membership.level ? levelLabel(membership.level) : membership.role[0].toUpperCase() + membership.role.slice(1)
 
   return (

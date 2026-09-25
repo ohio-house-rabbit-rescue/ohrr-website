@@ -62,8 +62,9 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'content.education.edit', area: 'Content', description: 'Edit education / care content' },
   { key: 'events.bunfest.manage', area: 'Events', description: 'Manage Midwest BunFest info' },
   { key: 'announcements.post', area: 'Content', description: 'Post announcements' },
-  { key: 'staff.invite', area: 'Staff', description: 'Invite workers' },
-  { key: 'staff.permissions.manage', area: 'Staff', description: 'Grant/revoke worker permissions & status' },
+  // Update 30: you share only what you have, and only with people below you.
+  { key: 'staff.invite', area: 'Staff', description: 'Invite people — to levels below yours, sharing only tasks you have' },
+  { key: 'staff.permissions.manage', area: 'Staff', description: 'Change the level, tasks and access of people below you (sharing only tasks you have)' },
   { key: 'audit.view', area: 'Staff', description: 'View the activity log' },
   { key: 'settings.manage', area: 'Staff', description: 'Change app settings and turn test features on/off' },
   { key: 'inbox.manage', area: 'Inbox', description: 'Read and handle requests sent from the app and website' },
@@ -75,15 +76,11 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'giving.guardians', area: 'Giving', description: 'Keep the Rescue Rabbit Guardians list (the Legacy Fund thank-you)' },
 ]
 
-// Access presets (mirror the DB permission_presets seed) for quick invites.
+// Access presets (mirror the DB permission_presets seed) for quick invites,
+// roughly by the level they suit (see PRESET_LEVEL in Team).
 export const PRESETS: Record<string, Cap[]> = {
-  'Hop Shop Manager': [
-    'hopshop.products.create',
-    'hopshop.products.edit',
-    'hopshop.products.delete',
-    'hopshop.inventory.update',
-    'hopshop.orders.view',
-  ],
+  // Update 30: the board's own set — the activity log and the approvals.
+  Board: ['audit.view', 'social.approve', 'volunteers.certificates', 'giving.guardians'],
   'Adoptions Coordinator': [
     'adoptions.listings.create',
     'adoptions.listings.edit',
@@ -92,32 +89,88 @@ export const PRESETS: Record<string, Cap[]> = {
     'bookings.manage',
   ],
   'Volunteer Lead': ['volunteers.shifts.manage', 'volunteers.signups.approve', 'inbox.manage', 'bookings.manage'],
+  'Hop Shop Manager': [
+    'hopshop.products.create',
+    'hopshop.products.edit',
+    'hopshop.products.delete',
+    'hopshop.inventory.update',
+    'hopshop.orders.view',
+  ],
   'Content Editor': ['content.education.edit', 'announcements.post', 'events.bunfest.manage'],
+  'BunFest & Events': ['events.bunfest.manage', 'bookings.manage', 'counter.use'],
+  // Update 30: helpers with one slice of a coordinator's job.
+  'Inbox helper': ['inbox.manage'],
+  'Rabbit listings helper': ['adoptions.listings.create', 'adoptions.listings.edit', 'adoptions.status.change'],
+  'Care pages helper': ['content.education.edit'],
+  'Content Approver': ['social.approve'],
   // The till and the door only (the Counter lives in the app, on a phone).
   'Counter volunteer': ['counter.use'],
-  'Content Approver': ['social.approve'],
   // Update 28: someone certified to work the Hop Shop — the till, stock counts and orders, nothing else.
   'Hop Shop Worker': ['counter.use', 'hopshop.inventory.update', 'hopshop.orders.view'],
 }
 
 /*
- * Update 28: staff levels, highest first. A level decides who may change whom:
- * nobody can change the level, permissions or access of someone at their own
- * level or above (founders can manage founders). Founders are owners and board
- * members are admins, so every can() check keeps working as before. The
- * database enforces all of this; the screens only offer what it will allow.
+ * Staff levels, highest first (update 28; update 30 made the ladder the
+ * sponsor set on 2026-09-25). A level decides who may change whom: founders
+ * and developers may change anyone but themselves; everyone else only people
+ * below their own level, and you can only share tasks you have yourself.
+ * Founders and developers are owners, so they hold every task and every can()
+ * check keeps working; everyone else — Board and Admin 1–3 included — holds
+ * exactly the tasks switched on for them. The database enforces all of this;
+ * the screens only offer what it will allow.
  */
-export type StaffLevel = 'founder' | 'board' | 'lead' | 'worker'
+export type StaffLevel =
+  | 'developer'
+  | 'founder'
+  | 'board'
+  | 'admin3'
+  | 'admin2'
+  | 'admin1'
+  | 'lead'
+  | 'volunteer3'
+  | 'volunteer2'
+  | 'volunteer1'
 export const LEVELS: { value: StaffLevel; label: string; plural: string; blurb: string }[] = [
-  { value: 'founder', label: 'Founder', plural: 'Founders', blurb: 'Everything, including who is on the board' },
-  { value: 'board', label: 'Board', plural: 'Board', blurb: 'Everything; looks after leads and workers' },
-  { value: 'lead', label: 'Lead', plural: 'Leads', blurb: 'Coordinators with the permissions their job needs' },
-  { value: 'worker', label: 'Worker', plural: 'Workers', blurb: 'One job, e.g. the Hop Shop counter' },
+  { value: 'developer', label: 'Developer', plural: 'Developers', blurb: 'Every task; builds and maintains the app and website' },
+  { value: 'founder', label: 'Founder', plural: 'Founders', blurb: 'Every task, and looks after everyone' },
+  { value: 'board', label: 'Board', plural: 'Board', blurb: 'The board: oversight and approvals, plus any tasks added' },
+  { value: 'admin3', label: 'Admin 3', plural: 'Admin 3', blurb: 'Office and operations, with the tasks switched on' },
+  { value: 'admin2', label: 'Admin 2', plural: 'Admin 2', blurb: 'Office and operations, with the tasks switched on' },
+  { value: 'admin1', label: 'Admin 1', plural: 'Admin 1', blurb: 'Office and operations, with the tasks switched on' },
+  { value: 'lead', label: 'Lead', plural: 'Leads', blurb: 'Runs an area and can share its tasks' },
+  { value: 'volunteer3', label: 'Volunteer 3', plural: 'Volunteer 3', blurb: 'A trusted volunteer; their hours count straight away' },
+  { value: 'volunteer2', label: 'Volunteer 2', plural: 'Volunteer 2', blurb: 'A few chosen tasks' },
+  { value: 'volunteer1', label: 'Volunteer 1', plural: 'Volunteer 1', blurb: 'One job, e.g. the Counter' },
 ]
-const LEVEL_RANK: Record<StaffLevel, number> = { founder: 4, board: 3, lead: 2, worker: 1 }
+const LEVEL_RANK: Record<StaffLevel, number> = {
+  developer: 10,
+  founder: 9,
+  board: 8,
+  admin3: 7,
+  admin2: 6,
+  admin1: 5,
+  lead: 4,
+  volunteer3: 3,
+  volunteer2: 2,
+  volunteer1: 1,
+}
+/**
+ * The four levels before update 30 has been run (Board then meant every task).
+ * Their 'worker' reads as Volunteer 1 here and is sent back as 'worker' (dbLevel).
+ */
+export const LEGACY_LEVELS: StaffLevel[] = ['founder', 'board', 'lead', 'volunteer1']
 
 export function isStaffLevel(v: unknown): v is StaffLevel {
   return typeof v === 'string' && v in LEVEL_RANK
+}
+/** A level from the database: update 28's 'worker' is Volunteer 1 (update 30 renames it so). */
+export function parseLevel(v: unknown): StaffLevel | null {
+  if (v === 'worker') return 'volunteer1'
+  return isStaffLevel(v) ? v : null
+}
+/** The value the database takes: before update 30, Volunteer 1 is still 'worker'. */
+export function dbLevel(l: StaffLevel, tiers: boolean): string {
+  return !tiers && l === 'volunteer1' ? 'worker' : l
 }
 export function levelRank(l: StaffLevel | null | undefined): number {
   return l ? LEVEL_RANK[l] : 0
@@ -125,14 +178,37 @@ export function levelRank(l: StaffLevel | null | undefined): number {
 export function levelLabel(l: StaffLevel): string {
   return LEVELS.find((x) => x.value === l)?.label ?? l
 }
-/** Founders and board members hold every permission (they're owners and admins). */
+/** Founders and developers hold every task (they're owners); nobody else does. */
 export function isFullAccessLevel(l: StaffLevel | null | undefined): boolean {
-  return l === 'founder' || l === 'board'
+  return l === 'founder' || l === 'developer'
 }
-/** The levels someone at `mine` may give: any below their own, or any at all for a founder. */
-export function levelsICanGive(mine: StaffLevel | null | undefined): StaffLevel[] {
+/**
+ * The levels someone at `mine` may give, highest first: any at all for a
+ * founder or developer, otherwise only those below their own. Before update 30
+ * (`tiers` false) only the four levels of then.
+ */
+export function levelsICanGive(mine: StaffLevel | null | undefined, tiers = true): StaffLevel[] {
   if (!mine) return []
-  return LEVELS.map((l) => l.value).filter((l) => mine === 'founder' || levelRank(l) < levelRank(mine))
+  return LEVELS.map((l) => l.value).filter(
+    (l) => (tiers || LEGACY_LEVELS.includes(l)) && (isFullAccessLevel(mine) || levelRank(l) < levelRank(mine)),
+  )
+}
+
+/** Today in Ohio, as YYYY-MM-DD — access ends by Ohio's calendar, as in the database. */
+export const todayOhio = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+/** Access with an end date before today (update 30). The end date itself is still a working day. */
+export function accessHasEnded(until: string | null | undefined): boolean {
+  return Boolean(until && until < todayOhio())
+}
+/** "Oct 3", or "Oct 3, 2027" in another year. */
+export function shortDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`)
+  const sameYear = iso.slice(0, 4) === todayOhio().slice(0, 4)
+  return d.toLocaleDateString('en-US', sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' })
+}
+/** "October 3, 2026". */
+export function longDate(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 export interface Membership {
@@ -142,6 +218,8 @@ export interface Membership {
   status: string
   /** Update 28 — null until that update has been run. */
   level: StaffLevel | null
+  /** Update 30 — the last day of their access (YYYY-MM-DD), or null for no end. */
+  accessUntil: string | null
 }
 
 interface StaffValue {
@@ -151,6 +229,8 @@ interface StaffValue {
   membership: Membership | null
   /** The signed-in person's level (update 28); null before that update, or when not a member. */
   level: StaffLevel | null
+  /** Set when their access ended on this date (update 30): they're treated as not on the team. */
+  accessEndedOn: string | null
   capabilities: Set<string>
   can: (cap: Cap) => boolean
   refresh: () => Promise<void>
@@ -163,6 +243,7 @@ export function StaffProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [sessionLoaded, setSessionLoaded] = useState(false)
   const [membership, setMembership] = useState<Membership | null>(null)
+  const [accessEndedOn, setAccessEndedOn] = useState<string | null>(null)
   const [capabilities, setCapabilities] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(isConfigured)
 
@@ -186,26 +267,38 @@ export function StaffProvider({ children }: { children: ReactNode }) {
   const loadMembership = useCallback(async () => {
     if (!isConfigured || !userId) {
       setMembership(null)
+      setAccessEndedOn(null)
       setCapabilities(new Set())
       return
     }
-    // Ask for the level too; before update 28 the column isn't there, so ask again without it.
-    const withLevel = await supabase
-      .from('memberships')
-      .select('id, org_id, role, status, level')
-      .eq('status', 'active')
-      .limit(1)
-    let r: { id: string; org_id: string; role: string; status: string; level?: unknown } | undefined = withLevel.data?.[0]
-    if (withLevel.error) {
-      const plain = await supabase.from('memberships').select('id, org_id, role, status').eq('status', 'active').limit(1)
-      r = plain.data?.[0]
+    // Ask for the level and the end date too. Before update 30 there's no
+    // access_until and before update 28 no level, so ask again with less.
+    // Fellow members' rows are readable too, so this asks for the person's own.
+    type Row = { id: string; org_id: string; role: string; status: string; level?: unknown; access_until?: unknown }
+    let r: Row | undefined
+    for (const cols of ['id, org_id, role, status, level, access_until', 'id, org_id, role, status, level', 'id, org_id, role, status']) {
+      const res = await supabase.from('memberships').select(cols).eq('user_id', userId).eq('status', 'active').limit(1)
+      if (res.error) continue
+      r = (res.data as unknown as Row[] | null)?.[0]
+      break
     }
-    if (!r) {
+    const until = typeof r?.access_until === 'string' ? r.access_until : null
+    // Access that has ended counts as not on the team (the database refuses them anyway).
+    if (!r || accessHasEnded(until)) {
       setMembership(null)
+      setAccessEndedOn(r ? until : null)
       setCapabilities(new Set())
       return
     }
-    const m: Membership = { id: r.id, orgId: r.org_id, role: r.role, status: r.status, level: isStaffLevel(r.level) ? r.level : null }
+    setAccessEndedOn(null)
+    const m: Membership = {
+      id: r.id,
+      orgId: r.org_id,
+      role: r.role,
+      status: r.status,
+      level: parseLevel(r.level),
+      accessUntil: until,
+    }
     setMembership(m)
     if (m.role === 'owner' || m.role === 'admin') {
       setCapabilities(new Set(CAPS))
@@ -241,6 +334,7 @@ export function StaffProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setMembership(null)
+    setAccessEndedOn(null)
     setCapabilities(new Set())
   }, [])
 
@@ -252,6 +346,7 @@ export function StaffProvider({ children }: { children: ReactNode }) {
         user,
         membership,
         level: membership?.level ?? null,
+        accessEndedOn,
         capabilities,
         can,
         refresh: loadMembership,
