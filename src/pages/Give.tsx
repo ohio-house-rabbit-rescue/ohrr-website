@@ -19,6 +19,8 @@ import {
 } from '../lib/constants'
 import { OhrrPhoto } from '../components/PhotoStrip'
 import { LOLA_PHOTO } from '../data/ohrrPhotos'
+import WishListItems from '../components/WishListItems'
+import { useWishListItems, type WishListItem } from '../lib/wishList'
 
 interface Way {
   h: string
@@ -32,6 +34,8 @@ interface Way {
   image?: string
   imageAlt?: string
   imageFit?: 'cover' | 'contain'
+  /** Update 32: the wish-list items staff keep, listed under this row. */
+  wishList?: boolean
 }
 
 // Every way to give on the current OHRR site, in plain English, each with a button
@@ -67,6 +71,7 @@ const WAYS: Way[] = [
     href: AMAZON_WISH_LIST,
     cta: 'Open the Amazon Wish List',
     secondary: { href: WISH_LIST_PAGE, label: 'The full list, and what to drop off' },
+    wishList: true,
   },
   {
     h: 'OHRR merch store',
@@ -140,7 +145,7 @@ const WAYS: Way[] = [
 const TOP = ['Donate online', 'See what your gift does', 'OHRR Legacy Fund']
 const SHOP = ['Kroger Community Rewards', 'Amazon Wish List', 'OHRR merch store', 'Midwest BunFest 2026 merchandise', 'Online affiliates']
 
-function Row({ w }: { w: Way }) {
+function Row({ w, wishList = [] }: { w: Way; wishList?: WishListItem[] }) {
   const internal = w.href.startsWith('/')
   const secondaryInternal = w.secondary?.href.startsWith('/')
   return (
@@ -163,6 +168,7 @@ function Row({ w }: { w: Way }) {
               {w.secondary.label}
             </a>
           ))}
+        {w.wishList && <WishListItems items={wishList} className="mt-4" />}
       </div>
       {internal ? (
         <Link to={w.href} className={`${btn.outline} shrink-0`}>
@@ -183,6 +189,7 @@ export default function Give() {
   const shop = by(SHOP)
   const more = WAYS.filter((w) => !TOP.includes(w.h) && !SHOP.includes(w.h))
   const donate = top[0]
+  const wishList = useWishListItems()
 
   return (
     <>
@@ -251,7 +258,7 @@ export default function Give() {
         <p className="mt-1 text-base text-slate-700">Costs you nothing extra — a share comes to the bunnies.</p>
         <ul className="mt-2 divide-y divide-slate-200">
           {shop.map((w) => (
-            <Row key={w.h} w={w} />
+            <Row key={w.h} w={w} wishList={wishList} />
           ))}
         </ul>
 

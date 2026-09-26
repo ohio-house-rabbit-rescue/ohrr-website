@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { isMissingFunction, isMissingTable } from '../../lib/emailList'
 
 interface RabbitRow {
   id: string
@@ -14,6 +15,134 @@ interface RabbitRow {
   description: string | null
   photos: string[] | null
   is_published: boolean
+  /** Update 32: when the daily check stopped finding it on RescueGroups, and whether that hid it. */
+  source_missing_since?: string | null
+  auto_hidden?: boolean
+}
+
+const RABBIT_COLUMNS = 'id,name,status,sex,age,breed,bonded,description,photos,is_published'
+const SYNC_COLUMNS = `${RABBIT_COLUMNS},source_missing_since,auto_hidden`
+
+/*
+ * Update 32: OHRR's RescueGroups listing is checked every morning (the ohrr-jobs
+ * Edge Function). New rabbits are added; one no longer listed is hidden — never
+ * marked adopted — until staff decide or it's listed again. Each check leaves a
+ * row in job_runs.
+ */
+interface JobRun {
+  id: string
+  finished_at: string
+  ok: boolean
+  detail: { listed?: number; added?: string[]; back?: string[]; hidden?: string[]; error?: string } | null
+}
+
+/** "Sep 25". */
+const monthDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+/** "just now", "today 7:15 AM", "yesterday 7:15 AM" or "Sep 23, 7:15 AM". */
+function whenChecked(iso: string): string {
+  const d = new Date(iso)
+  if (Date.now() - d.getTime() < 60_000) return 'just now'
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const day = (x: Date) => x.toDateString()
+  if (day(d) === day(new Date())) return `today ${time}`
+  if (day(d) === day(new Date(Date.now() - 86_400_000))) return `yesterday ${time}`
+  return `${monthDay(iso)}, ${time}`
+}
+
+function runLine(r: JobRun): string {
+  const d = r.detail ?? {}
+  if (!r.ok) return `The RescueGroups check ${whenChecked(r.finished_at)} didn’t work: ${d.error ?? 'no reason given'}`
+  const parts = [`${d.listed ?? 0} listed`]
+  if (d.added?.length) parts.push(`added ${d.added.join(', ')}`)
+  if (d.back?.length) parts.push(`listed again ${d.back.join(', ')}`)
+  if (d.hidden?.length) parts.push(`hidden ${d.hidden.join(', ')}`)
+  return `Checked RescueGroups ${whenChecked(r.finished_at)}: ${parts.join(' · ')}`
+}
+
+/** The line at the top: the last check, and "Check RescueGroups now" for those who edit listings. */
+function RescueGroupsCheck({ orgId, canRequest, onChecked }: { orgId: string; canRequest: boolean; onChecked: () => Promise<void> }) {
+  const [last, setLast] = useState<JobRun | null | undefined>(undefined)
+  const [off, setOff] = useState(false)
+  const [waitingFor, setWaitingFor] = useState<string | null | false>(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const timer = useRef<number | undefined>(undefined)
+
+  const loadRun = useCallback(async (): Promise<JobRun | null> => {
+    const { data, error } = await supabase
+      .from('job_runs')
+      .select('id, finished_at, ok, detail')
+      .eq('job', 'rabbits')
+      .order('finished_at', { ascending: false })
+      .limit(1)
+    if (error) {
+      if (isMissingTable(error)) setOff(true)
+      setLast(null)
+      return null
+    }
+    const run = ((data ?? []) as JobRun[])[0] ?? null
+    setLast(run)
+    return run
+  }, [])
+  useEffect(() => {
+    void loadRun()
+    return () => window.clearTimeout(timer.current)
+  }, [loadRun])
+
+  // After asking, look again in about 20 seconds (and whenever "Check again" is pressed).
+  const lookAgain = useCallback(
+    async (before: string | null) => {
+      window.clearTimeout(timer.current)
+      const run = await loadRun()
+      if (run && run.id !== before) {
+        setWaitingFor(false)
+        await onChecked()
+      }
+    },
+    [loadRun, onChecked],
+  )
+
+  const checkNow = async () => {
+    setBusy(true)
+    setError(null)
+    const { error } = await supabase.rpc('request_rabbit_refresh', { p_org: orgId })
+    setBusy(false)
+    if (error) {
+      if (isMissingFunction(error)) setOff(true)
+      else setError(errMessage(error))
+      return
+    }
+    const before = last?.id ?? null
+    setWaitingFor(before)
+    timer.current = window.setTimeout(() => void lookAgain(before), 20_000)
+  }
+
+  if (off) return <p className="mt-3 text-sm text-slate-500">The daily RescueGroups check switches on with update 32.</p>
+  if (last === undefined) return null
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <p className="text-sm text-slate-700">
+        {last ? runLine(last) : 'RescueGroups hasn’t been checked yet.'} <span className="text-slate-500">It’s checked every morning.</span>
+      </p>
+      {canRequest && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button type="button" disabled={busy || waitingFor !== false} onClick={() => void checkNow()} className={`${btn.outline} disabled:opacity-60`}>
+            {busy ? 'Asking…' : 'Check RescueGroups now'}
+          </button>
+          {waitingFor !== false && (
+            <span className="text-sm text-slate-600">
+              Checking — this takes about 20 seconds.{' '}
+              <button type="button" className="font-bold text-brand-blue" onClick={() => void lookAgain(waitingFor)}>
+                Check again
+              </button>
+            </span>
+          )}
+          {error && <span className="text-sm font-semibold text-red-600">{error}</span>}
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface Draft {
@@ -184,17 +313,17 @@ export default function ManageRabbits() {
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!orgId) return
     setError(null)
-    const { data, error } = await supabase
-      .from('rabbits')
-      .select('id,name,status,sex,age,breed,bonded,description,photos,is_published')
-      .eq('org_id', orgId)
-      .order('created_at', { ascending: false })
-    if (error) setError(errMessage(error))
-    else setItems((data ?? []) as RabbitRow[])
+    const query = (cols: string) => supabase.from('rabbits').select(cols).eq('org_id', orgId).order('created_at', { ascending: false })
+    // Before update 32 there are no RescueGroups columns: ask again without them.
+    let res = await query(SYNC_COLUMNS)
+    if (res.error) res = await query(RABBIT_COLUMNS)
+    if (res.error) setError(errMessage(res.error))
+    else setItems((res.data ?? []) as unknown as RabbitRow[])
     setLoading(false)
   }, [orgId])
 
@@ -220,12 +349,32 @@ export default function ManageRabbits() {
     setCreating(false)
     await load()
   }
-  const saveEdit = (id: string) => async (d: Draft) => {
-    const { error } = await supabase.from('rabbits').update(payload(d)).eq('id', id)
+  const saveEdit = (r: RabbitRow) => async (d: Draft) => {
+    // Shown again or adopted by hand: no longer "hidden by the RescueGroups check".
+    const settled = r.auto_hidden && (d.is_published || d.status === 'Adopted')
+    const { error } = await supabase
+      .from('rabbits')
+      .update({ ...payload(d), ...(settled ? { auto_hidden: false } : {}) })
+      .eq('id', r.id)
     if (error) throw error
     setEditingId(null)
     await load()
   }
+  // The two quick answers for a rabbit the RescueGroups check hid. Never automatic.
+  const quick = async (r: RabbitRow, change: Record<string, unknown>, done: string) => {
+    setError(null)
+    setMsg(null)
+    const { error } = await supabase.from('rabbits').update(change).eq('id', r.id)
+    if (error) setError(errMessage(error))
+    else {
+      await load()
+      setMsg(done)
+    }
+  }
+  const markAdopted = (r: RabbitRow) =>
+    void quick(r, { status: 'Adopted', auto_hidden: false }, `${r.name} is marked adopted and stays hidden.`)
+  const showAgain = (r: RabbitRow) =>
+    void quick(r, { is_published: true, auto_hidden: false }, `${r.name} is on the site again until tomorrow’s check.`)
   const remove = async (id: string) => {
     const { error } = await supabase.from('rabbits').delete().eq('id', id)
     if (error) setError(errMessage(error))
@@ -242,6 +391,7 @@ export default function ManageRabbits() {
         {canCreate && !creating && <button onClick={() => setCreating(true)} className={btn.orange}>Add a rabbit</button>}
       </div>
       <p className="mt-1 text-sm text-slate-600">These show on the website's Adopt page and the app.</p>
+      {orgId && <RescueGroupsCheck orgId={orgId} canRequest={canCreate || canEdit} onChecked={load} />}
 
       {creating && (
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -250,6 +400,7 @@ export default function ManageRabbits() {
       )}
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
+      {msg && <p className="mt-4 text-sm font-semibold text-green-700">{msg}</p>}
 
       {loading ? (
         <Spinner />
@@ -260,7 +411,7 @@ export default function ManageRabbits() {
           {items.map((r) =>
             editingId === r.id ? (
               <div key={r.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <Form initial={fromRow(r)} userId={userId} submitLabel="Save" onSubmit={saveEdit(r.id)} onCancel={() => setEditingId(null)} />
+                <Form initial={fromRow(r)} userId={userId} submitLabel="Save" onSubmit={saveEdit(r)} onCancel={() => setEditingId(null)} />
               </div>
             ) : (
               <div key={r.id} className="flex gap-4 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
@@ -270,10 +421,31 @@ export default function ManageRabbits() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-display text-base font-extrabold text-ink">{r.name}</h3>
-                    {!r.is_published && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">Hidden</span>}
+                    {!r.is_published &&
+                      (r.auto_hidden ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800">
+                          Hidden — no longer on RescueGroups{r.source_missing_since ? ` since ${monthDay(r.source_missing_since)}` : ''}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">Hidden</span>
+                      ))}
                     <span className="rounded-full bg-brand-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue">{r.status}</span>
                   </div>
                   <p className="mt-0.5 text-sm text-slate-500">{[r.age, r.sex, r.breed].filter(Boolean).join(' · ')}</p>
+                  {r.auto_hidden && !r.is_published && (canEdit || can('adoptions.status.change')) && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {r.status !== 'Adopted' && (
+                        <button onClick={() => markAdopted(r)} className="rounded-full border border-brand-blue/60 px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-brand-blue-50">
+                          Mark adopted
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button onClick={() => showAgain(r)} className="rounded-full border border-brand-blue/60 px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-brand-blue-50">
+                          Show it again until tomorrow’s check
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {canEdit && (
                     <div className="mt-2 flex gap-2">
                       <button onClick={() => setEditingId(r.id)} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50">Edit</button>

@@ -7,6 +7,8 @@ import { HOP_SHOP_PHOTOS } from '../data/ohrrPhotos'
 import { formatPrice } from '../lib/format'
 import { OHRR, AMAZON_WISH_LIST } from '../lib/constants'
 import { useOrgProfile } from '../lib/orgProfile'
+import WishListItems from '../components/WishListItems'
+import { useWishListItems } from '../lib/wishList'
 
 const PRODUCTS = [
   'Pellets',
@@ -25,6 +27,7 @@ const PRODUCTS = [
 export default function HopShop() {
   const products = useHopShopProducts()
   const org = useOrgProfile()
+  const wishList = useWishListItems()
 
   return (
     <>
@@ -86,7 +89,8 @@ export default function HopShop() {
               </div>
             )}
 
-            <div className="mt-12 grid gap-4 sm:grid-cols-2">
+            {/* With wish-list items the two cards stack, so the longer one never sits beside a short one */}
+            <div className={`mt-12 grid gap-4 ${wishList.length ? '' : 'sm:grid-cols-2'}`}>
               <Card>
                 <h3 className="font-display text-lg font-extrabold text-brand-blue">Setting up a bunny space?</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
@@ -103,6 +107,7 @@ export default function HopShop() {
                   Our wish list has the cleaning supplies, bunny supplies and toys the Adoption Center uses
                   every day.
                 </p>
+                <WishListItems items={wishList} limit={3} className="mt-3" />
                 <a href={AMAZON_WISH_LIST} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
                   Open the Amazon Wish List →
                 </a>

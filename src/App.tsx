@@ -84,6 +84,9 @@ import ResetPassword from './pages/staff/ResetPassword'
 // One account for everyone (update 31): the email list
 import EmailChoices from './pages/EmailChoices'
 import Supporters from './pages/staff/Supporters'
+// Update 32: the Amazon wish list items, and phone notifications
+import StaffWishList from './pages/staff/WishList'
+import SendNotification from './pages/staff/SendNotification'
 
 export default function App() {
   return (
@@ -135,6 +138,8 @@ export default function App() {
         <Route path="sponsors/renewals" element={<SponsorRenewals />} />
         <Route path="guardians" element={<StaffGuardians />} />
         <Route path="supporters" element={<Supporters />} />
+        <Route path="wish-list" element={<StaffWishList />} />
+        <Route path="notify" element={<SendNotification />} />
         <Route path="account" element={<MyAccount />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />

@@ -41,6 +41,9 @@ export const CAPS = [
   'giving.guardians',
   // Update 31: the email list (Staff → Supporters).
   'supporters.view',
+  // Update 32: the Amazon wish list items, and phone notifications (Staff → Send a notification).
+  'giving.wishlist',
+  'notifications.send',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -77,6 +80,8 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'volunteers.certificates', area: 'Volunteers', description: 'Make volunteer certificates and set the hours that earn one' },
   { key: 'giving.guardians', area: 'Giving', description: 'Keep the Rescue Rabbit Guardians list (the Legacy Fund thank-you)' },
   { key: 'supporters.view', area: 'Supporters', description: 'See and download the supporter email list' },
+  { key: 'giving.wishlist', area: 'Giving', description: 'Keep the Amazon wish list items' },
+  { key: 'notifications.send', area: 'Supporters', description: 'Send phone notifications to people who asked for them' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites,
