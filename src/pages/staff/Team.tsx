@@ -194,12 +194,9 @@ function HowAccessWorks() {
           the tasks switched on for them. Nobody can change their own level or access.
         </p>
         <p>
-          <strong className="text-ink">For a set time.</strong> Access can end on a date — say, the end of BunFest weekend. After that
-          day they can’t get in until someone above them extends it.
-        </p>
-        <p>
-          <strong className="text-ink">Switching someone off.</strong> “Disable access” stops them straight away and keeps their record;
-          “Re-enable” brings them back. An invite code never switches someone back on.
+          <strong className="text-ink">On hold.</strong> Put someone on hold when you don’t need them for a while — say, BunFest helpers
+          after the festival. They keep their account, level and tasks but can’t use anything until you turn them back on, with no new
+          invite needed. An end date (“Put on hold automatically after”) does it for you.
         </p>
         <p>
           <strong className="text-ink">Volunteers who only sign up for shifts and log their hours don’t need an account.</strong> They use
@@ -209,6 +206,11 @@ function HowAccessWorks() {
       </div>
     </details>
   )
+}
+
+/** Switched off, or past their end date: either way they can't get in until turned back on. */
+function isOnHold(m: Member): boolean {
+  return m.status !== 'active' || (!!m.access_until && accessHasEnded(m.access_until))
 }
 
 /** "Access ends Oct 3", or muted once it has passed. */
@@ -798,7 +800,7 @@ function AccessUntilField({ member, onSave }: { member: Member; onSave: (member:
   return (
     <div className="mt-3">
       <label className="block max-w-xs text-sm font-semibold text-slate-700">
-        Access until <span className="font-normal text-slate-500">(optional)</span>
+        Put on hold automatically after <span className="font-normal text-slate-500">(optional)</span>
         <input type="date" className={staffInput} value={value} min={todayOhio()} onChange={(e) => setValue(e.target.value)} />
       </label>
       <div className="mt-2 flex flex-wrap gap-2">
@@ -917,7 +919,7 @@ function MemberCard({
             </span>
           )}
           {member.access_until && <AccessBadge until={member.access_until} />}
-          {member.status === 'disabled' && <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange">Disabled</span>}
+          {member.status === 'disabled' && <span className="rounded-full bg-brand-orange-50 px-2 py-0.5 text-xs font-bold text-brand-orange">On hold</span>}
         </div>
       </div>
 
@@ -985,10 +987,10 @@ function MemberCard({
           onClick={handleStatus}
           disabled={statusBusy}
           className={`mt-3 rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
-            member.status === 'active' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+            !isOnHold(member) ? 'border-orange-200 text-brand-orange-dark hover:bg-orange-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
           }`}
         >
-          {statusBusy ? '…' : member.status === 'active' ? 'Disable access' : 'Re-enable'}
+          {statusBusy ? '…' : isOnHold(member) ? 'Turn back on' : 'Put on hold'}
         </button>
       )}
 
@@ -1031,6 +1033,7 @@ export default function Team() {
   const [invites, setInvites] = useState<OpenInvite[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const loadCerts = useCallback(async () => {
     if (!orgId) return
@@ -1155,14 +1158,30 @@ export default function Team() {
     })
   }, [])
 
+  // On hold = switched off, or past their end date. Turning back on undoes both.
   const toggleStatus = useCallback(async (member: Member) => {
-    const nextStatus = member.status === 'active' ? 'disabled' : 'active'
-    const { error } = await supabase.rpc('set_membership_status', { p_membership: member.id, p_status: nextStatus })
-    if (error) {
-      setError(errMessage(error))
+    const name = memberName(member)
+    setError(null)
+    setNotice(null)
+    if (!isOnHold(member)) {
+      if (!window.confirm(`Put ${name} on hold? They keep their account, level and tasks, but can’t use anything in the staff area until someone turns them back on.`)) return
+      const { error } = await supabase.rpc('set_membership_status', { p_membership: member.id, p_status: 'disabled' })
+      if (error) return setError(errMessage(error))
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, status: 'disabled' } : m)))
+      setNotice(`${name} is on hold.`)
       return
     }
-    setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, status: nextStatus } : m)))
+    if (member.status !== 'active') {
+      const { error } = await supabase.rpc('set_membership_status', { p_membership: member.id, p_status: 'active' })
+      if (error) return setError(errMessage(error))
+    }
+    const ended = !!member.access_until && accessHasEnded(member.access_until)
+    if (ended) {
+      const { error } = await supabase.rpc('set_member_access_until', { p_membership: member.id, p_until: null })
+      if (error) return setError(errMessage(error))
+    }
+    setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, status: 'active', access_until: ended ? null : m.access_until } : m)))
+    setNotice(`${name} is back on. Add an end date if their help is for a set time.`)
   }, [])
 
   const setLevel = useCallback(
@@ -1201,8 +1220,10 @@ export default function Team() {
   const byUser = useMemo(() => new Map(members.map((m) => [m.user_id, memberName(m)])), [members])
   const nameOfUser = useCallback((id: string | null) => (id ? (byUser.get(id) ?? null) : null), [byUser])
   // One group per level someone is at, highest first (ten empty groups would bury the people).
-  const levelGroups = LEVELS.filter((l) => members.some((m) => m.level === l.value))
-  const unplaced = members.filter((m) => !m.level)
+  const working = members.filter((m) => !isOnHold(m))
+  const held = members.filter(isOnHold)
+  const levelGroups = LEVELS.filter((l) => working.some((m) => m.level === l.value))
+  const unplaced = working.filter((m) => !m.level)
 
   const sortedMembers = useMemo(() => {
     const rank: Record<string, number> = { owner: 0, admin: 1, staff: 2 }
@@ -1259,13 +1280,14 @@ export default function Team() {
       {canInvite && invites && <WaitingInvites invites={invites} />}
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
+      {notice && <p className="mt-4 text-sm font-semibold text-green-700">{notice}</p>}
 
       {loading ? (
         <Spinner label="Loading team…" />
       ) : levels ? (
         <div className="mt-6 space-y-6">
           {levelGroups.map((l) => {
-            const people = members.filter((m) => m.level === l.value)
+            const people = working.filter((m) => m.level === l.value)
             return (
               <section key={l.value} aria-labelledby={`level-${l.value}`}>
                 <div className="px-1">
@@ -1286,6 +1308,17 @@ export default function Team() {
               </h2>
               <div className="mt-2 grid grid-cols-1 gap-3">{unplaced.map(card)}</div>
             </section>
+          )}
+          {held.length > 0 && (
+            <details className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <summary className="cursor-pointer font-display text-lg font-extrabold text-ink">
+                On hold <span className="text-sm font-bold text-slate-500">({held.length})</span>
+              </summary>
+              <p className="mt-1 text-sm text-slate-600">
+                They keep their level and tasks. Turn someone back on when you need them again — say, for next year’s BunFest.
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-3 opacity-90">{held.map(card)}</div>
+            </details>
           )}
         </div>
       ) : (

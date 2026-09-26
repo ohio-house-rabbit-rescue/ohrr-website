@@ -314,7 +314,7 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
 }
 
 export default function StaffShell() {
-  const { configured, loading, user, membership, accessEndedOn, can, signOut, refresh } = useStaff()
+  const { configured, loading, user, membership, accessEndedOn, onHold, can, signOut, refresh } = useStaff()
   const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
   useEffect(() => setMenuOpen(false), [pathname])
@@ -327,12 +327,17 @@ export default function StaffShell() {
   if (!membership) {
     return (
       <div className="mx-auto max-w-md px-5 py-16 text-center">
-        <h1 className="font-display text-xl font-extrabold text-ink">Join the OHRR team</h1>
+        <h1 className="font-display text-xl font-extrabold text-ink">{onHold || accessEndedOn ? 'Your access is on hold' : 'Join the OHRR team'}</h1>
         {/* Update 30: access can end on a date. An invite code can extend it. */}
-        {accessEndedOn ? (
+        {onHold ? (
           <p className="mt-2 text-sm text-slate-600">
-            You're signed in as <strong>{user.email}</strong>. Your access ended on {longDate(accessEndedOn)}. Ask a founder or admin to
-            extend it.
+            You're signed in as <strong>{user.email}</strong>. Your account, level and tasks are kept. Ask whoever looks after your
+            access (a lead, admin, founder or developer) to turn it back on.
+          </p>
+        ) : accessEndedOn ? (
+          <p className="mt-2 text-sm text-slate-600">
+            You're signed in as <strong>{user.email}</strong>. Your access ended on {longDate(accessEndedOn)}, so it's on hold until
+            someone turns it back on. Ask a lead, admin, founder or developer.
           </p>
         ) : (
           <p className="mt-2 text-sm text-slate-600">
@@ -341,7 +346,7 @@ export default function StaffShell() {
             it here.
           </p>
         )}
-        <JoinByCode onJoined={refresh} />
+        {!onHold && <JoinByCode onJoined={refresh} />}
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <BackToSite />
           <button onClick={signOut} className={btn.outline}>Sign out</button>

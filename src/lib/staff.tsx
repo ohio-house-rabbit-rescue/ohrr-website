@@ -231,6 +231,8 @@ interface StaffValue {
   level: StaffLevel | null
   /** Set when their access ended on this date (update 30): they're treated as not on the team. */
   accessEndedOn: string | null
+  /** Someone put them on hold (status 'disabled'): not on the team until turned back on. */
+  onHold: boolean
   capabilities: Set<string>
   can: (cap: Cap) => boolean
   refresh: () => Promise<void>
@@ -244,6 +246,7 @@ export function StaffProvider({ children }: { children: ReactNode }) {
   const [sessionLoaded, setSessionLoaded] = useState(false)
   const [membership, setMembership] = useState<Membership | null>(null)
   const [accessEndedOn, setAccessEndedOn] = useState<string | null>(null)
+  const [onHold, setOnHold] = useState(false)
   const [capabilities, setCapabilities] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(isConfigured)
 
@@ -268,6 +271,7 @@ export function StaffProvider({ children }: { children: ReactNode }) {
     if (!isConfigured || !userId) {
       setMembership(null)
       setAccessEndedOn(null)
+      setOnHold(false)
       setCapabilities(new Set())
       return
     }
@@ -285,12 +289,19 @@ export function StaffProvider({ children }: { children: ReactNode }) {
     const until = typeof r?.access_until === 'string' ? r.access_until : null
     // Access that has ended counts as not on the team (the database refuses them anyway).
     if (!r || accessHasEnded(until)) {
+      // Their own row is readable whatever its status (update 30), so an
+      // on-hold person can be told so instead of being asked for a code.
+      const held = r
+        ? null
+        : await supabase.from('memberships').select('id').eq('user_id', userId).eq('status', 'disabled').limit(1)
+      setOnHold(Boolean(held?.data?.length))
       setMembership(null)
       setAccessEndedOn(r ? until : null)
       setCapabilities(new Set())
       return
     }
     setAccessEndedOn(null)
+    setOnHold(false)
     const m: Membership = {
       id: r.id,
       orgId: r.org_id,
@@ -347,6 +358,7 @@ export function StaffProvider({ children }: { children: ReactNode }) {
         membership,
         level: membership?.level ?? null,
         accessEndedOn,
+        onHold,
         capabilities,
         can,
         refresh: loadMembership,
