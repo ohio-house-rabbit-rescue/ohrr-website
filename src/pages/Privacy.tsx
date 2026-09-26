@@ -8,20 +8,25 @@ import { APP_URL, LIVE_SITE, OHRR } from '../lib/constants'
 // two actually work today — check the code before changing a claim:
 //   - hosting: Cloudflare Pages; database + staff sign-in: Supabase (both repos);
 //   - no ad networks or tracking cookies; the only measurement is Cloudflare Web
-//     Analytics (cookie-free), when OHRR switches it on in the Cloudflare dashboard;
+//     Analytics (cookie-free), switched on by OHRR in the Cloudflare dashboard
+//     for the website, the app and the BunFest site (2026-09-26);
 //   - public forms → `submit_request` → the `requests` table (Staff → Inbox);
 //     bookings → `bookings`; raffle reservations → `raffle_ticket_orders`;
 //     volunteer hours → `bookings` check-ins + `volunteer_hours_entries`;
 //   - My Bunny, follows, saved sessions, the optional profile: on the device
 //     (ohrr-app/src/features/mybunny/*, lib/follow.ts, savedSessions.ts, profile.ts),
 //     and — with an optional account (update 31) — in `user_profiles` and
-//     `user_saves` (no photos), readable only by that account;
+//     `user_saves`, plus My Bunny photos in the private `my-bunny-photos`
+//     bucket (update 32, own folder only), readable only by that account;
 //   - the email list: `mailing_list` (website form `join_mailing_list`, the app,
 //     /emails/<token>); staff see it only with `supporters.view`;
 //   - camera: My Bunny photos (native Camera plugin / <input capture>), and the
 //     staff scanner + item photos (getUserMedia / file input) — only when tapped;
-//   - notifications: local, scheduled on the device (@capacitor/local-notifications);
-//     no push server;
+//   - reminders: local, scheduled on the device (@capacitor/local-notifications);
+//   - phone notifications (update 32, web app only): `push_subscriptions` —
+//     the browser's push address + keys and the topics ticked, with the account
+//     if signed in; sent by the ohrr-jobs Edge Function through the browser's
+//     push service; removed when turned off;
 //   - anyone can delete their own account in the app (`delete_own_account`),
 //     which also takes them off the email list.
 const UPDATED = 'September 26, 2026'
@@ -103,7 +108,7 @@ export default function Privacy() {
             </li>
             <li>We do not sell, rent or trade personal information.</li>
             <li>
-              We do not use advertising networks or tracking cookies. To see how many people visit which pages we may
+              We do not use advertising networks or tracking cookies. To see how many people visit which pages we
               use Cloudflare Web Analytics, which uses no cookies and does not identify individual visitors.
             </li>
             <li>
@@ -166,26 +171,34 @@ export default function Privacy() {
             The app's <strong>My Bunny</strong> section is a care companion for your own rabbit. Everything in it —
             your rabbit's name and details, photos, weight log, reminders and health notes — is stored on your
             device, in the app's local storage and on-device database. It is never sent to OHRR or to anyone else,
-            unless you create an account to keep it in (below); photos stay on your device either way.
+            unless you create an account to keep it in (below).
           </P>
           <UL>
             <li>
               <strong>Camera and photos.</strong> The app uses the camera only when you tap something that needs it:
               "Take a photo" for your rabbit, or — for OHRR staff — the scanner that reads a printed tag or barcode and
               the photo of a donated item. The phone asks for permission the first time. Rabbit photos stay on your
-              device; item photos taken by staff are stored with that item in OHRR's database.
+              device (and in your account, if you have one); item photos taken by staff are stored with that item in
+              OHRR's database.
             </li>
             <li>
               <strong>Reminders.</strong> Care reminders you switch on are scheduled on your phone as ordinary
-              notifications. There is no notification server: nothing about your reminders leaves the device.
+              notifications. Nothing about your reminders leaves the device.
+            </li>
+            <li>
+              <strong>Notifications from OHRR.</strong> If you turn on notifications in the app (My OHRR), for example
+              for volunteer calls or new rabbits, we keep your phone's notification address — made by your phone's
+              browser, not your phone number — and what you ticked, with your account if you're signed in. OHRR's
+              notifications are delivered through your browser's own notification service (Google, Apple, Mozilla or
+              Microsoft). Turning them off removes the address.
             </li>
             <li>
               <strong>Sharing.</strong> When you share a backup, an image or a letter from the app, the phone's own
               share sheet sends it where you choose; we do not see it.
             </li>
             <li>
-              Also kept on your device: the rabbits you follow, the BunFest sessions you save, the optional name and
-              email you can add under Settings, and the link to your last raffle-ticket reservation.
+              Also kept on your device: the rabbits you follow, the BunFest sessions you save, and the link to your
+              last raffle-ticket reservation.
             </li>
             <li>
               Deleting the app — or, for the web app, clearing your browser's data for {APP_HOST} — removes all of
@@ -201,15 +214,16 @@ export default function Privacy() {
           <UL>
             <li>your name and email address;</li>
             <li>
-              the rabbits you follow, the BunFest sessions you save, and My Bunny — your rabbit's details, weight
-              log, reminders and notes, but not photos, which stay on your phone;
+              the rabbits you follow, the BunFest sessions you save, and My Bunny — your rabbit's details, photos,
+              weight log, reminders and notes (the photos in a private folder only your account can open);
             </li>
             <li>your email choices: what, if anything, you'd like OHRR to email you about.</li>
           </UL>
           <P>
             Only you can see what your account keeps. OHRR staff can't see your favourites, saved sessions or My
             Bunny; the only part they can see is the email list. To delete your account and everything it keeps, go
-            to <strong>My account → Delete account</strong> in the app. That also takes you off the email list.
+            to <strong>My account → Delete account</strong> in the app. That also takes you off the email list and
+            deletes the My Bunny photos kept in your account.
           </P>
 
           <H>Information collected automatically</H>
