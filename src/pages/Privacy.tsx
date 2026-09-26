@@ -12,14 +12,19 @@ import { APP_URL, LIVE_SITE, OHRR } from '../lib/constants'
 //   - public forms → `submit_request` → the `requests` table (Staff → Inbox);
 //     bookings → `bookings`; raffle reservations → `raffle_ticket_orders`;
 //     volunteer hours → `bookings` check-ins + `volunteer_hours_entries`;
-//   - My Bunny, follows, saved sessions, the optional profile: device only
-//     (ohrr-app/src/features/mybunny/*, lib/follow.ts, savedSessions.ts, profile.ts);
+//   - My Bunny, follows, saved sessions, the optional profile: on the device
+//     (ohrr-app/src/features/mybunny/*, lib/follow.ts, savedSessions.ts, profile.ts),
+//     and — with an optional account (update 31) — in `user_profiles` and
+//     `user_saves` (no photos), readable only by that account;
+//   - the email list: `mailing_list` (website form `join_mailing_list`, the app,
+//     /emails/<token>); staff see it only with `supporters.view`;
 //   - camera: My Bunny photos (native Camera plugin / <input capture>), and the
 //     staff scanner + item photos (getUserMedia / file input) — only when tapped;
 //   - notifications: local, scheduled on the device (@capacitor/local-notifications);
 //     no push server;
-//   - staff can delete their own account in the app (`delete_own_account`).
-const UPDATED = 'September 22, 2026'
+//   - anyone can delete their own account in the app (`delete_own_account`),
+//     which also takes them off the email list.
+const UPDATED = 'September 26, 2026'
 const APP_HOST = APP_URL.replace('https://', '')
 const SITE_HOST = 'ohrr-website.pages.dev'
 
@@ -55,9 +60,10 @@ export default function Privacy() {
           <P>
             <strong>The short version:</strong> you can use this website and the OHRR app without an account. We do
             not sell personal information. There are no advertising networks and no tracking cookies. Anything you
-            keep in the app's <strong>My Bunny</strong> section stays on your own phone and is never sent to us. The
-            only information we keep about you is what you type into a form, a booking or a raffle-ticket reservation
-            — and we keep it so we can do what you asked.
+            keep in the app's <strong>My Bunny</strong> section stays on your own phone, unless you choose to keep it
+            in an account — and then only you can see it. The only information we keep about you is what you type
+            into a form, a booking, a raffle-ticket reservation or the email sign-up — and we keep it so we can do
+            what you asked.
           </P>
 
           <H>Who we are</H>
@@ -91,8 +97,9 @@ export default function Privacy() {
           <H>No account, no tracking</H>
           <UL>
             <li>
-              No account or sign-in is needed to use this website or the public parts of the app. Only OHRR staff and
-              volunteers sign in, to use the staff tools.
+              No account or sign-in is needed to use this website or the public parts of the app. An account in the
+              app is optional (see "If you create an account" below). On this website, only OHRR staff and volunteers
+              sign in, to use the staff tools.
             </li>
             <li>We do not sell, rent or trade personal information.</li>
             <li>
@@ -109,7 +116,7 @@ export default function Privacy() {
           <UL>
             <li>
               <strong>Forms.</strong> The adoption application, the foster and volunteer interest forms, the
-              surrender intake, the contact form, the mailing-list and Supporter sign-ups, and a Happy Tails story are
+              surrender intake, the contact form, the Supporter sign-up and a Happy Tails story are
               all sent to OHRR and stored in our database (run for us by Supabase) so that our volunteers can read and
               reply. That is your name, email address and/or phone number and what you wrote; the adoption
               application and surrender intake also ask about your home and the rabbit. We keep adoption and surrender
@@ -128,6 +135,11 @@ export default function Privacy() {
               phone number, optional email, your ticket numbers and whether they were paid for at the raffle table.
               Payment happens in person — the app never asks for card details. Winning numbers and the winner's name
               are kept as the record of the draw.
+            </li>
+            <li>
+              <strong>Emails from OHRR.</strong> If you ask for emails, on this website or in the app, we keep your
+              email address, your name if you give it, what you ticked, where you signed up and when. OHRR staff who
+              send the emails can see and download this list. Every email has a link to change what you get or stop.
             </li>
             <li>
               <strong>Staff and volunteer sign-in.</strong> OHRR staff sign in with an email address and password.
@@ -152,9 +164,9 @@ export default function Privacy() {
           <H>My Bunny and other things kept on your device (app)</H>
           <P>
             The app's <strong>My Bunny</strong> section is a care companion for your own rabbit. Everything in it —
-            your rabbit's name and details, photos, weight log, reminders and health notes — is stored{' '}
-            <strong>only on your device</strong>, in the app's local storage and on-device database. It is never
-            sent to OHRR or to anyone else.
+            your rabbit's name and details, photos, weight log, reminders and health notes — is stored on your
+            device, in the app's local storage and on-device database. It is never sent to OHRR or to anyone else,
+            unless you create an account to keep it in (below); photos stay on your device either way.
           </P>
           <UL>
             <li>
@@ -172,14 +184,33 @@ export default function Privacy() {
               share sheet sends it where you choose; we do not see it.
             </li>
             <li>
-              Also kept only on your device: the rabbits you follow, the BunFest sessions you save, the optional name
-              and email you can add under Settings, and the link to your last raffle-ticket reservation.
+              Also kept on your device: the rabbits you follow, the BunFest sessions you save, the optional name and
+              email you can add under Settings, and the link to your last raffle-ticket reservation.
             </li>
             <li>
               Deleting the app — or, for the web app, clearing your browser's data for {APP_HOST} — removes all of
-              this. Keep a Backup if you want a copy.
+              this from the device. Keep a Backup if you want a copy.
             </li>
           </UL>
+
+          <H>If you create an account</H>
+          <P>
+            An account is optional. You can create one in the app with your email address and a password you choose
+            (and can change), so what you save follows you to a new phone. An account keeps:
+          </P>
+          <UL>
+            <li>your name and email address;</li>
+            <li>
+              the rabbits you follow, the BunFest sessions you save, and My Bunny — your rabbit's details, weight
+              log, reminders and notes, but not photos, which stay on your phone;
+            </li>
+            <li>your email choices: what, if anything, you'd like OHRR to email you about.</li>
+          </UL>
+          <P>
+            Only you can see what your account keeps. OHRR staff can't see your favourites, saved sessions or My
+            Bunny; the only part they can see is the email list. To delete your account and everything it keeps, go
+            to <strong>My account → Delete account</strong> in the app. That also takes you off the email list.
+          </P>
 
           <H>Information collected automatically</H>
           <P>

@@ -55,13 +55,13 @@ export default function News() {
 
           <aside className="space-y-4">
             <div className="rounded-3xl bg-brand-blue-50 p-6 text-center">
-              <h2 className="font-display text-lg font-extrabold text-brand-blue">Join the OHRR mailing list</h2>
+              <h2 className="font-display text-lg font-extrabold text-brand-blue">Get emails from OHRR</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-700">
                 We only send the important stuff: updates, fundraisers, opportunities, Midwest BunFest
                 information, and ways you can help rescue rabbits when it matters most.
               </p>
               <Link to={MAILING_LIST} className={`${btn.blue} mt-4`}>
-                Join the mailing list
+                Get emails from OHRR
               </Link>
             </div>
             <Card>

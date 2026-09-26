@@ -64,7 +64,7 @@ export default function Contact() {
             Instagram
           </a>
           <Link to={MAILING_LIST} className={btn.outline}>
-            Join the OHRR mailing list
+            Get emails from OHRR
           </Link>
         </div>
         <p className="mt-8 text-xs text-slate-600">

@@ -55,7 +55,7 @@ export default function Footer() {
               <Icon name="instagram" size={20} />
             </a>
             <Link to={MAILING_LIST} className="ml-2 text-sm font-semibold text-brand-blue">
-              Join the mailing list
+              Get emails from OHRR
             </Link>
           </div>
         </div>

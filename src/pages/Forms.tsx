@@ -1,12 +1,14 @@
 // The website's in-house forms — all land in the staff Inbox:
 //   /adopt/apply            OHRR's adoption application (verbatim questions)
 //   /surrender/form?type=   Owner surrender / Good Samaritan intake
-//   /mailing-list           first name, last name, email
+//   /mailing-list           "Get emails from OHRR" — the email list (update 31), not the Inbox
 //   (the Contact page embeds ContactForm)
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHero, Section, Card, btn, ext } from '../components/ui'
 import SchemaForm, { inputClass, type Values } from '../components/SchemaForm'
+import InterestPicker from '../components/InterestPicker'
+import { cleanInterests, joinMailingList, type Interest } from '../lib/emailList'
 import { applicationSections, applicationAgreement } from '../data/adoptionApplication'
 import { intakeConfig, type IntakeType } from '../data/surrenderForm'
 import { fosterSections, fosterAgreement } from '../data/fosterForm'
@@ -109,18 +111,35 @@ export function SurrenderIntake() {
   )
 }
 
+/**
+ * /mailing-list — "Get emails from OHRR" (update 31): a standard email form, no
+ * account. `?interests=volunteer` (or events, …) ticks what the person came for;
+ * otherwise only "OHRR news" starts ticked. Before update 31 it lands in the
+ * Inbox as it always did (lib/emailList).
+ */
 export function MailingList() {
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '' })
+  const [params] = useSearchParams()
+  const [form, setForm] = useState({ name: '', email: '', 'bot-field': '' })
+  const [interests, setInterests] = useState<Interest[]>(() => {
+    const asked = cleanInterests(params.get('interests'))
+    return asked.length ? asked : ['newsletter']
+  })
   const [status, setStatus] = useState<'idle' | 'busy' | 'done'>('idle')
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    // Nothing ticked would mean emails they didn't pick ("OHRR news"), so ask.
+    if (interests.length === 0) {
+      setError('Tick at least one thing you’d like to hear about.')
+      return
+    }
     setStatus('busy')
     setError(null)
     try {
-      await submitRequest('mailing-list', { name: `${form.firstName} ${form.lastName}`.trim(), email: form.email, firstName: form.firstName, lastName: form.lastName })
+      await joinMailingList({ ...form, interests })
       setStatus('done')
+      window.scrollTo({ top: 0 })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign you up right now.')
       setStatus('idle')
@@ -128,11 +147,11 @@ export function MailingList() {
   }
   return (
     <>
-      <PageHero title="Join the mailing list" subtitle="Complete the form below to join our mailing list – we'd be hoppy to have you with us!" />
+      <PageHero title="Get emails from OHRR" subtitle="Pick what you’d like to hear about. No account needed." />
       <Section className="max-w-2xl">
         {status === 'done' ? (
-          <Done title="You’re on the list!" to="/" label="Back home">
-            Thanks, {form.firstName}. OHRR only sends the important stuff.
+          <Done title="You’re on the list." to="/" label="Back home">
+            Every email has a link to change what you get or stop.
           </Done>
         ) : (
           <form onSubmit={submit}>
@@ -142,21 +161,19 @@ export function MailingList() {
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block text-sm font-semibold text-slate-700">
-                  First name
-                  <input className={inputClass} required value={form.firstName} onChange={set('firstName')} autoComplete="given-name" />
+                  Your name (optional)
+                  <input className={inputClass} value={form.name} onChange={set('name')} autoComplete="name" maxLength={120} />
                 </label>
                 <label className="block text-sm font-semibold text-slate-700">
-                  Last name
-                  <input className={inputClass} required value={form.lastName} onChange={set('lastName')} autoComplete="family-name" />
+                  Email
+                  <input className={inputClass} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
                 </label>
               </div>
-              <label className="block text-sm font-semibold text-slate-700">
-                Email
-                <input className={inputClass} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
-              </label>
+              <InterestPicker value={interests} onChange={setInterests} disabled={status === 'busy'} />
+              <input type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={form['bot-field']} onChange={set('bot-field')} />
               {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
               <button type="submit" disabled={status === 'busy'} className={`${btn.orange} disabled:opacity-60`}>
-                {status === 'busy' ? 'Signing you up…' : 'Join the list'}
+                {status === 'busy' ? 'Signing you up…' : 'Sign me up'}
               </button>
             </Card>
           </form>

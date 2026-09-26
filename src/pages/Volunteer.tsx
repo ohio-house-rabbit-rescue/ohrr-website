@@ -4,7 +4,7 @@ import PresentedBy from '../components/PresentedBy'
 import { PhotoStrip } from '../components/PhotoStrip'
 import { VOLUNTEER_PHOTOS } from '../data/ohrrPhotos'
 import { Link } from 'react-router-dom'
-import { OHRR, CHRS_TIPLINE } from '../lib/constants'
+import { OHRR, CHRS_TIPLINE, MAILING_LIST } from '../lib/constants'
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { listOpenCalls, type OpenCall } from '../lib/volunteers/callsApi'
@@ -144,6 +144,11 @@ export default function Volunteer() {
         <PhotoStrip photos={VOLUNTEER_PHOTOS} className="mt-6 max-w-3xl" />
 
         <OpenCalls />
+        <p className="mt-6 text-base">
+          <Link to={`${MAILING_LIST}?interests=volunteer`} className="font-semibold text-brand-blue">
+            Get an email when OHRR needs volunteers
+          </Link>
+        </p>
 
         <H2 id="shifts" className="mt-10">Shifts and ways to help</H2>
         <p className="mt-2 text-base text-slate-700">

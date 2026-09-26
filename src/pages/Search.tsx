@@ -54,7 +54,7 @@ const PAGES: { title: string; subtitle: string; to: string; extra?: string }[] =
   { title: 'Partners', subtitle: 'Sponsors and rescue partners', to: '/partners', extra: 'sponsor' },
   { title: 'Partner perks', subtitle: 'Offers from OHRR’s partners', to: '/partners/perks', extra: 'discount code' },
   { title: 'News', subtitle: 'Announcements and updates', to: '/news', extra: 'announcements' },
-  { title: 'Mailing list', subtitle: 'Join the OHRR mailing list', to: '/mailing-list', extra: 'newsletter email' },
+  { title: 'Get emails from OHRR', subtitle: 'Pick what OHRR emails you about', to: '/mailing-list', extra: 'mailing list newsletter email volunteer events' },
   { title: 'Is a rabbit right for us?', subtitle: 'The two-minute check before you get a rabbit', to: '/info/is-a-rabbit-right-for-us', extra: 'thinking about getting a rabbit buy pet store easter gift kids children ready cost lifespan should i' },
   { title: 'About OHRR', subtitle: 'Mission, hours & visiting', to: '/about', extra: 'hours address directions visit contact instagram facebook' },
   { title: 'Contact', subtitle: 'Email, a message form, and visiting', to: '/contact', extra: 'email message address directions visit' },

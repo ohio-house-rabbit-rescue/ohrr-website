@@ -89,7 +89,7 @@ export default function Events() {
           <p className="mt-6 text-sm text-slate-500">Loading…</p>
         ) : upcoming.length === 0 ? (
           <p className="mt-6 text-slate-600">
-            No upcoming events are scheduled right now. Join the mailing list below and we'll let you know
+            No upcoming events are scheduled right now. Ask for an email below and we'll let you know
             about the next one.
           </p>
         ) : (
@@ -116,8 +116,8 @@ export default function Events() {
             We keep things simple and only send the important stuff: updates, fundraisers, opportunities,
             Midwest BunFest information, and ways you can help rescue rabbits when it matters most.
           </p>
-          <Link to={MAILING_LIST} className={`${btn.blue} mt-4`}>
-            Join the OHRR mailing list
+          <Link to={`${MAILING_LIST}?interests=events`} className={`${btn.blue} mt-4`}>
+            Get an email when OHRR has an event
           </Link>
         </div>
       </Section>

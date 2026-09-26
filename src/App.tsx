@@ -81,6 +81,9 @@ import SilentAuctionManager from './pages/staff/SilentAuction'
 import Features from './pages/staff/Features'
 import Activity from './pages/staff/Activity'
 import ResetPassword from './pages/staff/ResetPassword'
+// One account for everyone (update 31): the email list
+import EmailChoices from './pages/EmailChoices'
+import Supporters from './pages/staff/Supporters'
 
 export default function App() {
   return (
@@ -131,6 +134,7 @@ export default function App() {
         <Route path="sponsors" element={<ManageSponsors />} />
         <Route path="sponsors/renewals" element={<SponsorRenewals />} />
         <Route path="guardians" element={<StaffGuardians />} />
+        <Route path="supporters" element={<Supporters />} />
         <Route path="account" element={<MyAccount />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />
@@ -151,6 +155,7 @@ export default function App() {
         <Route path="/adopt/rabbit/:id" element={<AdoptRabbit />} />
         <Route path="/surrender/form" element={<SurrenderIntake />} />
         <Route path="/mailing-list" element={<MailingListPage />} />
+        <Route path="/emails/:token" element={<EmailChoices />} />
         <Route path="/impact" element={<Impact />} />
         <Route path="/support/become-a-supporter" element={<BecomeSupporter />} />
         <Route path="/volunteer/foster" element={<FosterInterest />} />
