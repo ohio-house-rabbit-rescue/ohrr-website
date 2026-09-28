@@ -4,6 +4,7 @@ import type { Rabbit } from '../lib/types'
 import type { Source } from '../lib/data'
 import { OHRR } from '../lib/constants'
 import { Icon, type IconName } from './icons'
+import { PageArt, usePageArt } from './PageArt'
 
 // Buttons are at least 44px tall with room between them (the brief's rule
 // for older visitors), and their text is never smaller than 16px.
@@ -41,6 +42,8 @@ export interface Door {
   icon: IconName
   to?: string
   href?: string
+  /** 'action': the solid orange icon — the one OHRR most wants chosen (Volunteer on Home). */
+  tone?: 'action'
 }
 
 export function DoorList({ doors, className = '' }: { doors: Door[]; className?: string }) {
@@ -52,8 +55,13 @@ export function DoorList({ doors, className = '' }: { doors: Door[]; className?:
         const away = !!d.href && /^https?:/.test(d.href)
         const inner = (
           <>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue-50 text-brand-blue" aria-hidden="true">
-              <Icon name={d.icon} size={22} />
+            <span
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                d.tone === 'action' ? 'bg-brand-orange text-ink' : 'bg-brand-blue-50 text-brand-blue-dark'
+              }`}
+              aria-hidden="true"
+            >
+              <Icon name={d.icon} size={22} accent={d.tone === 'action' ? '#fff' : 'var(--color-brand-orange)'} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-lg font-extrabold leading-snug text-ink group-hover:text-brand-blue">{d.h}</span>
@@ -103,6 +111,7 @@ export function PageHero({
 }) {
   const crumb = 'font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-4 hover:decoration-brand-blue'
   const side = doors && doors.length > 0 ? <DoorList doors={doors} /> : aside
+  const drawing = usePageArt()
   return (
     <div className="border-b border-brand-blue/10 bg-brand-blue-50">
       <div
@@ -110,8 +119,11 @@ export function PageHero({
           side ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-12' : ''
         }`}
       >
-        <div>
-          <nav aria-label="You are here" className="no-print mb-1.5 text-sm text-slate-600">
+        <div className="relative">
+          {/* The section's drawing (PageArt), beside the title — left of the doors on a laptop.
+              Only the crumbs and title make room for it, so no band gets taller. */}
+          {drawing && <PageArt name={drawing} className="no-print right-0 top-0 h-20 w-24 text-brand-blue/20" />}
+          <nav aria-label="You are here" className={`no-print relative mb-1.5 text-sm text-slate-600 ${drawing ? 'sm:pr-28' : ''}`}>
             <Link to="/" className={crumb}>
               Home
             </Link>
@@ -130,10 +142,12 @@ export function PageHero({
             </span>
             <span aria-current="page">{title}</span>
           </nav>
-          <h1 className="font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl">{title}</h1>
-          {subtitle && <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
+          <h1 className={`relative font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl ${drawing ? 'sm:pr-28' : ''}`}>
+            {title}
+          </h1>
+          {subtitle && <p className="relative mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
         </div>
-        {side && <div className="no-print">{side}</div>}
+        {side && <div className="no-print relative">{side}</div>}
       </div>
     </div>
   )
@@ -222,14 +236,16 @@ export function IconTile({
   size?: 'md' | 'lg' | 'fill'
   className?: string
 }) {
-  const color = tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-ink' : 'bg-brand-blue-50 text-brand-blue'
+  // Two-tone (OHRR, 2026-09-28): dark blue lines with one small orange part.
+  const color = tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-ink' : 'bg-brand-blue-50 text-brand-blue-dark'
+  const accent = tone === 'orange' ? undefined : 'var(--color-brand-orange)'
   const box = size === 'fill' ? 'aspect-[4/3] w-full' : size === 'lg' ? 'h-16 w-16 rounded-2xl' : 'h-12 w-12 rounded-xl'
   return (
     <div aria-hidden="true" className={`flex shrink-0 items-center justify-center ${color} ${box} ${className}`}>
       {size === 'fill' ? (
-        <Icon name={name} size={64} className="h-[28%] w-[28%]" />
+        <Icon name={name} size={64} className="h-[28%] w-[28%]" accent={accent} />
       ) : (
-        <Icon name={name} size={size === 'lg' ? 32 : 26} />
+        <Icon name={name} size={size === 'lg' ? 32 : 26} accent={accent} />
       )}
     </div>
   )

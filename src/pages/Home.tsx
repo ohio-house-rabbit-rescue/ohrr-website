@@ -220,7 +220,8 @@ function HowToHelp() {
         <div className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
           <h3 className="font-display text-xl font-extrabold text-ink">Volunteer</h3>
           <p className="mt-1 flex-1 text-base text-slate-700">Socialize the rabbits, help with their daily care, or drive them to the vet.</p>
-          <Link to="/volunteer" className={`${btn.blue} mt-4 self-start`}>
+          {/* Orange: volunteers are what OHRR needs most (OHRR, 2026-09-28) */}
+          <Link to="/volunteer" className={`${btn.orange} mt-4 self-start`}>
             See the shifts
           </Link>
         </div>
