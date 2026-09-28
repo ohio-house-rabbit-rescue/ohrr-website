@@ -7,6 +7,7 @@ import { BUNFEST_SAMPLE, BUNFEST_SITE } from '../lib/constants'
 import { bunfestDest, ctaFor, iconOf, useFeatures, useFestivalYear, usePages } from '../lib/bunfestPublic'
 import { EventWhenWhere } from './Events'
 import AddToCalendar from '../components/AddToCalendar'
+import BunFestFacts from '../components/BunFestFacts'
 
 // What's at Midwest BunFest, when this year's cards can't be read — from the
 // live announcement post. Not links: the pages behind them are read too.
@@ -90,40 +91,6 @@ function AtTheFestival() {
   )
 }
 
-/** Admission and the rabbit rule from the event's own record, when staff have set them. */
-function Facts({ info }: { info?: Record<string, unknown> | null }) {
-  if (!info) return null
-  const admission = Array.isArray(info.admission)
-    ? (info.admission as { who?: string; price?: string }[]).filter((a) => a?.who && a?.price)
-    : []
-  const rule = typeof info.rabbit_rule === 'string' ? info.rabbit_rule : ''
-  const tickets = typeof info.tickets_url === 'string' ? info.tickets_url : ''
-  if (admission.length === 0 && !rule) return null
-  return (
-    <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm text-slate-700 sm:grid-cols-2">
-      {admission.length > 0 && (
-        <div>
-          <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Admission</dt>
-          <dd className="mt-0.5 font-semibold">{admission.map((a) => `${a.who} ${a.price}`).join(' · ')}</dd>
-          {tickets && (
-            <dd>
-              <a href={tickets} {...ext} className="font-semibold text-brand-blue">
-                Buy tickets
-              </a>
-            </dd>
-          )}
-        </div>
-      )}
-      {rule && (
-        <div>
-          <dt className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Bringing your rabbit</dt>
-          <dd className="mt-0.5">{rule}</dd>
-        </div>
-      )}
-    </dl>
-  )
-}
-
 export default function BunFest() {
   const { event, source, loading } = useBunFestEvent()
 
@@ -154,7 +121,7 @@ export default function BunFest() {
                 <p className={`${event.theme ? 'mt-3' : ''} font-display text-2xl font-black text-ink`}>Mark your calendars!</p>
                 <EventWhenWhere e={event} />
                 <AddToCalendar e={event} className="mt-4" />
-                <Facts info={event.info} />
+                <BunFestFacts info={event.info} />
                 {event.summary && (
                   <p className="mt-4 text-base leading-relaxed text-slate-600">{event.summary}</p>
                 )}

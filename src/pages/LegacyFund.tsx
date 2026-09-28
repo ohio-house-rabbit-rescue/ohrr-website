@@ -59,7 +59,7 @@ export default function LegacyFund() {
                 </a>
                 , or use the form below.
               </p>
-              <a href="#ask" className="mt-2 inline-block text-sm font-bold text-brand-orange">
+              <a href="#ask" className="mt-2 inline-block text-sm font-bold text-brand-blue">
                 Ask about the Legacy Fund →
               </a>
             </Card>
@@ -117,7 +117,7 @@ export default function LegacyFund() {
                 {LEGACY_CONTACT.email}
               </a>
             </p>
-            <Link to="/give" className="mt-4 inline-block text-sm font-bold text-brand-orange">
+            <Link to="/give" className="mt-4 inline-block text-sm font-bold text-brand-blue">
               ← All ways to give
             </Link>
           </div>

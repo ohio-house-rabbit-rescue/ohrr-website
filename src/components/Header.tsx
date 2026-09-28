@@ -31,14 +31,15 @@ const MORE = [
   { to: '/contact', label: 'Contact us' },
 ]
 
-// Volunteer is orange so it stands out (OHRR, 2026-09-24).
-const NAV: { to: string; label: string; highlight?: boolean }[] = [
-  { to: '/adopt', label: 'Adopt' },
+// Volunteer is orange so it stands out (OHRR, 2026-09-24). `also`: the other
+// pages that belong to that item, so the menu always shows where you are.
+const NAV: { to: string; label: string; highlight?: boolean; also?: RegExp }[] = [
+  { to: '/adopt', label: 'Adopt', also: /^\/(thinking-about-a-rabbit|info\/is-a-rabbit-right-for-us)/ },
   { to: '/help', label: 'Bunny Help' },
-  { to: '/learn', label: 'Rabbit care' },
-  { to: '/surrender', label: 'Found / surrender' },
+  { to: '/learn', label: 'Rabbit care', also: /^\/mobile-vet/ },
+  { to: '/surrender', label: 'Found / surrender', also: /^\/(found|rescues)/ },
   { to: '/volunteer', label: 'Volunteer', highlight: true },
-  { to: '/give', label: 'Give' },
+  { to: '/give', label: 'Give', also: /^\/(info\/legacy-fund|impact|support)/ },
   { to: '/about', label: 'About' },
 ]
 
@@ -55,7 +56,10 @@ export default function Header() {
     `inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-2 text-base font-bold transition ${
       isActive ? 'bg-brand-orange-50 text-brand-orange-ink' : 'text-brand-orange-nav hover:bg-brand-orange-50 hover:text-brand-orange-ink'
     }`
-  const navClass = (n: (typeof NAV)[number]) => (n.highlight ? orangeClass : linkClass)
+  const navClass =
+    (n: (typeof NAV)[number]) =>
+    ({ isActive }: { isActive: boolean }) =>
+      (n.highlight ? orangeClass : linkClass)({ isActive: isActive || !!n.also?.test(pathname) })
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
@@ -77,20 +81,21 @@ export default function Header() {
             <Link to="/volunteer/foster" className={HELP_PILL}>
               Foster
             </Link>
-            <Link to="/hop-shop" className={HELP_PILL}>
+            <NavLink to="/hop-shop" className={({ isActive }) => `${HELP_PILL} ${isActive ? 'bg-brand-blue-50' : ''}`}>
               Hop Shop
-            </Link>
-            <Link to="/give" className={HELP_PILL}>
-              All ways to give
-            </Link>
+            </NavLink>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Link
+            <NavLink
               to="/contact"
-              className="hidden min-h-11 items-center rounded-full px-3 text-base font-bold text-slate-700 hover:bg-white sm:inline-flex"
+              className={({ isActive }) =>
+                `hidden min-h-11 items-center rounded-full px-3 text-base font-bold sm:inline-flex ${
+                  isActive ? 'bg-brand-blue-50 text-brand-blue' : 'text-slate-700 hover:bg-white'
+                }`
+              }
             >
               Contact
-            </Link>
+            </NavLink>
             <Link
               to="/search"
               aria-label="Search the site"

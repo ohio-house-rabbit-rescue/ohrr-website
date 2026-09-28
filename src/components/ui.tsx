@@ -125,8 +125,12 @@ export function PageHero({
         <div className="pointer-events-none absolute inset-0 mx-auto max-w-6xl">
           <BandArt
             name={drawing}
-            className={`-top-3 right-0 h-[min(22rem,75%)] w-[min(24rem,72%)] ${
-              volunteer ? 'text-brand-orange-dark/25' : 'text-brand-blue/15'
+            className={`right-0 top-1 h-[min(22rem,75%)] w-[min(24rem,60%)] sm:w-[min(24rem,72%)] ${
+              drawing === 'vets'
+                ? 'text-brand-blue/[.07] sm:text-brand-blue/10'
+                : volunteer
+                  ? 'text-brand-orange-dark/[.11] sm:text-brand-orange-dark/[.15]'
+                  : 'text-brand-blue/10 sm:text-brand-blue/15'
             } ${side ? 'lg:right-[31rem]' : ''}`}
           />
         </div>

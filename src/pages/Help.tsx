@@ -75,6 +75,20 @@ export default function Help() {
       <Section>
         <Card className="space-y-4">
 
+          {!emergency && (
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-base text-amber-950">
+              <strong>Emergency tonight?</strong> {EMERGENCY_VET.name},{' '}
+              <a href={EMERGENCY_VET.phoneHref} className="font-bold text-brand-blue">
+                {EMERGENCY_VET.phone}
+              </a>{' '}
+              — {EMERGENCY_VET.note.toLowerCase()} ·{' '}
+              <Link to="/learn/vets" className="font-bold text-brand-blue">
+                all rabbit-savvy vets
+              </Link>
+            </p>
+          )}
+          {emergency && <EmergencyCard />}
+
           {!active && (
             <div className="flex flex-wrap gap-2">
               {EXAMPLE_QUESTIONS.map((question) => (
@@ -89,20 +103,6 @@ export default function Help() {
               ))}
             </div>
           )}
-
-          {!emergency && (
-            <p className="rounded-xl bg-amber-50 px-4 py-3 text-base text-amber-950">
-              <strong>Emergency tonight?</strong> {EMERGENCY_VET.name},{' '}
-              <a href={EMERGENCY_VET.phoneHref} className="font-bold text-brand-blue">
-                {EMERGENCY_VET.phone}
-              </a>{' '}
-              — {EMERGENCY_VET.note.toLowerCase()} ·{' '}
-              <Link to="/learn/vets" className="font-bold text-brand-blue">
-                all rabbit-savvy vets
-              </Link>
-            </p>
-          )}
-          {emergency && <EmergencyCard />}
 
           {active && results.length > 0 && (
             <div>

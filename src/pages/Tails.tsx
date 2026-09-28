@@ -101,7 +101,7 @@ function TailCard({ tail: t }: { tail: Tail }) {
         <StatusPill status={t.status} className="mt-1.5" />
         <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{t.summary}</p>
         {meta && <p className="mt-1 text-sm font-semibold text-slate-600">{meta}</p>}
-        <span className="mt-2 inline-block text-sm font-bold text-brand-orange">Read {t.bunny}’s story →</span>
+        <span className="mt-2 inline-block text-sm font-bold text-brand-blue">Read {t.bunny}’s story →</span>
       </div>
     </Link>
   )

@@ -59,7 +59,7 @@ function ItemCard({ item }: { item: RaffleItem }) {
               type="button"
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
-              className="mt-2 text-sm font-bold text-brand-orange"
+              className="mt-2 text-sm font-bold text-brand-blue"
             >
               {open ? 'Show less' : 'Details'}
             </button>

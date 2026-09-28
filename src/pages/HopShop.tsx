@@ -97,7 +97,7 @@ export default function HopShop() {
                   Many of the items in our Bunny Living Space guide are available in the Hop Shop. If we're
                   out of stock, we can tell you where they can typically be purchased.
                 </p>
-                <Link to="/learn/bunny-living-space" className="mt-2 inline-block text-sm font-bold text-brand-orange">
+                <Link to="/learn/bunny-living-space" className="mt-2 inline-block text-sm font-bold text-brand-blue">
                   Bunny Living Space →
                 </Link>
               </Card>
@@ -108,7 +108,7 @@ export default function HopShop() {
                   every day.
                 </p>
                 <WishListItems items={wishList} limit={3} className="mt-3" />
-                <a href={AMAZON_WISH_LIST} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
+                <a href={AMAZON_WISH_LIST} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-blue">
                   Open the Amazon Wish List →
                 </a>
               </Card>

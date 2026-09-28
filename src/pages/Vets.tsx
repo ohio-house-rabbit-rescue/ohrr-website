@@ -123,25 +123,8 @@ export default function Vets() {
       />
       <PresentedBy surface="find-a-vet" />
       <Section>
-        <div className="no-print flex flex-wrap items-center gap-3">
-          <PrintButton label="Print the vet list" />
-          {rhdv2Count > 0 && (
-            <button
-              type="button"
-              aria-pressed={onlyRhdv2}
-              onClick={() => setParams(onlyRhdv2 ? {} : { rhdv2: '1' }, { replace: true })}
-              className={`rounded-full px-4 py-2.5 text-sm font-bold transition ${
-                onlyRhdv2 ? 'bg-emerald-700 text-white' : 'border border-emerald-700/40 text-emerald-800 hover:bg-emerald-50'
-              }`}
-            >
-              {onlyRhdv2 ? 'Showing vets that give the RHDV2 vaccine — show all' : `Vets that give the RHDV2 vaccine (${rhdv2Count})`}
-            </button>
-          )}
-        </div>
-        <p className="print-only font-display text-2xl font-black">Ohio House Rabbit Rescue — Vets for rabbit care</p>
-
         {/* After-hours emergencies */}
-        <div className="print-break-inside-avoid mt-6 rounded-3xl border-2 border-red-200 bg-red-50 p-6 sm:p-8">
+        <div className="print-break-inside-avoid rounded-3xl border-2 border-red-200 bg-red-50 p-6 sm:p-8">
           <p className="text-xs font-extrabold uppercase tracking-wider text-red-700">After-hours emergencies</p>
           <p className="mt-2 font-display text-xl font-extrabold text-ink">{AFTER_HOURS_NOTE}</p>
           {medvet && (
@@ -171,6 +154,23 @@ export default function Vets() {
           </p>
         </div>
 
+
+        <div className="no-print mt-6 flex flex-wrap items-center gap-3">
+          <PrintButton label="Print the vet list" />
+          {rhdv2Count > 0 && (
+            <button
+              type="button"
+              aria-pressed={onlyRhdv2}
+              onClick={() => setParams(onlyRhdv2 ? {} : { rhdv2: '1' }, { replace: true })}
+              className={`rounded-full px-4 py-2.5 text-sm font-bold transition ${
+                onlyRhdv2 ? 'bg-emerald-700 text-white' : 'border border-emerald-700/40 text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              {onlyRhdv2 ? 'Showing vets that give the RHDV2 vaccine — show all' : `Vets that give the RHDV2 vaccine (${rhdv2Count})`}
+            </button>
+          )}
+        </div>
+        <p className="print-only font-display text-2xl font-black">Ohio House Rabbit Rescue — Vets for rabbit care</p>
         <p className="mt-6 max-w-3xl text-sm leading-relaxed text-slate-600">{VETS_DISCLAIMER}</p>
         {vets !== null && <LiveNote source={source} />}
 

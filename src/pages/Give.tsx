@@ -198,8 +198,8 @@ export default function Give() {
         subtitle="Every gift goes to the bunnies: vet care, food, and the Adoption Center. OHRR is a 501(c)(3), so your donation is tax deductible."
         doors={[
           ...(donate ? [{ href: donate.href, icon: 'heart' as const, h: 'Donate online', p: 'Opens OHRR’s donation page' }] : []),
+          { to: '/impact', icon: 'sparkles', h: 'See what your gift does', p: 'The year in numbers — rescues, vet care, adoptions' },
           { href: '#shop', icon: 'bag', h: 'Give while you shop', p: 'Costs you nothing extra' },
-          { href: '#more', icon: 'gift', h: 'More ways to help', p: 'Wish list, matching gifts and more' },
         ]}
       />
       <Section>

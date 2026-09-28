@@ -3,6 +3,7 @@ import { useEvents } from '../lib/data'
 import type { EventItem } from '../lib/types'
 import { PageHero, Section, LiveNote, btn, ext, H2, Card } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
+import BunFestFacts from '../components/BunFestFacts'
 import { formatDate, formatTimeRange, isUpcoming } from '../lib/format'
 import { MAILING_LIST } from '../lib/constants'
 
@@ -50,6 +51,7 @@ function EventCard({ e }: { e: EventItem }) {
         )}
       </div>
       <EventWhenWhere e={e} />
+      {isBunFest && <BunFestFacts info={e.info} />}
       {e.summary && <p className="mt-3 text-sm leading-relaxed text-slate-600">{e.summary}</p>}
 
       <div className="mt-4 flex flex-wrap gap-2">

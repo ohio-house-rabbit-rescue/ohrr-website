@@ -378,7 +378,7 @@ function Confirmation({ receipt, type }: { receipt: BookingReceipt; type: Bookin
             {fmtDay(receipt.starts_at)} · {fmtTime(receipt.starts_at)} – {fmtTime(receipt.ends_at)}
           </p>
           {receipt.location && <p className="text-sm text-slate-500">{receipt.location}</p>}
-          {!confirmed && <p className="rounded-xl bg-brand-orange-50 px-3 py-2 text-sm font-semibold text-brand-orange">OHRR will confirm this with you by phone or email.</p>}
+          {!confirmed && <p className="rounded-xl bg-brand-orange-50 px-3 py-2 text-sm font-semibold text-brand-orange-ink">OHRR will confirm this with you by phone or email.</p>}
           <div className="flex flex-wrap gap-2 pt-1">
             <button type="button" onClick={() => downloadBookingIcs(receipt)} className={btn.blue}>
               Add to calendar

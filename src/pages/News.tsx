@@ -41,7 +41,7 @@ export default function News() {
                         <h2 className="mt-1 font-display text-lg font-extrabold text-ink">{a.title}</h2>
                         <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-600">{a.body}</p>
                         {a.url && (
-                          <a href={a.url} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-orange">
+                          <a href={a.url} {...ext} className="mt-2 inline-block text-sm font-bold text-brand-blue">
                             Read more →
                           </a>
                         )}

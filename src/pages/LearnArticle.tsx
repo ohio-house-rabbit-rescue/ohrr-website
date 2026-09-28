@@ -97,7 +97,7 @@ export default function LearnArticle() {
               <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
                 Rabbits are exotic pets — see OHRR's list of rabbit-savvy vets across Ohio, including 24/7 emergency care.
               </p>
-              <Link to="/learn/vets" className="mt-2 inline-block text-sm font-bold text-brand-orange">
+              <Link to="/learn/vets" className="mt-2 inline-block text-sm font-bold text-brand-blue">
                 Vet directory →
               </Link>
             </div>
