@@ -33,7 +33,7 @@ function Purpose() {
     { to: '/surrender', icon: 'mappin', h: 'Found or surrendering a rabbit', p: 'Strays, admissions and surrender' },
     {
       to: '/mobile-vet',
-      icon: 'stethoscope',
+      icon: 'vet',
       h: 'Mobile vet clinic',
       p: nextClinic
         ? `Next clinic ${formatShortDate(nextClinic.starts_at).replace(/, \d{4}$/, '')} · nail trims, checkups`

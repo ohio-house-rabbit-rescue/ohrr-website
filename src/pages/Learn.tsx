@@ -32,7 +32,7 @@ export default function Learn() {
         subtitle="Good care means happier rabbits — and fewer surrenders. Articles straight from OHRR, plus rabbit-savvy vets across Ohio."
         doors={[
           { to: '/help', icon: 'help', h: 'Bunny Help', p: 'Ask about something your bunny is doing' },
-          { to: '/learn/vets', icon: 'phone', h: 'Rabbit-savvy vets', p: 'Across Ohio, including emergency care' },
+          { to: '/learn/vets', icon: 'vet', h: 'Rabbit-savvy vets', p: 'Across Ohio, including emergency care' },
           { to: '/learn/breeds', icon: 'search', h: 'What kind of bunny do I have?', p: 'Ears, size and coat' },
           { to: RABBIT_READY, icon: 'heart', h: 'Thinking about getting a rabbit?', p: 'The two-minute check first' },
         ]}

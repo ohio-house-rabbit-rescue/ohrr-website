@@ -94,7 +94,7 @@ export default function HelpTopic() {
               <LinkCard href={RESOURCES_URL} icon="book" h="OHRR’s care resources" p="The full guides on ohiohouserabbitrescue.org." cta="Open the resources →" />
             )}
             {urgentVet && (
-              <LinkCard to="/learn/vets" icon="phone" h="Find a rabbit-savvy vet" p="OHRR’s vet directory — Ohio vets for rabbit care, including 24/7 exotics emergency care." cta="See the vet list →" />
+              <LinkCard to="/learn/vets" icon="vet" h="Find a rabbit-savvy vet" p="OHRR’s vet directory — Ohio vets for rabbit care, including 24/7 exotics emergency care." cta="See the vet list →" />
             )}
             {topic.hopshop_note && (
               <LinkCard to="/hop-shop" icon="bag" h="Hop Shop" p={topic.hopshop_note} cta="Visit the Hop Shop →" />
