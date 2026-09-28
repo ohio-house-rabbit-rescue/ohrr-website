@@ -4,7 +4,7 @@ import type { Rabbit } from '../lib/types'
 import type { Source } from '../lib/data'
 import { OHRR } from '../lib/constants'
 import { Icon, type IconName } from './icons'
-import { PageArt, usePageArt } from './PageArt'
+import { BandArt, usePageArt } from './PageArt'
 
 // Buttons are at least 44px tall with room between them (the brief's rule
 // for older visitors), and their text is never smaller than 16px.
@@ -112,18 +112,32 @@ export function PageHero({
   const crumb = 'font-semibold text-brand-blue underline decoration-brand-blue/30 underline-offset-4 hover:decoration-brand-blue'
   const side = doors && doors.length > 0 ? <DoorList doors={doors} /> : aside
   const drawing = usePageArt()
+  // The Volunteer section's band is orange — volunteers are what OHRR needs most (2026-09-28).
+  const volunteer = drawing === 'volunteer'
   return (
-    <div className="border-b border-brand-blue/10 bg-brand-blue-50">
+    <div
+      className={`relative overflow-hidden border-b ${
+        volunteer ? 'border-brand-orange/30 bg-brand-orange-100' : 'border-brand-blue/10 bg-brand-blue-50'
+      }`}
+    >
+      {/* The section's drawing, big and faint behind the title (PageArt); left of the doors on a laptop */}
+      {drawing && (
+        <div className="pointer-events-none absolute inset-0 mx-auto max-w-6xl">
+          <BandArt
+            name={drawing}
+            className={`-top-3 right-0 h-[min(22rem,75%)] w-[min(24rem,72%)] ${
+              volunteer ? 'text-brand-orange-dark/25' : 'text-brand-blue/15'
+            } ${side ? 'lg:right-[31rem]' : ''}`}
+          />
+        </div>
+      )}
       <div
-        className={`mx-auto max-w-6xl px-5 py-5 md:py-7 ${
+        className={`relative mx-auto max-w-6xl px-5 py-5 md:py-7 ${
           side ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-12' : ''
         }`}
       >
-        <div className="relative">
-          {/* The section's drawing (PageArt), beside the title — left of the doors on a laptop.
-              Only the crumbs and title make room for it, so no band gets taller. */}
-          {drawing && <PageArt name={drawing} className="no-print right-0 top-0 h-20 w-24 text-brand-blue/20" />}
-          <nav aria-label="You are here" className={`no-print relative mb-1.5 text-sm text-slate-600 ${drawing ? 'sm:pr-28' : ''}`}>
+        <div>
+          <nav aria-label="You are here" className="no-print mb-1.5 text-sm text-slate-600">
             <Link to="/" className={crumb}>
               Home
             </Link>
@@ -142,12 +156,10 @@ export function PageHero({
             </span>
             <span aria-current="page">{title}</span>
           </nav>
-          <h1 className={`relative font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl ${drawing ? 'sm:pr-28' : ''}`}>
-            {title}
-          </h1>
-          {subtitle && <p className="relative mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
+          <h1 className="font-display text-2xl font-black leading-tight text-ink sm:text-3xl md:text-4xl">{title}</h1>
+          {subtitle && <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">{subtitle}</p>}
         </div>
-        {side && <div className="no-print relative">{side}</div>}
+        {side && <div className="no-print">{side}</div>}
       </div>
     </div>
   )

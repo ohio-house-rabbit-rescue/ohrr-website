@@ -1,9 +1,10 @@
 import { useLocation } from 'react-router-dom'
 
-// The page art (OHRR, 2026-09-28): a faint line drawing at the right of each
-// page's title band — one item for each kind of page, in the same line weight
-// as the logo's bunny (which the app shows on its Home band; here only About
-// has it, since Home already has the rabbits' photos). The drawings are
+// The page art (OHRR, 2026-09-28): a big, faint line drawing in the background
+// of each page's title band — top right, fading out below its upper third, so
+// it sits behind the title and never behind the cards. The logo's bunny on
+// Home (and About), one item for each kind of page everywhere else, all in the
+// same line weight. The drawings are
 // public/art/*.svg, the same files as the app's (ohrr-app/src/components/
 // PageArt.tsx). Each is a small SVG used as a CSS mask, so it takes the band's
 // colour (soft blue here, white in the app) and costs one ~0.3 KB file per
@@ -47,7 +48,15 @@ export function usePageArt(): ArtName | null {
 }
 
 /** Position it with `className` (absolute; the colour is `currentColor`). */
-export function PageArt({ name, className = '' }: { name: ArtName; className?: string }) {
+export function PageArt({
+  name,
+  className = '',
+  position = 'right center',
+}: {
+  name: ArtName
+  className?: string
+  position?: string
+}) {
   const url = `url(/art/${name}.svg)`
   return (
     <span
@@ -58,11 +67,25 @@ export function PageArt({ name, className = '' }: { name: ArtName; className?: s
         maskImage: url,
         WebkitMaskRepeat: 'no-repeat',
         maskRepeat: 'no-repeat',
-        WebkitMaskPosition: 'right center',
-        maskPosition: 'right center',
+        WebkitMaskPosition: position,
+        maskPosition: position,
         WebkitMaskSize: 'contain',
         maskSize: 'contain',
       }}
     />
+  )
+}
+
+const FADE = 'linear-gradient(to bottom, #000 30%, transparent 92%)'
+
+/**
+ * The band's background drawing: top right of the box `className` gives it,
+ * strongest at the top and gone by its bottom (a second mask over the first).
+ */
+export function BandArt({ name, className = '' }: { name: ArtName; className?: string }) {
+  return (
+    <div aria-hidden="true" className={`no-print pointer-events-none absolute ${className}`} style={{ WebkitMaskImage: FADE, maskImage: FADE }}>
+      <PageArt name={name} position="right top" className="inset-0" />
+    </div>
   )
 }

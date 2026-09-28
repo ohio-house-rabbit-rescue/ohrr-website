@@ -9,6 +9,7 @@ import { useOrgProfile } from '../lib/orgProfile'
 import { formatDate, formatShortDate, isUpcoming } from '../lib/format'
 import { useMobileVet } from '../lib/mobileVet'
 import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
+import { BandArt } from '../components/PageArt'
 
 // The home page, built around the rescue's purpose (2026-09-24). OHRR's
 // mission, in its own words on the About page: run the Adoption Center,
@@ -43,8 +44,12 @@ function Purpose() {
   // Phone order: title, the rabbits' photos, the doors, then the sentence. On a
   // laptop the photos take the right-hand column beside all three.
   return (
-    <section className="border-b border-brand-blue/10 bg-brand-blue-50">
-      <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:py-6 lg:gap-x-12 lg:gap-y-4">
+    <section className="relative overflow-hidden border-b border-brand-blue/10 bg-brand-blue-50">
+      {/* The logo's bunny, big and faint behind the title (PageArt); left of the photos on a laptop */}
+      <div className="pointer-events-none absolute inset-0 mx-auto max-w-6xl">
+        <BandArt name="bunny" className="right-0 top-2 h-[min(22rem,60%)] w-[min(22rem,72%)] text-brand-blue/15 lg:right-[27rem]" />
+      </div>
+      <div className="relative mx-auto grid max-w-6xl gap-4 px-5 pb-6 pt-5 md:gap-5 md:py-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:py-6 lg:gap-x-12 lg:gap-y-4">
         <div className="lg:col-start-1 lg:row-start-1">
           {easter && (
             <Link

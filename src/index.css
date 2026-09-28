@@ -8,6 +8,8 @@
   --color-brand-orange: #eb891c;
   --color-brand-orange-dark: #cf7512;
   --color-brand-orange-50: #fdf1e3;
+  /* The Volunteer section's title band (OHRR, 2026-09-28: "distinctly different") */
+  --color-brand-orange-100: #fbe2c5;
   /* Orange as text needs to be darker than the brand orange to be readable. */
   --color-brand-orange-ink: #9a5208;
   /* The brightest shade of the brand orange that still reads on white
