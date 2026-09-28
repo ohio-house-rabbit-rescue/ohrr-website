@@ -1,12 +1,13 @@
 // /tails — Happy Tails: where OHRR bunnies are now (website mirror of the
 // app's Tails page). Stories are published by staff from the Inbox; until the
-// first one, the clearly-labelled samples show.
+// first one, one story labelled "Example" shows (data/tails.ts).
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHero, Section, Card, Callout, H2, LiveNote, btn } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
-import { BunnyPhoto, StatusPill } from '../components/tailbits'
+import { BunnyPhoto, StatusPill, ExampleBadge, ExampleNote, withFamily } from '../components/tailbits'
 import { useHappyTails, type Tail } from '../lib/tails'
+import { EXAMPLE_TAIL_NOTE } from '../data/tails'
 
 const FILTERS = ['All', 'Just adopted', 'Going strong'] as const
 type Filter = (typeof FILTERS)[number]
@@ -17,6 +18,8 @@ const pill = (active: boolean) =>
 export default function Tails() {
   const [filter, setFilter] = useState<Filter>('All')
   const { items, source, loading } = useHappyTails()
+  // Nothing published yet: the page shows the one labelled example instead.
+  const example = source === 'sample'
 
   const list = useMemo(() => {
     switch (filter) {
@@ -40,20 +43,23 @@ export default function Tails() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <H2>Adoption stories</H2>
-            <LiveNote source={source} />
+            {!loading && (example ? <ExampleNote>{EXAMPLE_TAIL_NOTE}</ExampleNote> : <LiveNote source={source} />)}
           </div>
           <Link to="/tails/share" className={btn.orange}>
             Share your bunny’s story
           </Link>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2" role="group" aria-label="Show">
-          {FILTERS.map((f) => (
-            <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={pill(filter === f)}>
-              {f}
-            </button>
-          ))}
-        </div>
+        {/* Filters only mean something once there are real stories */}
+        {!example && (
+          <div className="mt-6 flex flex-wrap gap-2" role="group" aria-label="Show">
+            {FILTERS.map((f) => (
+              <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={pill(filter === f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <p className="mt-6 text-base text-slate-600">Loading…</p>
@@ -84,7 +90,7 @@ export default function Tails() {
 }
 
 function TailCard({ tail: t }: { tail: Tail }) {
-  const meta = [t.family && `With the ${t.family} family`, t.since].filter(Boolean).join(' · ')
+  const meta = [t.family && withFamily(t.family), t.since].filter(Boolean).join(' · ')
   return (
     <Link
       to={`/tails/${t.id}`}
@@ -96,12 +102,15 @@ function TailCard({ tail: t }: { tail: Tail }) {
       <div className="p-4">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-display text-lg font-extrabold text-ink">{t.bunny}</h3>
+          {t.example && <ExampleBadge />}
           {t.bonded && <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-bold text-slate-700">Pair</span>}
         </div>
         <StatusPill status={t.status} className="mt-1.5" />
         <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{t.summary}</p>
         {meta && <p className="mt-1 text-sm font-semibold text-slate-600">{meta}</p>}
-        <span className="mt-2 inline-block text-sm font-bold text-brand-blue">Read {t.bunny}’s story →</span>
+        <span className="mt-2 inline-block text-sm font-bold text-brand-blue">
+          {t.example ? 'Read the example story →' : `Read ${t.bunny}’s story →`}
+        </span>
       </div>
     </Link>
   )

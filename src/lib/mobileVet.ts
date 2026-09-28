@@ -1,5 +1,5 @@
 // OHRR's mobile vet clinic: a rabbit-savvy vet at the Adoption Center on
-// select days, by appointment. The clinic is an ordinary booking type
+// Saturdays, noon–4 PM, in 15-minute appointments (OHRR, 2026-09-28). The clinic is an ordinary booking type
 // ("Mobile vet clinic", slug vet-clinic) that staff keep in Staff → Bookings:
 // its wording, its days and times, and whether people can book it yet. Until
 // it's published the public can't read it, so the wording below (the same as
@@ -12,7 +12,7 @@ import { getBookingType, openSlots, type BookingType, type OpenSlot } from './bo
 export const MOBILE_VET_SLUG = 'vet-clinic'
 export const MOBILE_VET_NAME = 'Mobile vet clinic'
 export const MOBILE_VET_BLURB =
-  'A rabbit-savvy vet visits OHRR on select weekends for nail trims, wellness checks and microchipping — by appointment.'
+  'A rabbit-savvy vet is at the OHRR Adoption Center on Saturdays, noon to 4 PM, for nail trims, wellness checks and microchipping — by appointment.'
 
 export interface MobileVet {
   loading: boolean

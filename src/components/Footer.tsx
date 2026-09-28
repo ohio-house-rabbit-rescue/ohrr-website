@@ -74,8 +74,7 @@ export default function Footer() {
         </nav>
       </div>
       <div className="border-t border-black/5 px-5 py-4 text-center text-xs leading-relaxed text-slate-600">
-        © Ohio House Rabbit Rescue · 501(c)(3) nonprofit, EIN {OHRR.ein} · a modern preview on the same live system as
-        the app ·{' '}
+        © Ohio House Rabbit Rescue · 501(c)(3) nonprofit, EIN {OHRR.ein} ·{' '}
         <Link to="/privacy" className="font-semibold text-slate-700 hover:text-brand-blue">
           Privacy
         </Link>{' '}

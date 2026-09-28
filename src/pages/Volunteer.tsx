@@ -130,7 +130,7 @@ export default function Volunteer() {
         title="Volunteer"
         subtitle="Whether you want to get up close with the bunnies or work behind the scenes, we have an opportunity for you. We welcome volunteers of all ages and backgrounds."
         doors={[
-          { to: '/volunteer/apply', icon: 'users', h: 'Apply to volunteer', p: 'New? Start here — OHRR reviews every application' },
+          { to: '/volunteer/apply', icon: 'users', h: 'Apply to volunteer', p: 'New? Start here — OHRR reads every application as it comes in' },
           { href: '#shifts', icon: 'calendar', h: 'Pick a shift', p: 'Approved volunteers: socialization, Buncare and more' },
           { to: '/volunteer/hours', icon: 'clock', h: 'My volunteer page', p: 'What you’re signed up for, your hours, your letter' },
         ]}
@@ -156,9 +156,18 @@ export default function Volunteer() {
           <Link to="/volunteer/apply" className="font-semibold text-brand-blue">
             Apply to volunteer
           </Link>{' '}
-          first — OHRR reads every application. Once you’re approved, pick a shift with the same email and you’re booked,
+          first — OHRR reads every application as it comes in and replies as quickly as we can. Once you’re approved, pick a shift with the same email and you’re booked,
           no account needed. Your hours are recorded when you check in, and your own volunteer page has them, with a
           signed hours letter whenever you need one.
+        </p>
+        {/* The family question (persona audit 2026-09-28): the age rule up front, not deep in a card */}
+        <p className="mt-2 text-base text-slate-700">
+          Coming as a family? Volunteers must be at least 6 years old, and children 10 and under come with an adult.
+          Questions about bringing your family? Email{' '}
+          <a href="mailto:ohrrcontact@ohiohouserabbitrescue.org" className="font-semibold text-brand-blue">
+            ohrrcontact@ohiohouserabbitrescue.org
+          </a>
+          .
         </p>
         {opps === null ? (
           <p className="mt-6 text-base text-slate-600">Loading…</p>

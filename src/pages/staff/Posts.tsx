@@ -3,7 +3,8 @@
 // uploading); releasing usually happens on the phone where Instagram lives —
 // but "Save image + copy caption" works from a computer too. Since update 26 a
 // post needs a second person: the writer sends it for approval, someone else
-// with "Approve social posts" approves it or sends it back with a note.
+// with "Approve social posts" approves it or sends it back with a note. Under
+// the drafts, the Easter campaign card plans each spring's Easter posts.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
@@ -16,6 +17,7 @@ import { canvasToBlob, renderCard } from '../../lib/share/render'
 import { canShareFiles, copyText, savePng, sharePng } from '../../lib/share/share'
 import {
   APPROVE_CAP,
+  DEFAULT_PLATFORMS,
   PLATFORMS,
   STATUS_LABEL,
   countPostsToApprove,
@@ -25,6 +27,7 @@ import {
   isReady,
   listPosts,
   loadStaffNames,
+  localToday,
   setPostStatus,
   shortDate,
   updatePost,
@@ -36,6 +39,7 @@ import {
   type PostStatus,
   type SocialPost,
 } from '../../lib/share/queue'
+import { cardName, easterCampaign, easterNudge, easterReminder, planEasterCampaign, usDate, weeksLabel, type EasterCampaign } from '../../lib/share/easterCampaign'
 
 type View = 'queue' | 'kit' | 'new' | { edit: string } | { compose: CardPost }
 
@@ -184,6 +188,8 @@ function Queue({
       posted: all.filter((p) => p.status === 'posted').slice(0, 30),
     }
   }, [posts, me])
+  // This Easter's campaign posts, found in the list by their `source` marker.
+  const campaign = useMemo(() => easterCampaign(posts ?? []), [posts])
   const act: OnStatus = async (p, status, opts) => {
     setError(null)
     try {
@@ -212,27 +218,30 @@ function Queue({
     ['Scheduled', groups.scheduled, 'No posts waiting for a date.'],
     ...(canApprove ? [] : [waiting]),
     ['Drafts', groups.drafts, 'No drafts yet.'],
-    ['Posted', groups.posted, 'Nothing posted yet.'],
   ]
+  const section = ([title, list, empty]: [string, SocialPost[], string]) => (
+    <section key={title}>
+      <h2 className="font-display text-lg font-extrabold text-ink">
+        {title} <span className="text-sm font-bold text-slate-400">{list.length}</span>
+      </h2>
+      {list.length === 0 ? (
+        <p className="mt-2 text-sm text-slate-500">{empty}</p>
+      ) : (
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          {list.map((p) => (
+            <PostCard key={p.id} post={p} me={me} names={names} canDraft={canDraft} canPublish={canPublish} canApprove={canApprove} onStatus={act} onDelete={remove} onEdit={() => onEdit(p.id)} />
+          ))}
+        </div>
+      )}
+    </section>
+  )
   return (
     <div className="space-y-8">
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-      {sections.map(([title, list, empty]) => (
-        <section key={title}>
-          <h2 className="font-display text-lg font-extrabold text-ink">
-            {title} <span className="text-sm font-bold text-slate-400">{list.length}</span>
-          </h2>
-          {list.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-500">{empty}</p>
-          ) : (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {list.map((p) => (
-                <PostCard key={p.id} post={p} me={me} names={names} canDraft={canDraft} canPublish={canPublish} canApprove={canApprove} onStatus={act} onDelete={remove} onEdit={() => onEdit(p.id)} />
-              ))}
-            </div>
-          )}
-        </section>
-      ))}
+      {canDraft && <EasterNudge campaign={campaign} />}
+      {sections.map(section)}
+      <EasterCampaignCard campaign={campaign} canDraft={canDraft} onPlanned={onChanged} />
+      {section(['Posted', groups.posted, 'Nothing posted yet.'])}
     </div>
   )
 }
@@ -571,7 +580,7 @@ function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; u
   const [d, setD] = useState<PostDraft>(
     initial
       ? { title: initial.title, caption: initial.caption, image_url: initial.image_url, image_alt: initial.image_alt, platforms: initial.platforms, scheduled_for: initial.scheduled_for, notes: initial.notes ?? '' }
-      : { title: '', caption: '', image_url: null, platforms: ['instagram', 'facebook'], scheduled_for: null, notes: '' },
+      : { title: '', caption: '', image_url: null, platforms: DEFAULT_PLATFORMS, scheduled_for: null, notes: '' },
   )
   // The stored post — set once a new one is saved, so saving again updates it.
   const [saved, setSaved] = useState<SocialPost | null>(initial)
@@ -734,6 +743,130 @@ function Editor({ orgId, userId, initial, onDone, onCancel }: { orgId: string; u
         </div>
       </div>
     </form>
+  )
+}
+
+/* ------------------------------------------------------------- easter campaign */
+
+// Each spring's Easter posts (lib/share/easterCampaign.ts): the card under the
+// drafts, the one-line reminder at the top of the queue when Easter is near and
+// nothing is planned, and the same reminder on the dashboard.
+const EASTER_CARD_ID = 'easter-campaign'
+const reminderBanner = 'flex w-full items-center gap-3 rounded-2xl border border-brand-orange/40 bg-brand-orange-50 px-4 py-3 text-left shadow-sm transition hover:border-brand-orange'
+
+function EasterReminder({ easter }: { easter: string }) {
+  return (
+    <>
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-ink">
+        <Icon name="calendar" size={20} />
+      </span>
+      <span className="min-w-0 flex-1 font-display text-base font-extrabold text-ink">Easter is {usDate(easter)} — plan the Easter posts</span>
+      <Icon name="chevron" size={18} className="shrink-0 text-slate-400" />
+    </>
+  )
+}
+
+function EasterNudge({ campaign }: { campaign: EasterCampaign }) {
+  const easter = easterNudge(campaign)
+  if (!easter) return null
+  return (
+    <button type="button" onClick={() => document.getElementById(EASTER_CARD_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className={reminderBanner}>
+      <EasterReminder easter={easter} />
+    </button>
+  )
+}
+
+/** For the staff dashboard: people who write posts, near Easter, while nothing is planned. */
+export function EasterCampaignNotice({ className = '' }: { className?: string }) {
+  const { membership, can } = useStaff()
+  const orgId = membership && can('announcements.post') ? membership.orgId : null
+  const [easter, setEaster] = useState<string | null>(null)
+  useEffect(() => {
+    if (!orgId) return
+    let alive = true
+    void easterReminder(orgId).then((d) => {
+      if (alive) setEaster(d)
+    })
+    return () => {
+      alive = false
+    }
+  }, [orgId])
+  if (!orgId || !easter) return null
+  return (
+    <Link to="/staff/posts" className={`${reminderBanner} ${className}`}>
+      <EasterReminder easter={easter} />
+    </Link>
+  )
+}
+
+function EasterCampaignCard({ campaign, canDraft, onPlanned }: { campaign: EasterCampaign; canDraft: boolean; onPlanned: () => Promise<void> }) {
+  const { membership, user } = useStaff()
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const { year, easter, slots, planned, toAdd } = campaign
+
+  const plan = async () => {
+    if (!membership || !user) return
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const out = await planEasterCampaign(membership.orgId, user.id, year, '/img/ohrr-mark.png')
+      setMsg(
+        out.added === 0
+          ? 'Nothing to add — this Easter’s posts are already in the queue.'
+          : `Added ${out.added} draft${out.added === 1 ? '' : 's'} to the queue${out.noPicture ? ` (${out.noPicture} without a picture — make it in the Share kit)` : ''}. Send each one for approval when it looks right.`,
+      )
+    } catch (e) {
+      setError(errMessage(e))
+    }
+    // Reload either way: a run that stopped part-way still added some.
+    await onPlanned()
+    setBusy(false)
+  }
+
+  return (
+    <section id={EASTER_CARD_ID} className="scroll-mt-24">
+      <Card className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display text-lg font-extrabold text-ink">Easter campaign</h2>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${!planned ? 'bg-slate-100 text-slate-600' : toAdd > 0 ? 'bg-brand-orange-50 text-ink' : 'bg-brand-blue-50 text-brand-blue'}`}>
+            {!planned ? 'Not planned yet' : toAdd > 0 ? `${toAdd} to add` : 'Planned'}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">
+          Easter {easter < localToday() ? 'was' : 'is'} <strong>Sunday, {usDate(easter)}</strong>. {slots.filter((s) => s.weeks < 0).length} posts before it for families
+          thinking about a bunny, {slots.filter((s) => s.weeks > 0).length} after for new owners — requests to surrender rise two to three months after Easter.
+        </p>
+        <ul className="divide-y divide-slate-100">
+          {slots.map((s) => (
+            <li key={s.source} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 py-2">
+              <span className="w-28 shrink-0 text-sm font-bold text-ink">{usDate(s.date)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink">{cardName(s.card)}</span>
+                <span className="block text-xs text-slate-500">{weeksLabel(s.weeks)} Easter</span>
+              </span>
+              <span className={`shrink-0 text-xs font-bold ${s.post ? 'text-brand-blue' : 'text-slate-400'}`}>{s.post ? STATUS_LABEL[s.post.status] : s.past ? 'Day has gone' : 'Not in the queue'}</span>
+            </li>
+          ))}
+        </ul>
+        {canDraft && toAdd > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => void plan()} disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+              <Icon name="calendar" size={16} /> {busy ? 'Making the posts…' : 'Plan this year’s Easter posts'}
+            </button>
+            <p className="min-w-0 flex-1 text-xs text-slate-500">
+              Adds {toAdd === 1 ? 'the missing post' : `the ${toAdd} missing posts`} as drafts, each with its card picture and caption, dated as above. They still need sending
+              for approval, approving and posting like any other post. Posts already in the queue aren’t added again.
+            </p>
+          </div>
+        )}
+        {planned && toAdd === 0 && <p className="text-xs text-slate-500">This Easter’s posts are in the queue. Next year’s show here once this campaign is over.</p>}
+        {msg && <p className="rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">{msg}</p>}
+        {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      </Card>
+    </section>
   )
 }
 

@@ -4,12 +4,15 @@
 // where they are edited, reordered, hidden or removed afterwards — and where a
 // story that came in by email or at the counter can be written up by hand.
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { uploadItemPhoto } from '../../lib/hopshop'
 import { deleteTail, listTails, saveTail, TAIL_STATUS_LABEL, type TailRow, type TailStatus } from '../../lib/tails'
+import { exampleTail } from '../../data/tails'
+import { ExampleBadge } from '../../components/tailbits'
 
 // Small local stand-ins for the app's shell pieces.
 function Screen({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -54,11 +57,7 @@ export default function StaffTails() {
 
       <FormError>{error}</FormError>
       {rows === null && !error && <Spinner />}
-      {rows && rows.length === 0 && (
-        <Card className="text-sm text-slate-600">
-          No published stories yet — until there is one, the app shows clearly-labelled samples.
-        </Card>
-      )}
+      {rows && !rows.some((r) => r.is_published) && <ExampleNote />}
 
       {rows?.map((r) =>
         editing === r.id ? (
@@ -114,6 +113,47 @@ export default function StaffTails() {
         </button>
       )}
     </Screen>
+  )
+}
+
+// Nothing published yet: the public Happy Tails page (website and app) shows the
+// built-in example story (data/tails.ts) until the first real one, and staff see
+// it here too, so everyone knows what a published story looks like.
+function ExampleNote() {
+  const t = exampleTail
+  return (
+    <Card className="space-y-3">
+      <p className="text-sm leading-relaxed text-slate-600">
+        Nothing is published yet, so the Happy Tails page is showing one example story, marked “Example”. It goes away
+        by itself when you publish the first real one.
+      </p>
+      <Link
+        to={`/tails/${t.id}`}
+        className="flex items-start gap-3 rounded-xl border border-slate-200 p-2.5 transition hover:border-slate-300"
+      >
+        <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+          <img src={t.photo} alt="" className="h-full w-full object-cover" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="font-display text-[15px] font-extrabold text-ink">{t.bunny}</span>
+            <ExampleBadge className="!px-2.5 !py-0.5 !text-xs" />
+            <Badge tone="slate">{TAIL_STATUS_LABEL[t.status]}</Badge>
+          </span>
+          <span className="block text-xs text-slate-500">{t.since}</span>
+          <span className="mt-0.5 block line-clamp-2 text-sm text-slate-600">{t.summary}</span>
+          <span className="mt-1 inline-block text-sm font-bold text-brand-blue">See the example as visitors see it →</span>
+        </span>
+      </Link>
+      <p className="text-sm leading-relaxed text-slate-600">
+        A real story has the same parts: a photo, the bunny’s name, how they’re doing, a one-line summary for the card
+        and the story itself. Adopters send theirs from{' '}
+        <Link to="/tails/share" className="font-bold text-brand-blue">
+          Share your bunny’s story
+        </Link>{' '}
+        on the Happy Tails page; it arrives in the Inbox, where you publish it.
+      </p>
+    </Card>
   )
 }
 

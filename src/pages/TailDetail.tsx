@@ -2,8 +2,9 @@
 // TailDetail; the app's share-card and follow buttons are app features).
 import { Link, useParams } from 'react-router-dom'
 import { PageHero, Section, Card, LiveNote, PrintButton, btn } from '../components/ui'
-import { BunnyPhoto, StatusPill } from '../components/tailbits'
+import { BunnyPhoto, StatusPill, ExampleBadge, ExampleNote, withFamily } from '../components/tailbits'
 import { useHappyTails } from '../lib/tails'
+import { EXAMPLE_TAIL_NOTE, EXAMPLE_TAIL_PHOTO_NOTE } from '../data/tails'
 
 export default function TailDetail() {
   const { id } = useParams()
@@ -34,11 +35,11 @@ export default function TailDetail() {
     )
   }
 
-  const meta = [t.family && `With the ${t.family} family`, t.since].filter(Boolean).join(' · ')
+  const meta = [t.family && withFamily(t.family), t.since].filter(Boolean).join(' · ')
 
   return (
     <>
-      <PageHero title={t.bunny} subtitle={meta || undefined} />
+      <PageHero title={t.bunny} subtitle={t.example ? 'An example of a Happy Tails story' : meta || undefined} />
       <Section>
         <Link to="/tails" className="no-print inline-block text-sm font-bold text-brand-blue hover:text-brand-blue-dark">
           ← All Happy Tails
@@ -53,9 +54,16 @@ export default function TailDetail() {
 
           <div className="md:col-span-3">
             <div className="flex flex-wrap items-center gap-2">
+              {t.example && <ExampleBadge />}
               <StatusPill status={t.status} />
               {t.bonded && <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">Bonded pair</span>}
             </div>
+
+            {t.example && (
+              <ExampleNote>
+                {EXAMPLE_TAIL_NOTE} {EXAMPLE_TAIL_PHOTO_NOTE}
+              </ExampleNote>
+            )}
 
             <p className="mt-4 text-lg leading-relaxed text-slate-700">{t.summary}</p>
 
@@ -88,12 +96,12 @@ export default function TailDetail() {
             )}
 
             <div className="no-print mt-6 flex flex-wrap gap-3">
-              <PrintButton label="Print this story" />
+              {!t.example && <PrintButton label="Print this story" />}
               <Link to="/tails/share" className={btn.blue}>
                 Share your bunny’s story
               </Link>
             </div>
-            <LiveNote source={source} />
+            {!t.example && <LiveNote source={source} />}
           </div>
         </article>
       </Section>

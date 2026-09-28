@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, isConfigured } from './supabase'
 import type { Source } from './data'
-import { sampleTails } from '../data/tails'
+import { exampleTail } from '../data/tails'
 
 export type TailStatus = 'looking' | 'just-adopted' | 'settling-in' | 'going-strong' | 'forever-loved'
 
@@ -89,7 +89,7 @@ export async function publishHappyTail(i: PublishInput): Promise<string> {
 /* ---------------------------------------------------------------- public */
 // The public Happy Tails pages and the home-page teaser. Same query and order
 // as the app's useHappyTails (features/tails/api.ts): published rows, staff
-// order first, newest next; the bundled samples until OHRR publishes one.
+// order first, newest next; the one labelled example until OHRR publishes one.
 
 export interface TimelineEntry {
   date: string
@@ -107,6 +107,8 @@ export interface Tail {
   summary: string
   bonded?: boolean
   timeline: TimelineEntry[]
+  /** The built-in example (data/tails.ts) — never a real adoption; labelled "Example" wherever it shows. */
+  example?: boolean
 }
 
 export function rowToTail(r: TailRow): Tail {
@@ -138,10 +140,10 @@ export interface TailsResult {
   loading: boolean
 }
 
-/** Published stories, falling back to the clearly-labelled samples. */
+/** Published stories; with none published, the one labelled example (source 'sample'). */
 export function useHappyTails(): TailsResult {
   const [state, setState] = useState<TailsResult>(() =>
-    isConfigured ? { items: [], source: 'sample', loading: true } : { items: sampleTails, source: 'sample', loading: false },
+    isConfigured ? { items: [], source: 'sample', loading: true } : { items: [exampleTail], source: 'sample', loading: false },
   )
   useEffect(() => {
     if (!isConfigured) return
@@ -149,7 +151,7 @@ export function useHappyTails(): TailsResult {
     publishedQuery().then(({ data, error }) => {
       if (!active) return
       const rows = (data ?? []) as TailRow[]
-      if (error || rows.length === 0) setState({ items: sampleTails, source: 'sample', loading: false })
+      if (error || rows.length === 0) setState({ items: [exampleTail], source: 'sample', loading: false })
       else setState({ items: rows.map(rowToTail), source: 'live', loading: false })
     })
     return () => {
