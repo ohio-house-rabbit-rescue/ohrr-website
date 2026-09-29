@@ -218,7 +218,8 @@ function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavIte
       title: 'Hop Shop & BunFest',
       items: [
         { to: '/staff/hopshop', label: 'Hop Shop', show: shop || can('hopshop.orders.view') },
-        { to: '/staff/items', label: 'Scanned items & tags', show: can('events.bunfest.manage') || shop },
+        { to: '/staff/items', label: 'Items & tags', show: can('events.bunfest.manage') || shop },
+        { to: '/staff/items/labels', label: 'Print labels', show: can('events.bunfest.manage') || shop },
         { to: '/staff/bunfest', label: 'BunFest', show: can('events.bunfest.manage') },
         { to: '/staff/events', label: 'Events', show: can('events.bunfest.manage') },
         { to: '/staff/sponsors', label: 'Sponsors', show: can('events.bunfest.manage') },
@@ -428,7 +429,7 @@ export default function StaffShell() {
         </main>
       </div>
       {/* Which update this is — so a volunteer can report "rev 5" and mean it. */}
-      <p className="pb-6 text-center text-xs text-slate-600">OHRR staff tools · {buildLabel}</p>
+      <p className="no-print pb-6 text-center text-xs text-slate-600">OHRR staff tools · {buildLabel}</p>
     </div>
   )
 }

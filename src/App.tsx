@@ -61,6 +61,7 @@ import Impact from './pages/Impact'
 import Book, { BookCancel } from './pages/Book'
 import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
+import PrintLabels from './pages/staff/PrintLabels'
 import VolunteerCalls, { VolunteerCallRoute } from './pages/staff/VolunteerCalls'
 import HoursLetter from './pages/staff/HoursLetter'
 import VolunteerCall from './pages/VolunteerCall'
@@ -138,6 +139,7 @@ export default function App() {
         <Route path="tails" element={<HappyTails />} />
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
         <Route path="items/tags" element={<PrintTags />} />
+        <Route path="items/labels" element={<PrintLabels />} />
         <Route path="events" element={<ManageEvents />} />
         <Route path="sponsors" element={<ManageSponsors />} />
         <Route path="sponsors/renewals" element={<SponsorRenewals />} />

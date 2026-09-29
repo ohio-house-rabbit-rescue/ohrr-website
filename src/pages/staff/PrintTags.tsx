@@ -55,7 +55,7 @@ export default function PrintTags() {
     <>
       <div className="print:hidden">
         <Link to="/staff/items" className="inline-flex items-center gap-1 text-sm font-bold text-brand-blue">
-          <Icon name="arrowLeft" size={16} /> Scanned items
+          <Icon name="arrowLeft" size={16} /> Items
         </Link>
         <h1 className="mt-2 font-display text-2xl font-black text-ink">Print tag sheets</h1>
         <p className="mt-1 max-w-2xl text-sm text-slate-600">
