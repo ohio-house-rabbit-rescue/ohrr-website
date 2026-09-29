@@ -225,6 +225,7 @@ function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavIte
         { to: '/staff/sponsors/renewals', label: 'Sponsor renewals', show: can('events.bunfest.manage') },
         { to: '/staff/raffle-tickets', label: 'Raffle tickets', show: can('events.bunfest.manage') },
         { to: '/staff/auction', label: 'Silent auction', show: can('events.bunfest.manage') },
+        { to: '/staff/auction/desk', label: 'Auction desk', show: can('events.bunfest.manage') },
       ],
     },
     {

@@ -18,12 +18,17 @@ import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
   AUCTION_EVENT_SLUG,
+  AUCTION_PRICE_COLUMNS,
   AUCTION_SESSIONS,
   centsToDollars,
   dollarsToCents,
+  eventDateTimeToIso,
   eventTimeToIso,
+  formatEventDateTime,
   formatEventTime,
   formatValue,
+  hasBiddingColumns,
+  isoToEventDateTime,
   isoToEventTime,
   itemInitial,
   rafflePriceLine,
@@ -33,8 +38,13 @@ import {
   type AuctionItem,
   type AuctionSettings,
 } from '../../lib/auction'
+import { auctionApi } from '../../lib/auctionClient'
 import { listSuppliers, type Supplier } from '../../lib/hopshop'
 import { vendorRecordsReady } from '../../lib/companies'
+
+// Update 35 not run yet: the row has no bidding columns (PostgREST says so).
+const missingColumn = (e: unknown) => /schema cache|column .* does not exist|PGRST204/i.test(errMessage(e))
+const missingFunction = (e: unknown) => /could not find the function|PGRST202/i.test(errMessage(e)) || (e as { code?: string })?.code === 'PGRST202'
 
 // Small local stand-ins for the app's shell pieces (as Bookings.tsx does).
 function Badge({ children, tone = 'blue' }: { children: ReactNode; tone?: 'blue' | 'orange' | 'slate' }) {
@@ -170,6 +180,12 @@ interface Draft {
   photo_url: string | null
   /** The company in the supplier / vendor list that gave it (update 27). Undefined = leave as it is. */
   donor_supplier_id?: string
+  // Online bidding (update 35) — dollars as typed; blank = not set
+  starting_bid: string
+  bid_step: string
+  buy_now: string
+  ship: 'pickup' | 'ship'
+  ship_fee: string
 }
 
 const emptyDraft: Draft = {
@@ -181,6 +197,11 @@ const emptyDraft: Draft = {
   is_published: true,
   sort_order: '0',
   photo_url: null,
+  starting_bid: '',
+  bid_step: '',
+  buy_now: '',
+  ship: 'pickup',
+  ship_fee: '',
 }
 
 function draftFrom(i: AuctionItem): Draft {
@@ -195,6 +216,11 @@ function draftFrom(i: AuctionItem): Draft {
     photo_url: i.photo_url,
     // Only there once update 27 has run; until then the row has no such column.
     donor_supplier_id: 'donor_supplier_id' in i ? ((i as AuctionItem & { donor_supplier_id: string | null }).donor_supplier_id ?? '') : undefined,
+    starting_bid: centsToDollars(i.starting_bid_cents),
+    bid_step: centsToDollars(i.min_increment_cents),
+    buy_now: centsToDollars(i.buy_now_cents),
+    ship: i.ship_fee_cents == null ? 'pickup' : 'ship',
+    ship_fee: i.ship_fee_cents == null ? '' : centsToDollars(i.ship_fee_cents),
   }
 }
 
@@ -211,6 +237,34 @@ function draftToRow(d: Draft) {
     photo_url: d.photo_url,
     ...(d.donor_supplier_id !== undefined ? { donor_supplier_id: d.donor_supplier_id || null } : {}),
   }
+}
+
+// The bidding columns (update 35). Null = unset; a blank shipping fee with
+// "ships" chosen means free shipping ($0), pickup means null.
+function draftToPrices(d: Draft): Record<(typeof AUCTION_PRICE_COLUMNS)[number], number | null> {
+  return {
+    starting_bid_cents: dollarsToCents(d.starting_bid),
+    min_increment_cents: dollarsToCents(d.bid_step) || null,
+    buy_now_cents: dollarsToCents(d.buy_now) || null,
+    ship_fee_cents: d.ship === 'ship' ? (dollarsToCents(d.ship_fee) ?? 0) : null,
+  }
+}
+
+/**
+ * Save an item with its prices. Before update 35 the columns aren't there, so
+ * the save is tried again without them and the caller is told.
+ */
+async function saveItemRow(
+  write: (row: Record<string, unknown>) => PromiseLike<{ error: unknown }>,
+  d: Draft,
+): Promise<{ pricesSaved: boolean }> {
+  const base = draftToRow(d)
+  const first = await write({ ...base, ...draftToPrices(d) })
+  if (!first.error) return { pricesSaved: true }
+  if (!missingColumn(first.error)) throw first.error
+  const second = await write(base)
+  if (second.error) throw second.error
+  return { pricesSaved: false }
 }
 
 /** The companies a "Given by" can name — null until update 27 has run (then the picker stays hidden). */
@@ -342,6 +396,40 @@ function ItemForm({
         </label>
       </div>
 
+      <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3">
+        <legend className="px-1 text-sm font-extrabold uppercase tracking-wider text-slate-600">Online bidding</legend>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block text-sm font-semibold text-slate-700">
+            Starting bid ($)
+            <input className={staffInput} type="number" inputMode="decimal" min="0" step="0.01" placeholder="One bid step" value={draft.starting_bid} onChange={set('starting_bid')} />
+          </label>
+          <label className="block text-sm font-semibold text-slate-700">
+            Bid step ($)
+            <input className={staffInput} type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="Auction default" value={draft.bid_step} onChange={set('bid_step')} />
+          </label>
+          <label className="block text-sm font-semibold text-slate-700">
+            Buy Now price ($) <span className="font-normal text-slate-500">optional</span>
+            <input className={staffInput} type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="No Buy Now" value={draft.buy_now} onChange={set('buy_now')} />
+          </label>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm font-semibold text-slate-700">
+            Getting it to the winner
+            <select className={staffInput} value={draft.ship} onChange={(e) => setDraft((d) => ({ ...d, ship: e.target.value === 'ship' ? 'ship' : 'pickup' }))}>
+              <option value="pickup">Pickup only (at BunFest)</option>
+              <option value="ship">Can be shipped</option>
+            </select>
+          </label>
+          {draft.ship === 'ship' && (
+            <label className="block text-sm font-semibold text-slate-700">
+              Shipping fee ($) <span className="font-normal text-slate-500">blank = free</span>
+              <input className={staffInput} type="number" inputMode="decimal" min="0" step="0.01" placeholder="0" value={draft.ship_fee} onChange={set('ship_fee')} />
+            </label>
+          )}
+        </div>
+        <p className="text-xs leading-relaxed text-slate-500">Bidding itself is switched on in the “Online bidding” panel. A blank starting bid means the first bid is one bid step.</p>
+      </fieldset>
+
       <div className="flex flex-wrap items-end gap-4">
         <label className="block w-32 text-sm font-semibold text-slate-700">
           Sort order
@@ -449,9 +537,9 @@ function ItemCard({
   }
 
   const saveEdit = async (d: Draft) => {
-    const { error } = await supabase.from('raffle_items').update(draftToRow(d)).eq('id', item.id)
-    if (error) throw error
+    const { pricesSaved } = await saveItemRow((row) => supabase.from('raffle_items').update(row).eq('id', item.id), d)
     setEditing(false)
+    if (!pricesSaved) setError('Saved — but the bidding prices need update 35 in the database first.')
     onChanged()
   }
 
@@ -489,6 +577,10 @@ function ItemCard({
 
   const won = item.status === 'won'
   const value = formatValue(item.value_cents)
+  // A sale made by the system (a closed bid, Buy Now or the desk): the desk owns it now.
+  const sold = won && Boolean(item.won_kind)
+  const bidding = hasBiddingColumns(item)
+  const bidCount = item.bid_count ?? 0
 
   return (
     <Card className="space-y-3">
@@ -503,8 +595,35 @@ function ItemCard({
           </div>
           {item.donated_by && <p className="mt-0.5 text-sm font-semibold text-slate-600">Donated by {item.donated_by}</p>}
           {item.description && <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.description}</p>}
+          {bidding && (
+            <p className="mt-1 text-sm text-slate-700">
+              {item.current_bid_cents != null ? (
+                <>
+                  <strong className="text-ink">
+                    {sold ? 'Sold for' : 'Current bid'} {formatValue(item.current_bid_cents)}
+                  </strong>
+                  {' · '}
+                  {bidCount} bid{bidCount === 1 ? '' : 's'}
+                  {item.high_bidder_no != null && <> · Bidder #{item.high_bidder_no}{sold ? ' won' : ' is high'}</>}
+                </>
+              ) : (
+                <>
+                  No bids yet{item.starting_bid_cents ? ` · starts at ${formatValue(item.starting_bid_cents)}` : ''}
+                </>
+              )}
+              {item.buy_now_cents != null && <> · Buy Now {formatValue(item.buy_now_cents)}</>}
+              {' · '}
+              {item.ship_fee_cents == null ? 'Pickup only' : item.ship_fee_cents === 0 ? 'Ships free' : `Ships +${formatValue(item.ship_fee_cents)}`}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {won ? <Badge tone="orange">Won</Badge> : <Badge tone="blue">Available</Badge>}
+            {sold ? (
+              <Badge tone="orange">Sold{item.won_kind === 'buy_now' ? ' — Buy Now' : item.won_kind === 'desk' ? ' — at the desk' : ' — closing bid'}</Badge>
+            ) : won ? (
+              <Badge tone="orange">Won</Badge>
+            ) : (
+              <Badge tone="blue">Available</Badge>
+            )}
             {!item.is_published && <Badge tone="slate">Hidden</Badge>}
             <Badge tone="slate">{sessionLabel(item.session)}</Badge>
           </div>
@@ -532,7 +651,11 @@ function ItemCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {won ? (
+        {sold ? (
+          <Link to="/staff/auction/desk" className={btn.outline}>
+            See the sale at the desk
+          </Link>
+        ) : won ? (
           <button type="button" disabled={busy} onClick={() => patch({ status: 'available' })} className={btn.outline}>
             Back to available
           </button>
@@ -766,6 +889,257 @@ function SetupPanel({
 }
 
 /* ------------------------------------------------------------------ */
+/* Online bidding panel (update 35)                                    */
+/* ------------------------------------------------------------------ */
+
+type Health = Awaited<ReturnType<typeof auctionApi.health>>
+
+// Is the payment server (the website's /api/auction) set up? Plain words, no secrets.
+function PaymentServerLine() {
+  const [health, setHealth] = useState<Health | undefined>(undefined)
+  useEffect(() => {
+    let live = true
+    void auctionApi.health().then((h) => {
+      if (live) setHealth(h)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  if (health === undefined) return <p className="text-sm text-slate-500">Checking the payment server…</p>
+  if (!health) {
+    return (
+      <p className="text-sm leading-relaxed text-slate-700">
+        <strong>Payment server:</strong> could not be reached from here. On the live website it runs next to the site (Cloudflare Pages); a
+        local copy of the site cannot see it.
+      </p>
+    )
+  }
+  const ok = health.stripe && health.webhook && health.supabase
+  return (
+    <div className="space-y-1 text-sm leading-relaxed text-slate-700">
+      <p>
+        <strong>Payment server:</strong> {ok ? 'ready' : 'not fully set up'} —{' '}
+        {health.stripe ? `Stripe ${health.stripe_mode === 'live' ? 'LIVE' : 'test'} key set` : 'Stripe secret key missing'} ·{' '}
+        {health.webhook ? 'webhook set' : 'webhook secret missing'} · {health.supabase ? 'database key set' : 'database key missing'}
+      </p>
+      {!ok && (
+        <p className="text-slate-600">
+          These are set in Cloudflare Pages → the website project → Settings → Environment variables: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+          and SUPABASE_SERVICE_ROLE_KEY. Never paste them anywhere on this page.
+        </p>
+      )}
+      {health.stripe && health.stripe_mode === 'test' && <p className="text-slate-600">Test mode: cards are not really charged. Switch to the live keys before BunFest.</p>}
+    </div>
+  )
+}
+
+function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: AuctionSettings | null; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [enabled, setEnabled] = useState(false)
+  const [opensAt, setOpensAt] = useState('')
+  const [extend, setExtend] = useState('5')
+  const [step, setStep] = useState('5')
+  const [pk, setPk] = useState('')
+  const [biddingNote, setBiddingNote] = useState('')
+  const [pickupNote, setPickupNote] = useState('')
+  const [shippingNote, setShippingNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Before update 35 the settings row has no bidding_enabled column.
+  const ready = settings ? 'bidding_enabled' in settings : null
+
+  const startEdit = () => {
+    setEnabled(Boolean(settings?.bidding_enabled))
+    setOpensAt(isoToEventDateTime(settings?.bidding_opens_at))
+    setExtend(String(settings?.extend_minutes ?? 5))
+    setStep(centsToDollars(settings?.default_increment_cents ?? 500))
+    setPk(settings?.stripe_publishable_key ?? '')
+    setBiddingNote(settings?.bidding_note ?? '')
+    setPickupNote(settings?.pickup_note ?? '')
+    setShippingNote(settings?.shipping_note ?? '')
+    setError(null)
+    setEditing(true)
+  }
+
+  const save = async (e: { preventDefault(): void }) => {
+    e.preventDefault()
+    setError(null)
+    const key = pk.trim()
+    if (key && !/^pk_(live|test)_/.test(key)) {
+      setError('That is not a publishable key. It starts with pk_live_ or pk_test_. (The secret key, sk_…, never goes here.)')
+      return
+    }
+    if (key.startsWith('sk_')) {
+      setError('That is the SECRET key. Never paste it here — it belongs in Cloudflare only.')
+      return
+    }
+    const stepCents = dollarsToCents(step)
+    if (!stepCents) {
+      setError('Enter a default bid step of at least $0.01.')
+      return
+    }
+    const ext = Number.parseInt(extend, 10)
+    if (!Number.isFinite(ext) || ext < 0 || ext > 60) {
+      setError('“Going once” is 0 to 60 minutes.')
+      return
+    }
+    if (enabled && !key) {
+      setError('To switch bidding on, add the Stripe publishable key first.')
+      return
+    }
+    setBusy(true)
+    const { error } = await supabase.rpc('auction_save_settings', {
+      p_org: orgId,
+      p_event: AUCTION_EVENT_SLUG,
+      p_patch: {
+        bidding_enabled: enabled,
+        bidding_opens_at: eventDateTimeToIso(opensAt) ?? '',
+        extend_minutes: ext,
+        default_increment_cents: stepCents,
+        stripe_publishable_key: key,
+        bidding_note: biddingNote.trim(),
+        pickup_note: pickupNote.trim(),
+        shipping_note: shippingNote.trim(),
+      },
+    })
+    setBusy(false)
+    if (error) {
+      setError(missingFunction(error) ? 'Online bidding is not in the database yet — run update 35 (RUN-THIS-IN-SUPABASE.sql) first.' : errMessage(error))
+      return
+    }
+    setEditing(false)
+    onSaved()
+  }
+
+  const keyShown = settings?.stripe_publishable_key ? `${settings.stripe_publishable_key.slice(0, 12)}…` : null
+
+  return (
+    <section className="space-y-2.5">
+      <SectionLabel>Online bidding</SectionLabel>
+      <Card className="space-y-3">
+        {ready === false && (
+          <p className="rounded-xl bg-brand-orange-50 px-3 py-2 text-sm leading-relaxed text-slate-800">
+            Online bidding needs <strong>update 35</strong> in the database (RUN-THIS-IN-SUPABASE.sql). Until it is run this panel cannot save.
+          </p>
+        )}
+        {editing ? (
+          <form onSubmit={save} className="space-y-3">
+            <label className="flex items-center gap-3 text-base font-semibold text-slate-700">
+              <input type="checkbox" className="h-6 w-6 rounded border-slate-300 accent-brand-blue" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+              Online bidding is on (people can register, bid and Buy Now)
+            </label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block text-sm font-semibold text-slate-700">
+                Bidding opens <span className="font-normal text-slate-500">optional, Eastern</span>
+                <input className={staffInput} type="datetime-local" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Going once: extend by (minutes)
+                <input className={staffInput} type="number" inputMode="numeric" min="0" max="60" step="1" value={extend} onChange={(e) => setExtend(e.target.value)} />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Default bid step ($)
+                <input className={staffInput} type="number" inputMode="decimal" min="0.01" step="0.01" value={step} onChange={(e) => setStep(e.target.value)} />
+              </label>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-500">
+              A bid in the last few minutes pushes that item’s close out by the same number of minutes (0 switches this off). Items close at
+              their session’s time, set in Auction setup.
+            </p>
+            <label className="block text-sm font-semibold text-slate-700">
+              Stripe publishable key
+              <input className={`${staffInput} font-mono`} value={pk} onChange={(e) => setPk(e.target.value)} placeholder="pk_live_… or pk_test_…" autoComplete="off" spellCheck={false} />
+            </label>
+            <p className="text-xs leading-relaxed text-slate-500">
+              From Stripe → Developers → API keys, the <strong>Publishable key</strong> (pk_…). It is safe to be public. The <strong>Secret key</strong>{' '}
+              (sk_…) never goes here — it goes in Cloudflare, next to the website, as STRIPE_SECRET_KEY.
+            </p>
+            <label className="block text-sm font-semibold text-slate-700">
+              Bidding note <span className="font-normal text-slate-500">shown on the catalog and when registering</span>
+              <textarea className={staffInput} rows={2} value={biddingNote} onChange={(e) => setBiddingNote(e.target.value)} placeholder="e.g. Winners are charged when their item closes. Questions: ohrrcontact@…" />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                Pickup note
+                <textarea className={staffInput} rows={2} value={pickupNote} onChange={(e) => setPickupNote(e.target.value)} placeholder="Where and when to collect at BunFest" />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Shipping note
+                <textarea className={staffInput} rows={2} value={shippingNote} onChange={(e) => setShippingNote(e.target.value)} placeholder="e.g. Ships within two weeks after BunFest, US only" />
+              </label>
+            </div>
+            <FormError>{error}</FormError>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+                {busy ? 'Saving…' : 'Save online bidding'}
+              </button>
+              <button type="button" onClick={() => setEditing(false)} disabled={busy} className={cancelBtn}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              {settings?.bidding_enabled ? <Badge tone="orange">Bidding is ON</Badge> : <Badge tone="slate">Bidding is off — catalog is a preview</Badge>}
+              {settings?.bidding_opens_at && <Badge tone="blue">Opens {formatEventDateTime(settings.bidding_opens_at)}</Badge>}
+            </div>
+            <div className="grid gap-3 text-base sm:grid-cols-3">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Going once</p>
+                <p className="mt-0.5 font-semibold text-ink">{settings?.extend_minutes ? `${settings.extend_minutes} min` : settings?.extend_minutes === 0 ? 'Off' : 'Not set'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Default bid step</p>
+                <p className="mt-0.5 font-semibold text-ink">{settings?.default_increment_cents ? formatValue(settings.default_increment_cents) : 'Not set'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Stripe publishable key</p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-ink">{keyShown ?? <span className="font-sans text-slate-600">Not set</span>}</p>
+              </div>
+            </div>
+            {(settings?.bidding_note || settings?.pickup_note || settings?.shipping_note) && (
+              <div className="space-y-1 text-sm text-slate-700">
+                {settings?.bidding_note && (
+                  <p>
+                    <strong>Bidding:</strong> {settings.bidding_note}
+                  </p>
+                )}
+                {settings?.pickup_note && (
+                  <p>
+                    <strong>Pickup:</strong> {settings.pickup_note}
+                  </p>
+                )}
+                {settings?.shipping_note && (
+                  <p>
+                    <strong>Shipping:</strong> {settings.shipping_note}
+                  </p>
+                )}
+              </div>
+            )}
+            <PaymentServerLine />
+            <FormError>{error}</FormError>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={startEdit} className={btn.outline}>
+                {ready ? 'Edit online bidding' : 'Set up online bidding'}
+              </button>
+              <Link to="/staff/auction/desk" className={btn.blue}>
+                Open the auction desk
+              </Link>
+              <Link to="/bunfest/silent-auction" className={cancelBtn}>
+                See the public catalog
+              </Link>
+            </div>
+          </>
+        )}
+      </Card>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -806,14 +1180,12 @@ export default function SilentAuctionManager() {
   }, [load])
 
   const create = async (d: Draft) => {
-    const { error } = await supabase.from('raffle_items').insert({
-      org_id: orgId,
-      event_slug: AUCTION_EVENT_SLUG,
-      ...draftToRow(d),
-      created_by: userId,
-    })
-    if (error) throw error
+    const { pricesSaved } = await saveItemRow(
+      (row) => supabase.from('raffle_items').insert({ org_id: orgId, event_slug: AUCTION_EVENT_SLUG, ...row, created_by: userId }),
+      d,
+    )
     setCreating(false)
+    if (!pricesSaved) setError('Item added — but its bidding prices need update 35 in the database first.')
     await load()
   }
 
@@ -865,6 +1237,7 @@ export default function SilentAuctionManager() {
       {creating && <AddItem orgId={orgId} nextSortOrder={nextSortOrder} onCreate={create} onCancel={() => setCreating(false)} />}
 
       {!loading && <SetupPanel orgId={orgId} settings={settings} canManageSettings={can('settings.manage')} onSaved={() => void load()} />}
+      {!loading && <BiddingPanel orgId={orgId} settings={settings} onSaved={() => void load()} />}
 
       <FormError>{error}</FormError>
 

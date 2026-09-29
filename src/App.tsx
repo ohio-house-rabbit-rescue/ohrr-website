@@ -15,6 +15,10 @@ import { BreedGuide, BreedDetail } from './pages/Breeds'
 import Volunteer from './pages/Volunteer'
 import BunFest from './pages/BunFest'
 import SilentAuction from './pages/SilentAuction'
+// Online bidding (update 35): the item page, registering, a bidder's own page
+import SilentAuctionItem from './pages/SilentAuctionItem'
+import SilentAuctionRegister from './pages/SilentAuctionRegister'
+import SilentAuctionMe from './pages/SilentAuctionMe'
 import MobileVet from './pages/MobileVet'
 import VolunteerApply from './pages/VolunteerApply'
 import VerifyLetter from './pages/VerifyLetter'
@@ -78,6 +82,7 @@ import ManageSponsors from './pages/staff/ManageSponsors'
 import SponsorRenewals from './pages/staff/SponsorRenewals'
 import Volunteers from './pages/staff/Volunteers'
 import SilentAuctionManager from './pages/staff/SilentAuction'
+import AuctionDesk from './pages/staff/AuctionDesk'
 import Features from './pages/staff/Features'
 import Activity from './pages/staff/Activity'
 import ResetPassword from './pages/staff/ResetPassword'
@@ -143,6 +148,7 @@ export default function App() {
         <Route path="account" element={<MyAccount />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />
+        <Route path="auction/desk" element={<AuctionDesk />} />
         <Route path="bunny-help" element={<BunnyHelp />} />
         <Route path="features" element={<Features />} />
         <Route path="activity" element={<Activity />} />
@@ -181,6 +187,11 @@ export default function App() {
         <Route path="/volunteer/call/:slug" element={<VolunteerCall />} />
         <Route path="/bunfest" element={<BunFest />} />
         <Route path="/bunfest/silent-auction" element={<SilentAuction />} />
+        {/* The fixed paths come before the item id */}
+        <Route path="/bunfest/silent-auction/register" element={<SilentAuctionRegister />} />
+        <Route path="/bunfest/silent-auction/me" element={<SilentAuctionMe />} />
+        <Route path="/bunfest/silent-auction/me/:token" element={<SilentAuctionMe />} />
+        <Route path="/bunfest/silent-auction/:id" element={<SilentAuctionItem />} />
         <Route path="/mobile-vet" element={<MobileVet />} />
         <Route path="/bunfest/schedule" element={<BunFestSchedule />} />
         <Route path="/bunfest/vendors" element={<BunFestVendors />} />

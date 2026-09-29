@@ -21,6 +21,22 @@ export interface AuctionItem {
   created_by: string | null
   created_at: string
   updated_at: string
+  // Online bidding (update 35) — undefined until that update has been run.
+  /** Where bidding starts; null = one bid step. */
+  starting_bid_cents?: number | null
+  /** This item's own bid step; null = the auction's default. */
+  min_increment_cents?: number | null
+  /** Buy Now price; null = no Buy Now. */
+  buy_now_cents?: number | null
+  /** Flat shipping fee; null = pickup only. */
+  ship_fee_cents?: number | null
+  closes_at_override?: string | null
+  current_bid_cents?: number | null
+  bid_count?: number
+  high_bidder_id?: string | null
+  high_bidder_no?: number | null
+  /** How it was won: a closed bid, Buy Now or a sale recorded at the desk. Null = marked by hand or still available. */
+  won_kind?: 'bid' | 'buy_now' | 'desk' | null
 }
 
 export interface AuctionSettings {
@@ -34,6 +50,23 @@ export interface AuctionSettings {
   raffle_bundle_price_cents: number | null
   raffle_details: string | null
   updated_at: string
+  // Online bidding (update 35) — undefined until that update has been run.
+  bidding_enabled?: boolean
+  bidding_opens_at?: string | null
+  extend_minutes?: number
+  default_increment_cents?: number
+  stripe_publishable_key?: string | null
+  bidding_note?: string | null
+  pickup_note?: string | null
+  shipping_note?: string | null
+}
+
+/** The bidding columns (update 35) on a raffle_items row, for the editor. */
+export const AUCTION_PRICE_COLUMNS = ['starting_bid_cents', 'min_increment_cents', 'buy_now_cents', 'ship_fee_cents'] as const
+
+/** Has update 35 been run? True when the row carries its columns. */
+export function hasBiddingColumns(row: object | null | undefined): boolean {
+  return Boolean(row && 'starting_bid_cents' in row)
 }
 
 // The event this catalog belongs to (plain text in the table; no FK yet).
@@ -157,6 +190,43 @@ export function eventTimeToIso(time: string): string | null {
   let ts = wall - tzOffsetMs(wall, AUCTION_EVENT_TZ)
   ts = wall - tzOffsetMs(ts, AUCTION_EVENT_TZ)
   return new Date(ts).toISOString()
+}
+
+// "2026-10-20T18:00" (a <input type="datetime-local"> value) → ISO timestamptz
+// for that wall-clock time in the event's zone. Empty input → null.
+export function eventDateTimeToIso(value: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})/.exec(value.trim())
+  if (!m) return null
+  const wall = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]))
+  let ts = wall - tzOffsetMs(wall, AUCTION_EVENT_TZ)
+  ts = wall - tzOffsetMs(ts, AUCTION_EVENT_TZ)
+  return new Date(ts).toISOString()
+}
+
+// ISO timestamptz → "2026-10-20T18:00" in the event's zone (to prefill the input).
+export function isoToEventDateTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: AUCTION_EVENT_TZ,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(d)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
+}
+
+// "Tue, Oct 20, 6:00 PM" in the event's zone.
+export function formatEventDateTime(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleString('en-US', { timeZone: AUCTION_EVENT_TZ, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 // ISO timestamptz → "14:30" in the event's zone (to prefill the time input).
