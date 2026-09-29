@@ -1,0 +1,14 @@
+# Cloudflare Pages settings for the website's payment server (the functions/ folder).
+# Pages reads this file from the repo, so the compatibility date and flags never
+# have to be set in the dashboard.
+#
+# SECRETS ARE NOT HERE. OHRR sets them once in Cloudflare → Workers & Pages →
+# ohrr-website → Settings → Variables and Secrets (type: Secret):
+#   STRIPE_SECRET_KEY           sk_live_… (or sk_test_… for a dry run)
+#   STRIPE_WEBHOOK_SECRET       whsec_… from the Stripe webhook endpoint
+#   SUPABASE_SERVICE_ROLE_KEY   Supabase → Project Settings → API keys (secret)
+# Nothing secret is ever committed to this repo.
+name = "ohrr-website"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
