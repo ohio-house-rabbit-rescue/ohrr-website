@@ -113,31 +113,51 @@ function loadPhoto(url: string): Promise<HTMLImageElement | null> {
   })
 }
 
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+/** Greedy word wrap; a word wider than the line stays on its own line. */
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let line = ''
   for (const w of words) {
     const test = line ? `${line} ${w}` : w
-    if (ctx.measureText(test).width <= maxWidth || !line) {
-      line = test
-    } else {
+    if (!line || ctx.measureText(test).width <= maxWidth) line = test
+    else {
       lines.push(line)
       line = w
-      if (lines.length === maxLines) break
     }
   }
-  if (lines.length < maxLines && line) lines.push(line)
-  // a word longer than the line, or the last line overflowing: trim with an ellipsis
-  return lines.slice(0, maxLines).map((l, i) => {
-    const last = i === maxLines - 1 && (lines.length > maxLines || words.join(' ') !== lines.join(' '))
-    let s = l
-    while (s && ctx.measureText(last ? `${s}…` : s).width > maxWidth) s = s.slice(0, -1)
-    return last && s !== l ? `${s}…` : s
-  })
+  if (line) lines.push(line)
+  return lines
 }
 
-function barcodeImage(code: string, widthPx: number, heightPx: number): HTMLCanvasElement {
+/** Cut a line so `line…` fits. */
+function ellipsize(ctx: CanvasRenderingContext2D, line: string, maxWidth: number): string {
+  if (ctx.measureText(line).width <= maxWidth) return line
+  let s = line
+  while (s.length > 1 && ctx.measureText(`${s}…`).width > maxWidth) s = s.slice(0, -1)
+  return `${s.trimEnd()}…`
+}
+
+/**
+ * Lay the text out in at most `maxLines` lines, shrinking the type (down to
+ * 55% of `basePx`) before cutting anything. Sets ctx.font to the size used.
+ */
+function fitBlock(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number, basePx: number, font: (px: number) => string): { lines: string[]; px: number } {
+  let px = basePx
+  while (px >= basePx * 0.55) {
+    ctx.font = font(px)
+    const lines = wrapLines(ctx, text, maxWidth)
+    if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxWidth)) return { lines, px }
+    px = Math.max(Math.floor(px * 0.92), px - 1)
+  }
+  px = Math.round(basePx * 0.55)
+  ctx.font = font(px)
+  const all = wrapLines(ctx, text, maxWidth)
+  const lines = all.slice(0, maxLines).map((l, i) => (i === maxLines - 1 && all.length > maxLines ? ellipsize(ctx, `${l} ${all.slice(maxLines).join(' ')}`, maxWidth) : ellipsize(ctx, l, maxWidth)))
+  return { lines, px }
+}
+
+function barcodeImage(code: string, heightPx: number): HTMLCanvasElement {
   const c = document.createElement('canvas')
   JsBarcode(c, code, {
     format: 'CODE128',
@@ -148,14 +168,13 @@ function barcodeImage(code: string, widthPx: number, heightPx: number): HTMLCanv
     background: '#ffffff',
     lineColor: '#000000',
   })
-  void widthPx
   return c
 }
 
 /**
- * Paint one label. The canvas becomes exactly wIn×hIn inches at LABEL_DPI.
- * Everything scales with the label's height, so a 1-inch and a 6-inch label
- * both read well.
+ * Paint one label. The canvas becomes exactly wIn×hIn inches at `dpi`.
+ * Everything scales with the label, so a 1-inch and a 6-inch label both read
+ * well; names shrink to fit before they are ever cut.
  */
 export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, size: LabelSize, dpi = LABEL_DPI): Promise<void> {
   const W = Math.round(size.wIn * dpi)
@@ -168,66 +187,71 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
   await ensureFonts(['800 40px "Nunito"', '900 80px "Nunito"', '600 40px "Open Sans"'])
 
   const m = Math.round(0.07 * dpi) // margin
-  const tall = size.hIn >= 3 && !!item.photo_url
+  const photo = size.hIn >= 3 && item.photo_url ? await loadPhoto(item.photo_url) : null
   let top = m
 
   // Tall labels: the photo across the top (about 45% of the height).
-  if (tall) {
-    const img = await loadPhoto(item.photo_url!)
+  if (photo) {
     const boxH = Math.round(H * 0.45)
-    if (img) {
-      const scale = Math.min((W - 2 * m) / img.width, boxH / img.height)
-      const dw = img.width * scale
-      const dh = img.height * scale
-      ctx.drawImage(img, (W - dw) / 2, top, dw, dh)
-    }
+    const scale = Math.min((W - 2 * m) / photo.width, boxH / photo.height)
+    const dw = photo.width * scale
+    const dh = photo.height * scale
+    ctx.drawImage(photo, (W - dw) / 2, top + (boxH - dh) / 2, dw, dh)
     top += boxH + m
   }
 
+  // Sizes scale with the space left, but never past what the width can carry.
   const bodyH = H - top - m
-  const unit = bodyH // scale everything off the space left
+  const unit = Math.min(bodyH, W * 0.7)
   const barH = Math.round(Math.max(0.22 * dpi, unit * 0.2))
-  const codeSize = Math.round(Math.max(0.16 * dpi, unit * 0.16))
-  const brandSize = Math.round(Math.max(0.07 * dpi, unit * 0.075))
-  const titleSize = Math.round(Math.max(0.11 * dpi, unit * 0.13))
-  const smallSize = Math.round(Math.max(0.075 * dpi, unit * 0.085))
+  const codeSize = Math.round(Math.min(Math.max(0.16 * dpi, unit * 0.16), W / 7))
+  const qrSide = Math.round(Math.min(unit - barH - codeSize * 1.2 - m, W * 0.42))
+  const tw = W - (m + qrSide + m) - m
+  const brandSize = Math.round(Math.min(Math.max(0.07 * dpi, unit * 0.075), tw / 15))
+  const titleSize = Math.round(Math.min(Math.max(0.11 * dpi, unit * 0.13), tw / 8))
+  const smallSize = Math.round(Math.min(Math.max(0.075 * dpi, unit * 0.085), tw / 13))
+  const contentH = qrSide + m + barH + Math.round(codeSize * 1.2)
+  // Without a photo, sit the whole block in the middle of the label.
+  if (!photo) top = Math.max(m, Math.round((H - contentH) / 2))
 
-  // QR on the left, as tall as the text block allows.
-  const qrSide = Math.round(Math.min(unit - barH - codeSize - m, W * 0.42))
+  // QR on the left.
   const qr = await QRCode.toDataURL(tagUrl(item.code), { errorCorrectionLevel: 'M', margin: 0, width: 600 }).then(loadImage)
   if (qr) ctx.drawImage(qr, m, top, qrSide, qrSide)
 
-  // Text block to the right of the QR.
+  // Text block to the right of the QR: brand, name (shrinks to fit), donor.
   const tx = m + qrSide + m
-  const tw = W - tx - m
   let y = top
-  ctx.fillStyle = '#0669ac'
-  ctx.font = `800 ${brandSize}px "Nunito"`
   ctx.textBaseline = 'top'
-  ctx.fillText('OHIO HOUSE RABBIT RESCUE', tx, y, tw)
-  y += brandSize * 1.35
+  ctx.textAlign = 'left'
+  ctx.fillStyle = '#0669ac'
+  const brand = fitBlock(ctx, 'OHIO HOUSE RABBIT RESCUE', tw, 1, brandSize, (px) => `800 ${px}px "Nunito"`)
+  ctx.fillText(brand.lines[0], tx, y)
+  y += Math.round(brand.px * 1.35)
 
+  // The name comes first and stays the biggest text: two lines (three with a
+  // photo), shrinking before it is cut. Donor and kind fit in what is left.
+  const bottom = top + qrSide + Math.round(m / 2)
+  const titleLines = Math.max(1, Math.min(photo ? 3 : 2, Math.floor((bottom - y) / (titleSize * 1.15))))
   ctx.fillStyle = '#0f172a'
-  ctx.font = `900 ${titleSize}px "Nunito"`
-  const titleLines = fitText(ctx, item.title || 'Untitled', tw, tall ? 3 : 2)
-  for (const l of titleLines) {
+  const title = fitBlock(ctx, item.title || 'Untitled', tw, titleLines, titleSize, (px) => `900 ${px}px "Nunito"`)
+  for (const l of title.lines) {
     ctx.fillText(l, tx, y)
-    y += titleSize * 1.15
+    y += Math.round(title.px * 1.15)
   }
 
-  ctx.fillStyle = '#334155'
-  ctx.font = `600 ${smallSize}px "Open Sans"`
   const meta = [item.donated_by ? `From ${item.donated_by}` : null, item.kindLabel ?? null].filter(Boolean) as string[]
+  const metaPx = Math.min(smallSize, Math.round(title.px * 0.82))
+  ctx.fillStyle = '#334155'
+  ctx.font = `600 ${metaPx}px "Open Sans"`
   for (const line of meta) {
-    if (y + smallSize > top + qrSide) break
-    const [only] = fitText(ctx, line, tw, 1)
-    ctx.fillText(only, tx, y)
-    y += smallSize * 1.3
+    if (y + metaPx > bottom) break
+    ctx.fillText(ellipsize(ctx, line, tw), tx, y)
+    y += Math.round(metaPx * 1.3)
   }
 
-  // Bottom band: the barcode across the full width, the code under it.
-  const bandTop = H - m - codeSize - Math.round(codeSize * 0.15) - barH
-  const bar = barcodeImage(item.code, W - 2 * m, barH)
+  // Under it all: the barcode across the label, the code beneath.
+  const bandTop = top + qrSide + m
+  const bar = barcodeImage(item.code, barH)
   const barW = Math.min(W - 2 * m, Math.round(bar.width * (barH / bar.height)))
   ctx.drawImage(bar, Math.round((W - barW) / 2), bandTop, barW, barH)
   ctx.fillStyle = '#0f172a'
