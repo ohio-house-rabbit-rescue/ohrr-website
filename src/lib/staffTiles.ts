@@ -97,7 +97,6 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
   const all: (StaffTile & { show: boolean })[] = [
     // Today (Bookings is also in Volunteers)
     { to: '/staff/inbox', title: 'Inbox', hint: newCount > 0 ? `${newCount} new waiting` : 'Appointments, sign-ups, messages', icon: 'mail', today: true, badge: newCount, show: can('inbox.manage') },
-    { to: '/staff/bookings', title: 'Bookings', hint: pendingCount > 0 ? `${pendingCount} to confirm` : 'Shifts and appointments', icon: 'calendar', group: 'volunteers', today: true, badge: pendingCount, show: canBookings },
 
     // Items and Hop Shop
     { to: '/staff/items?add=1', title: 'Add a donation', hint: 'Photo, name, how many, value', icon: 'camera', group: 'items', show: canItems },
@@ -118,6 +117,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
     { to: '/staff/calls', title: 'Volunteer calls', hint: 'Put out a need, check in, thank', icon: 'heart', group: 'volunteers', show: canVolunteer || canBookings },
     { to: '/staff/volunteers', title: 'Volunteers', hint: 'The roster and their hours', icon: 'users', group: 'volunteers', show: canVolunteer || canBookings },
     { to: '/staff/volunteer', title: 'Volunteer opportunities', hint: 'Shifts, transport runs, events', icon: 'calendar', group: 'volunteers', show: canVolunteer },
+    { to: '/staff/bookings', title: 'Bookings', hint: pendingCount > 0 ? `${pendingCount} to confirm` : 'Shifts and appointments', icon: 'calendar', group: 'volunteers', today: true, badge: pendingCount, show: canBookings },
 
     // Events and BunFest
     { to: '/staff/events', title: 'Events', hint: 'BunFest and OHRR hoppenings', icon: 'calendar', group: 'events', show: canEvents },
