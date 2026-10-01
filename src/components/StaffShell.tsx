@@ -1,44 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
-import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate, canSwitchFeatures } from '../lib/staff'
-import { myStaffVolunteerPage } from '../lib/volunteers/api'
+import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate } from '../lib/staff'
+import { useStaffTiles, placeOf, groupLink } from '../lib/staffTiles'
+import { Icon, type IconName } from './icons'
 import { btn } from './ui'
 import { buildLabel } from '../lib/version'
 import { ForgotPasswordLink } from './ForgotPassword'
-
-/**
- * "My volunteer hours" (update 28): staff volunteer too. This opens their own
- * volunteer page — made for them the first time — where they can log hours for
- * work that isn't a shift and see their totals and signed letter. `available`
- * is false until update 28 has been run (the level column arrives with the RPC).
- */
-export function useMyVolunteerHours() {
-  const { membership } = useStaff()
-  const navigate = useNavigate()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [missing, setMissing] = useState(false)
-  const orgId = membership?.orgId ?? ''
-  const available = Boolean(orgId && membership?.level) && !missing
-
-  const open = async () => {
-    if (!orgId || busy) return
-    setBusy(true)
-    setError(null)
-    try {
-      const token = await myStaffVolunteerPage(orgId)
-      navigate(`/volunteer/hours/${token}`)
-    } catch (e) {
-      const o = e as { code?: string; message?: string }
-      // The function isn't in the database after all: hide the way in rather than show an error.
-      if (o?.code === 'PGRST202' || /could not find the function/i.test(o?.message ?? '')) setMissing(true)
-      else setError(errMessage(e))
-      setBusy(false)
-    }
-  }
-  return { available, open, busy, error }
-}
 
 function SignIn() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -128,9 +96,9 @@ function SignIn() {
   )
 }
 
-const navClass = ({ isActive }: { isActive: boolean }) =>
-  `flex min-h-11 items-center rounded-lg px-3 text-base font-semibold transition ${
-    isActive ? 'bg-brand-blue text-white' : 'text-slate-700 hover:bg-slate-100'
+const navClass = (active: boolean) =>
+  `flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-base font-semibold transition ${
+    active ? 'bg-brand-blue text-white' : 'text-slate-700 hover:bg-slate-100'
   }`
 
 // The way back to the public site, in the same place on every staff screen.
@@ -145,137 +113,108 @@ function BackToSite() {
   )
 }
 
-type Can = (cap: Parameters<ReturnType<typeof useStaff>['can']>[0]) => boolean
-interface NavItem {
-  to: string
-  label: string
-  show: boolean
-  end?: boolean
-  /** A button rather than a page: it does something, then goes somewhere. */
-  onClick?: () => void
-  busy?: boolean
-  error?: string | null
+const isDashboardPath = (pathname: string) => (pathname.replace(/\/+$/, '') || '/') === '/staff'
+
+/** Where you are: the page's group and its own title (from the one list in lib/staffTiles.ts). */
+function useHere() {
+  const { pathname, search } = useLocation()
+  const { tiles, today, groups } = useStaffTiles()
+  const here = placeOf(pathname, search, tiles)
+  return { here, atDashboard: isDashboardPath(pathname), today, groups }
 }
-type MyHours = ReturnType<typeof useMyVolunteerHours>
 
 /**
- * The staff menu, in groups — thirty tools in one row of buttons was too much
- * to scan. Each group only appears when the person can use something in it.
+ * The laptop's sidebar, short (OHRR, 2026-10-01): Dashboard, the Today pages,
+ * then one line per group — the group's page list opens from there, as on the
+ * dashboard. A group with one page goes straight to it.
  */
-function staffGroups(can: Can, myHours: MyHours, featureSwitches: boolean): { title: string; items: NavItem[] }[] {
-  const shop = can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
-  return [
-    {
-      title: 'Every day',
-      items: [
-        { to: '/staff', label: 'Dashboard', show: true, end: true },
-        { to: '/staff/inbox', label: 'Inbox', show: can('inbox.manage') },
-        { to: '/staff/bookings', label: 'Bookings', show: can('bookings.manage') },
-      ],
-    },
-    {
-      title: 'Rabbits & care',
-      items: [
-        { to: '/staff/rabbits', label: 'Adoptable rabbits', show: can('adoptions.listings.create') || can('adoptions.listings.edit') || can('adoptions.status.change') },
-        { to: '/staff/tails', label: 'Happy Tails', show: can('content.education.edit') || can('inbox.manage') },
-        { to: '/staff/care', label: 'Care guides & pages', show: can('content.education.edit') },
-        { to: '/staff/bunny-help', label: 'Bunny Help topics', show: can('content.education.edit') },
-        { to: '/staff/vets', label: 'Vets', show: can('content.education.edit') },
-      ],
-    },
-    {
-      title: 'Volunteers',
-      items: [
-        {
-          to: '#my-volunteer-hours',
-          label: myHours.busy ? 'Opening…' : 'My volunteer hours',
-          show: myHours.available,
-          onClick: () => void myHours.open(),
-          busy: myHours.busy,
-          error: myHours.error,
-        },
-        { to: '/staff/calls', label: 'Volunteer calls', show: can('volunteers.shifts.manage') || can('bookings.manage') },
-        { to: '/staff/volunteer', label: 'Volunteer opportunities', show: can('volunteers.shifts.manage') },
-        { to: '/staff/volunteers', label: 'Volunteer roster & hours', show: can('volunteers.shifts.manage') || can('bookings.manage') },
-      ],
-    },
-    {
-      title: 'Website & outreach',
-      items: [
-        { to: '/staff/homepage', label: 'Homepage', show: can('announcements.post') },
-        { to: '/staff/announcements', label: 'Announcements', show: can('announcements.post') },
-        { to: '/staff/posts', label: 'Posts & Share kit', show: can('announcements.post') || can('social.publish') || can('social.approve') },
-        { to: '/staff/flyers', label: 'Flyers', show: can('announcements.post') },
-        { to: '/staff/outreach', label: 'Outreach letters', show: can('announcements.post') },
-        { to: '/staff/impact', label: 'Impact numbers', show: can('announcements.post') },
-        { to: '/staff/guardians', label: 'Rescue Rabbit Guardians', show: can('giving.guardians') },
-        { to: '/staff/wish-list', label: 'Wish list items', show: can('giving.wishlist') },
-        { to: '/staff/supporters', label: 'Supporters', show: can('supporters.view') },
-        { to: '/staff/notify', label: 'Send a notification', show: can('notifications.send') },
-      ],
-    },
-    {
-      title: 'Hop Shop & BunFest',
-      items: [
-        { to: '/staff/hopshop', label: 'Hop Shop inventory', show: shop || can('hopshop.orders.view') },
-        { to: '/staff/items', label: 'Items & tags', show: can('events.bunfest.manage') || shop },
-        { to: '/staff/items/labels', label: 'Print labels', show: can('events.bunfest.manage') || shop },
-        { to: '/staff/dropoffs', label: 'Drop-offs', show: can('events.bunfest.manage') || shop },
-        { to: '/staff/donations/report', label: 'Donations report', show: can('events.bunfest.manage') || shop },
-        { to: '/staff/bunfest', label: 'BunFest', show: can('events.bunfest.manage') },
-        { to: '/staff/events', label: 'Events', show: can('events.bunfest.manage') },
-        { to: '/staff/sponsors', label: 'Sponsors', show: can('events.bunfest.manage') },
-        { to: '/staff/sponsors/renewals', label: 'Sponsor renewals', show: can('events.bunfest.manage') },
-        { to: '/staff/raffle-tickets', label: 'Raffle tickets', show: can('events.bunfest.manage') },
-        { to: '/staff/auction', label: 'Silent auction', show: can('events.bunfest.manage') },
-        { to: '/staff/auction/desk', label: 'Auction desk', show: can('events.bunfest.manage') },
-      ],
-    },
-    {
-      title: 'Settings',
-      items: [
-        { to: '/staff/account', label: 'My account', show: true },
-        { to: '/staff/team', label: 'Team', show: can('staff.invite') || can('staff.permissions.manage') },
-        { to: '/staff/details', label: 'OHRR details', show: can('settings.manage') },
-        // Founders and Developers only (update 38)
-        { to: '/staff/features', label: 'Features', show: featureSwitches },
-        { to: '/staff/activity', label: 'Activity', show: can('audit.view') },
-      ],
-    },
-  ]
-    .map((g) => ({ ...g, items: g.items.filter((i) => i.show) }))
-    .filter((g) => g.items.length > 0)
+function StaffMenu() {
+  const { here, atDashboard, today, groups } = useHere()
+  const line = (key: string, to: string, label: string, icon: IconName, active: boolean) => (
+    <li key={key}>
+      <Link to={to} aria-current={active ? 'page' : undefined} className={navClass(active)}>
+        <Icon name={icon} size={20} className="shrink-0" />
+        {label}
+      </Link>
+    </li>
+  )
+  return (
+    <nav aria-label="Staff tools">
+      <ul className="space-y-0.5">
+        {line('dashboard', '/staff', 'Dashboard', 'home', atDashboard)}
+        {today.map((t) => line(t.to, t.to, t.title, t.icon, here.tile?.to === t.to))}
+      </ul>
+      <ul className="mt-2 space-y-0.5 border-t border-slate-200 pt-2">
+        {groups.map((g) => line(g.key, groupLink(g), g.title, g.icon, here.group?.key === g.key && !here.tile?.today))}
+      </ul>
+    </nav>
+  )
 }
 
-function StaffMenu({ can }: { can: Can }) {
-  const myHours = useMyVolunteerHours()
-  const { membership } = useStaff()
+const sep = (
+  <span aria-hidden="true" className="shrink-0 px-1 text-slate-400">
+    ›
+  </span>
+)
+
+/**
+ * The path bar: [home] Staff › Group. OHRR, 2026-10-01: the home button should
+ * take you home, not open a list — the grouped dashboard is the menu. "Staff"
+ * goes to the dashboard; on a page inside a group the group goes to its page
+ * list, and on the group's own page it is plain text. The page's own title is
+ * left out (its heading is just below), so nothing gets cut off on a phone.
+ * No bar on the dashboard. Same as the app's "Where you are".
+ */
+function StaffPath({ className = '' }: { className?: string }) {
+  const { here, atDashboard } = useHere()
+  if (atDashboard) return null
+  const { tile, group } = here
+  const link = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-brand-blue underline-offset-2 hover:underline'
   return (
-    <nav aria-label="Staff tools" className="space-y-5">
-      {staffGroups(can, myHours, canSwitchFeatures(membership)).map((g) => (
-        <div key={g.title}>
-          <p className="px-3 text-sm font-extrabold uppercase tracking-wider text-slate-600">{g.title}</p>
-          <ul className="mt-1 space-y-0.5">
-            {g.items.map((i) => (
-              <li key={i.to}>
-                {i.onClick ? (
-                  <>
-                    <button type="button" onClick={i.onClick} disabled={i.busy} className={`${navClass({ isActive: false })} w-full text-left disabled:opacity-60`}>
-                      {i.label}
-                    </button>
-                    {i.error && <p className="px-3 pb-1 text-sm font-semibold text-red-600">{i.error}</p>}
-                  </>
-                ) : (
-                  <NavLink to={i.to} end={i.end} className={navClass}>
-                    {i.label}
-                  </NavLink>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+    <nav aria-label="Where you are" className={`no-print ${className}`}>
+      <ol className="flex flex-nowrap items-center whitespace-nowrap font-display text-base font-extrabold">
+        <li className="shrink-0">
+          <Link to="/staff" className={link}>
+            <Icon name="home" size={20} className="shrink-0" />
+            Staff
+          </Link>
+        </li>
+        {group && (
+          <li className="flex shrink-0 items-center">
+            {sep}
+            {tile ? (
+              <Link to={`/staff/g/${group.key}`} className={link}>
+                {group.title}
+              </Link>
+            ) : (
+              <span aria-current="page" className="inline-flex min-h-11 items-center px-1 text-ink">
+                {group.title}
+              </span>
+            )}
+          </li>
+        )}
+      </ol>
     </nav>
+  )
+}
+
+const pill = 'inline-flex min-h-11 items-center rounded-full border-2 border-slate-300 px-4 text-base font-bold text-slate-700 hover:bg-slate-50'
+
+/** The way back to the website, your account and signing out: in the laptop's header, and at the foot of the dashboard on a phone. */
+export function AccountLinks({ account = true }: { account?: boolean }) {
+  const { signOut } = useStaff()
+  return (
+    <>
+      <BackToSite />
+      {account && (
+        <Link to="/staff/account" className={pill}>
+          My account
+        </Link>
+      )}
+      <button type="button" onClick={signOut} className={pill}>
+        Sign out
+      </button>
+    </>
   )
 }
 
@@ -323,10 +262,9 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
 }
 
 export default function StaffShell() {
-  const { configured, loading, user, membership, accessEndedOn, onHold, can, signOut, refresh } = useStaff()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const { pathname } = useLocation()
-  useEffect(() => setMenuOpen(false), [pathname])
+  const { configured, loading, user, membership, accessEndedOn, onHold, signOut, refresh } = useStaff()
+  // Hooks before any early return. The phone's top bar is the path, and the dashboard needs none.
+  const atDashboard = isDashboardPath(useLocation().pathname)
 
   if (!configured)
     return <div className="mx-auto max-w-md px-5 py-16 text-center text-slate-600">Backend not configured.</div>
@@ -369,55 +307,21 @@ export default function StaffShell() {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:z-40">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
-          <Link to="/staff" className="flex items-center gap-2.5">
+      <header className={`border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:z-40 ${atDashboard ? 'hidden lg:block' : ''}`}>
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-1.5 sm:px-5 lg:py-2.5">
+          <Link to="/staff" className="hidden shrink-0 items-center gap-2.5 lg:flex">
             <img src="/img/ohrr-mark.png" alt="" className="h-10 w-10 object-contain" />
             <span className="leading-tight">
               <span className="block font-display text-lg font-extrabold text-ink">OHRR Staff</span>
               <span className="block text-sm font-semibold text-slate-600">{role}</span>
             </span>
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="hidden lg:inline-flex">
-              <BackToSite />
-            </span>
-            <Link
-              to="/staff/account"
-              className="inline-flex min-h-11 items-center rounded-full border-2 border-slate-300 px-4 text-base font-bold text-slate-700 hover:bg-slate-50"
-            >
-              My account
-            </Link>
-            <button
-              onClick={signOut}
-              className="inline-flex min-h-11 items-center rounded-full border-2 border-slate-300 px-4 text-base font-bold text-slate-700 hover:bg-slate-50"
-            >
-              Sign out
-            </button>
+          {/* Phone and tablet: the path bar is the whole top row; the dashboard is the menu */}
+          <StaffPath className="flex-1 lg:hidden" />
+          {/* Laptop: the way back, your account and signing out stay in view */}
+          <div className="hidden flex-wrap items-center gap-2 lg:flex">
+            <AccountLinks />
           </div>
-        </div>
-        {/* Phone and tablet: the staff menu opens from one labelled button */}
-        <div className="border-t border-slate-100 px-4 py-2 lg:hidden">
-          <div className="flex flex-wrap items-center gap-2">
-            <BackToSite />
-          <button
-            type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-expanded={menuOpen}
-            aria-controls="staff-menu"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border-2 border-slate-300 px-3 text-base font-bold text-ink"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
-              {menuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-            </svg>
-            {menuOpen ? 'Close menu' : 'Staff menu'}
-          </button>
-          </div>
-          {menuOpen && (
-            <div id="staff-menu" className="max-h-[70vh] overflow-y-auto py-3">
-              <StaffMenu can={can} />
-            </div>
-          )}
         </div>
       </header>
 
@@ -425,10 +329,12 @@ export default function StaffShell() {
         {/* Laptop: the grouped menu stays in view down the left */}
         <aside className="hidden w-60 shrink-0 lg:block">
           <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto py-6">
-            <StaffMenu can={can} />
+            <StaffMenu />
           </div>
         </aside>
-        <main className="min-w-0 flex-1 py-8">
+        <main className="min-w-0 flex-1 pb-8 pt-4 lg:pt-6">
+          {/* Laptop: the same path above the page (the dashboard has none) */}
+          <StaffPath className="mb-2 hidden lg:block" />
           <Outlet />
         </main>
       </div>

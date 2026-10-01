@@ -49,6 +49,8 @@ export type IconName =
   | 'box'
   | 'eye'
   | 'eyeOff'
+  // Staff → Me (one person), from the app's set
+  | 'user'
   // Website only: the footer's social links as icons (the app does not need them yet)
   | 'facebook'
   | 'instagram'
@@ -304,6 +306,12 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M3 3l18 18" />
     </>
   ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1" />
+    </>
+  ),
 }
 
 // Two-tone (OHRR, 2026-09-28): on the big tiles each icon gets ONE small part
@@ -339,6 +347,7 @@ const accents: Partial<Record<IconName, ReactNode>> = {
   box: <path d="M3.5 8 12 4l8.5 4L12 12z" />,
   printer: <path d="M7 14h10v6H7z" />,
   eye: <circle cx="12" cy="12" r="3" />,
+  user: <circle cx="12" cy="8" r="4" />,
 }
 
 export function Icon({

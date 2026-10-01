@@ -6,7 +6,7 @@
 // with "Approve social posts" approves it or sends it back with a note. Under
 // the drafts, the Easter campaign card plans each spring's Easter posts.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { useRabbits, useEvents } from '../../lib/data'
@@ -50,7 +50,9 @@ export default function Posts() {
   const canDraft = can('announcements.post')
   const canPublish = can('social.publish')
   const canApprove = can(APPROVE_CAP)
-  const [view, setView] = useState<View>('queue')
+  // /staff/posts?view=kit (Staff → Getting the word out → Share kit) opens on the Share kit.
+  const [params, setParams] = useSearchParams()
+  const [view, setView] = useState<View>(() => (canDraft && params.get('view') === 'kit' ? 'kit' : 'queue'))
   const [posts, setPosts] = useState<SocialPost[] | null>(null)
   const [names, setNames] = useState<Map<string, string>>(() => new Map())
   const [error, setError] = useState<string | null>(null)
@@ -96,6 +98,8 @@ export default function Posts() {
             onClick={() => {
               void load()
               setView('queue')
+              // The menu says "Post queue" again, not "Share kit".
+              if (params.get('view')) setParams({}, { replace: true })
             }}
             className={view === 'queue' ? btn.blue : btn.outline}
           >

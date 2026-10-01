@@ -1,225 +1,118 @@
+// The staff dashboard, short (OHRR, 2026-10-01: "too many in the list and you
+// have to scroll a long way … bin these into groups and simplify"): a Today
+// row (Inbox, Bookings) and eight groups; each group opens a short list
+// (/staff/g/:group, Group.tsx). The dashboard is the menu: the path bar's
+// home goes straight here. The pages and who may open them live in
+// lib/staffTiles.ts — the same list the laptop's sidebar reads. Same as the app.
 import { Link } from 'react-router-dom'
-import { useStaff, levelLabel, canSwitchFeatures } from '../../lib/staff'
-import { useMyVolunteerHours } from '../../components/StaffShell'
+import { useStaff, levelLabel } from '../../lib/staff'
+import { useStaffTiles, groupLink } from '../../lib/staffTiles'
+import { Icon } from '../../components/icons'
+import { WaitingBadge } from '../../components/WaitingBadge'
+import { AccountLinks } from '../../components/StaffShell'
 import { ExpiringSponsorsNotice } from './ManageSponsors'
 import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
 import { EasterCampaignNotice, PostsToApproveNotice } from './Posts'
 import { CERTIFICATES_CAP } from '../../lib/volunteers/api'
 
 export default function StaffDashboard() {
+  // Hooks before any early return (a hook below one blanked the app's dashboard once).
   const { user, membership, level, can } = useStaff()
-  const isAdmin = membership?.role === 'owner' || membership?.role === 'admin'
-  const myHours = useMyVolunteerHours()
-
-  const tiles = [
-    can('inbox.manage') && {
-      to: '/staff/inbox',
-      h: 'Inbox',
-      p: 'Appointments, sign-ups, surrender intakes, Happy Tails and messages from the website and the app.',
-    },
-    can('bookings.manage') && {
-      to: '/staff/bookings',
-      h: 'Bookings',
-      p: 'Volunteer shifts and appointments: who’s coming, make times, set up what can be booked.',
-    },
-    (can('announcements.post') || can('social.publish') || can('social.approve')) && {
-      to: '/staff/posts',
-      h: 'Posts & Share kit',
-      p: 'Ready-made social posts from rabbits, events and education messages; a queue one person releases.',
-    },
-    can('announcements.post') && {
-      to: '/staff/impact',
-      h: 'Impact numbers',
-      p: 'The year in numbers for donors and sponsors — published at /impact.',
-    },
-    can('announcements.post') && {
-      to: '/staff/flyers',
-      h: 'Flyers',
-      p: 'Printable posters with a QR code for the Hop Shop, vets, pet stores, libraries and campus boards.',
-    },
-    can('announcements.post') && {
-      to: '/staff/outreach',
-      h: 'Outreach letters',
-      p: 'Ready-to-send emails to campus offices, vet clinics, pet stores, schools, apartments and local media.',
-    },
-    can('announcements.post') && {
-      to: '/staff/announcements',
-      h: 'Announcements',
-      p: 'Post notices that show on the website home and the app.',
-    },
-    can('announcements.post') && {
-      to: '/staff/homepage',
-      h: 'Homepage features',
-      p: "Hero slides and featured cards on the home page. Also drives the app's home screen.",
-    },
-    (can('adoptions.listings.create') ||
-      can('adoptions.listings.edit') ||
-      can('adoptions.status.change')) && {
-      to: '/staff/rabbits',
-      h: 'Adoptable rabbits',
-      p: 'Add rabbits with photos and set their adoption status.',
-    },
-    (can('volunteers.shifts.manage') || can('bookings.manage')) && {
-      to: '/staff/calls',
-      h: 'Volunteer calls',
-      p: 'Put out a need, share it everywhere, check people in on the day, thank them — and write their hours letters.',
-    },
-    can('volunteers.shifts.manage') && {
-      to: '/staff/volunteer',
-      h: 'Volunteer opportunities',
-      p: 'Post socialization shifts, transport runs, and event help.',
-    },
-    can('content.education.edit') && {
-      to: '/staff/care',
-      h: 'Care guides & pages',
-      p: 'Rabbit Care articles in Learn, plus the Give / Adopt / About pages.',
-    },
-    can('content.education.edit') && {
-      to: '/staff/bunny-help',
-      h: 'Bunny Help topics',
-      p: 'What the “My bunny is…” search answers with — on the website and in the app.',
-    },
-    can('events.bunfest.manage') && {
-      to: '/staff/events',
-      h: 'Events',
-      p: 'Midwest BunFest and OHRR hoppenings — shown on the Events page here and in the app.',
-    },
-    can('events.bunfest.manage') && {
-      to: '/staff/sponsors',
-      h: 'Sponsors & partners',
-      p: 'Partner roster, perks and “Presented by” placements — on the website and in the app.',
-    },
-    (can('volunteers.shifts.manage') || can('bookings.manage')) && {
-      to: '/staff/volunteers',
-      h: 'Volunteers',
-      p: 'Who volunteers and the hours they’ve given — each person’s private hours link and QR, confirm logged hours, export the roster.',
-    },
-    can('events.bunfest.manage') && {
-      to: '/staff/auction',
-      h: 'Silent auction',
-      p: 'The BunFest auction catalogue: items with photos, sessions, won or available, publish — and the auction setup.',
-    },
-    can('content.education.edit') && {
-      to: '/staff/vets',
-      h: 'Vets',
-      p: 'The rabbit-savvy vet list, emergency and low-cost badges, and which practices give the RHDV2 vaccine.',
-    },
-    // The item work sits together. Two ways to add: a donation (simple), or an
-    // item the shop carries (Hop Shop inventory, with its supplier and costs).
-    (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
-      to: '/staff/items?add=1',
-      h: 'Add a donation',
-      p: 'Something given to OHRR: photo, name, how many, value. Sort it later, or tick where it’s headed.',
-    },
-    (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
-      to: '/staff/items',
-      h: 'Scanned items & tags',
-      p: 'Donations waiting to be sorted, Silent Auction lots, raffle prizes and Hop Shop stock. Drop-offs, thank-you letters, the monthly report and labels.',
-    },
-    (can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && {
-      to: '/staff/hopshop',
-      h: 'Hop Shop inventory',
-      p: 'Where you add an item the shop carries (supplier, cost, price, reorder point) and see what’s in stock. The reorder list by supplier and the supplier list are here too.',
-    },
-    can('events.bunfest.manage') && {
-      to: '/staff/bunfest',
-      h: 'BunFest content',
-      p: 'The education schedule, vendor booths and the rescue-partner directory shown in the app.',
-    },
-    (can('content.education.edit') || can('inbox.manage')) && {
-      to: '/staff/tails',
-      h: 'Happy Tails',
-      p: 'Adoption stories: publish one from the Inbox, then edit, reorder or hide it here.',
-    },
-    can('events.bunfest.manage') && {
-      to: '/staff/raffle-tickets',
-      h: 'Raffle tickets',
-      p: 'The raffle table: reservations from the app, mark paid, sell at the table, draw winners.',
-    },
-    (can('staff.invite') || can('staff.permissions.manage')) && {
-      to: '/staff/team',
-      h: 'Team',
-      p: 'Invite staff and choose what each person can do.',
-    },
-    can('settings.manage') && {
-      to: '/staff/details',
-      h: 'OHRR details',
-      p: 'Hours, a holiday notice, the email and address, and who signs volunteer-hours letters.',
-    },
-    // Founders and Developers only (update 38)
-    canSwitchFeatures(membership) && {
-      to: '/staff/features',
-      h: 'Features',
-      p: 'Switch parts of the app, the website and the BunFest site on and off — BunFest, the Silent Auction, raffle tickets, Hop Shop items online, phone notifications, volunteer hours.',
-    },
-    can('audit.view') && {
-      to: '/staff/activity',
-      h: 'Activity',
-      p: 'A record of staff and permission changes — who did what, and when.',
-    },
-  ].filter(Boolean) as { to: string; h: string; p: string }[]
+  const { today, groups, nothingYet, isAdminish } = useStaffTiles({ counts: true })
 
   return (
     <div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <h1 className="font-display text-2xl font-black text-ink">Staff dashboard</h1>
         <span className="rounded-full bg-brand-blue-50 px-2.5 py-0.5 text-xs font-bold text-brand-blue">
           {level ? levelLabel(level) : membership ? membership.role[0].toUpperCase() + membership.role.slice(1) : ''}
         </span>
       </div>
-      <p className="mt-1 text-sm text-slate-600">
-        Signed in as <strong>{user?.email}</strong>
+      <p className="mt-0.5 truncate text-sm text-slate-600">
+        Signed in as{' '}
+        <Link to="/staff/account" className="font-bold text-brand-blue underline-offset-2 hover:underline">
+          {user?.email}
+        </Link>
       </p>
 
       {can('events.bunfest.manage') && membership?.orgId && (
-        <ExpiringSponsorsNotice orgId={membership.orgId} className="mt-5" />
+        <ExpiringSponsorsNotice orgId={membership.orgId} className="mt-4" />
       )}
       {(can('volunteers.shifts.manage') || can('bookings.manage')) && membership?.orgId && (
-        <PendingApplicationsNotice orgId={membership.orgId} className="mt-5" />
+        <PendingApplicationsNotice orgId={membership.orgId} className="mt-4" />
       )}
-      {can(CERTIFICATES_CAP) && membership?.orgId && <CertificatesNotice orgId={membership.orgId} className="mt-5" />}
-      {can('social.approve') && <PostsToApproveNotice className="mt-5" />}
-      {can('announcements.post') && <EasterCampaignNotice className="mt-5" />}
+      {can(CERTIFICATES_CAP) && membership?.orgId && <CertificatesNotice orgId={membership.orgId} className="mt-4" />}
+      {can('social.approve') && <PostsToApproveNotice className="mt-4" />}
+      {can('announcements.post') && <EasterCampaignNotice className="mt-4" />}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {tiles.map((t) => (
-          <Link
-            key={t.to}
-            to={t.to}
-            className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <h2 className="font-display text-lg font-extrabold text-brand-blue">{t.h}</h2>
-            <p className="mt-1.5 text-sm text-slate-600">{t.p}</p>
-          </Link>
-        ))}
-        {/* Update 28: staff volunteer too — their own page, made for them the first time. */}
-        {myHours.available && (
-          <button
-            type="button"
-            onClick={() => void myHours.open()}
-            disabled={myHours.busy}
-            className="rounded-2xl border border-black/5 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-70"
-          >
-            <span className="block font-display text-lg font-extrabold text-brand-blue">{myHours.busy ? 'Opening…' : 'My volunteer hours'}</span>
-            <span className="mt-1.5 block text-sm text-slate-600">
-              Log the hours you give OHRR — vet runs, fostering, events, anything that isn’t a shift — and see your totals and your signed
-              letter.
-            </span>
-            {myHours.error && <span className="mt-1.5 block text-sm font-semibold text-red-600">{myHours.error}</span>}
-          </button>
-        )}
-        {tiles.length === 0 && (
-          <p className="text-sm text-slate-600">
-            No tools have been turned on for your account yet. Whoever brought you on can switch some on.
-          </p>
-        )}
-      </div>
+      {today.length > 0 && (
+        <section aria-labelledby="today-h" className="mt-4">
+          <h2 id="today-h" className="mb-1.5 text-sm font-bold leading-tight text-slate-600">
+            Today
+          </h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {today.map((t) => (
+              <Link
+                key={t.to}
+                to={t.to}
+                className="flex min-h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:border-brand-blue"
+              >
+                <Icon name={t.icon} size={22} accent="var(--color-brand-orange)" className="shrink-0 text-brand-blue-dark" />
+                <span className="min-w-0 flex-1 truncate font-display text-base font-extrabold text-ink">{t.title}</span>
+                <WaitingBadge n={t.badge ?? 0} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section aria-labelledby="groups-h" className="mt-4">
+        <h2 id="groups-h" className="mb-1.5 text-sm font-bold leading-tight text-slate-600">
+          {today.length > 0 ? 'Everything else' : 'Your tools'}
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {groups.map((g) => {
+            const orange = g.key === 'volunteers'
+            return (
+              <Link
+                key={g.key}
+                to={groupLink(g)}
+                className="relative flex min-h-11 flex-col rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition hover:border-brand-blue"
+              >
+                {/* The icon sits in the title's first line, so the eight fit on a phone's first screen. */}
+                <span className="font-display text-base font-extrabold leading-tight text-ink">
+                  <Icon
+                    name={g.icon}
+                    size={22}
+                    accent={orange ? undefined : 'var(--color-brand-orange)'}
+                    className={`mr-1.5 inline-block align-[-5px] ${orange ? 'text-brand-orange-ink' : 'text-brand-blue-dark'}`}
+                  />
+                  {g.title}
+                </span>
+                <span className="mt-1 text-xs leading-tight text-slate-600">{g.hint}</span>
+                {/* On the corner, clear of the words */}
+                <WaitingBadge n={g.badge} className="absolute -right-1.5 -top-1.5 shadow-sm" />
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      {nothingYet && (
+        <p className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          No tools have been turned on for your account yet. Whoever brought you on can switch some on.
+        </p>
+      )}
 
       <p className="mt-8 rounded-2xl bg-brand-blue-50 px-4 py-3 text-sm text-slate-600">
-        Anything you change here updates <strong>both this website and the OHRR app</strong> — they
-        share the same live data.
-        {isAdmin ? (level ? ' You hold every task, so you have every tool above.' : ' As an owner/admin you have every tool above.') : ''}
+        Anything you change here updates <strong>both this website and the OHRR app</strong> — they share the same live data.
+        {isAdminish ? (level ? ' You hold every task, so you have every tool.' : ' As an owner/admin you have every tool.') : ''}
       </p>
+
+      {/* Phone and tablet: the way back to the website, your account and signing out (a laptop has them up top) */}
+      <div className="no-print mt-4 flex flex-wrap items-center gap-2 lg:hidden">
+        <AccountLinks />
+      </div>
     </div>
   )
 }
