@@ -9,14 +9,18 @@
 // short list. Adding a page later = one line in the list below.
 //
 // Each `show` is the same permission check the old dashboard and menu used.
-// The website has no Counter or Scan page (those are the app's), so its Today
-// row is the Inbox and Bookings.
+// The website has no Counter (that's the app's till), so its Today row is the
+// Inbox, Bookings and Scan an item (added 2026-10-01 for laptop users: a USB
+// scanner, the webcam or a photo of the label), always in that order.
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, errMessage } from './supabase'
 import { useStaff, canSwitchFeatures } from './staff'
 import { myStaffVolunteerPage } from './volunteers/api'
 import type { IconName } from '../components/icons'
+
+/** The Today row, always in this order (the app's order, without the Counter). */
+const TODAY_ORDER = ['/staff/inbox', '/staff/bookings', '/staff/scan']
 
 export type GroupKey = 'items' | 'rabbits' | 'volunteers' | 'events' | 'word' | 'giving' | 'admin' | 'me'
 
@@ -95,7 +99,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
   const canPost = can('announcements.post')
 
   const all: (StaffTile & { show: boolean })[] = [
-    // Today (Bookings is also in Volunteers)
+    // Today (Bookings is also in Volunteers, Scan an item in Items and Hop Shop)
     { to: '/staff/inbox', title: 'Inbox', hint: newCount > 0 ? `${newCount} new waiting` : 'Appointments, sign-ups, messages', icon: 'mail', today: true, badge: newCount, show: can('inbox.manage') },
 
     // Items and Hop Shop
@@ -105,6 +109,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
     { to: '/staff/dropoffs', title: 'Drop-offs and thank-yous', hint: 'Who gave what, the letter', icon: 'mail', group: 'items', show: canItems },
     { to: '/staff/donations/report', title: 'Monthly donations report', hint: 'Totals, by donor, a spreadsheet', icon: 'book', group: 'items', show: canItems },
     { to: '/staff/items/labels', title: 'Print labels', hint: 'Codes for items, any label size', icon: 'printer', group: 'items', show: canItems },
+    { to: '/staff/scan', title: 'Scan an item', hint: 'See, change or sort a labelled item', icon: 'scan', group: 'items', today: true, show: canItems },
 
     // Rabbits and care
     { to: '/staff/rabbits', title: 'Adoptable rabbits', hint: 'Rabbits, photos, adoption status', icon: 'heart', group: 'rabbits', show: canAdopt },
@@ -171,7 +176,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
   }).filter((g) => g.tiles.length > 0)
   return {
     tiles,
-    today: tiles.filter((t) => t.today),
+    today: tiles.filter((t) => t.today).sort((a, b) => TODAY_ORDER.indexOf(a.to) - TODAY_ORDER.indexOf(b.to)),
     groups,
     nothingYet: groups.every((g) => g.key === 'me'),
     isAdminish,

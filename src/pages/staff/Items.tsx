@@ -16,6 +16,10 @@
 // a lot, makes baskets, and marks things used for the rabbits or passed on.
 // Shop stock bought from a supplier is added in Hop Shop inventory only.
 // /staff/items?add=1 brings the Add a donation form into view and focuses it.
+// From Scan an item (2026-10-01): /staff/items?add=1&code=XXXXX fills that
+// label's code into Add a donation (the new donation gets it), and
+// /staff/items?code=XXXXX opens that item's edit panel. Photos can be dropped
+// onto Add a donation and the photo editor, as well as chosen.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
@@ -68,6 +72,8 @@ import {
   type TaggedItem,
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
+import { normalizeCode } from '../../lib/codes'
+import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 
 /** Recent places and categories (update 39; empty lists before it). */
 type Suggestions = { locations: string[]; categories: string[] }
@@ -142,9 +148,16 @@ export default function Items() {
   const [basketMode, setBasketMode] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   // ?add=1 (the dashboard's "Add a donation"): bring the form into view, focused.
+  // ?add=1&code=X (Scan an item, a new label): the same, with that code filled in.
+  // ?code=X (Scan an item, "Open it"): open that item's edit panel.
   const [params, setParams] = useSearchParams()
   const wantsAdd = params.get('add') === '1'
+  const codeParam = params.get('code')
   const [focusAdd, setFocusAdd] = useState(0)
+  const [addCode, setAddCode] = useState<string | null>(null)
+  const [openCode, setOpenCode] = useState<string | null>(null)
+  // The item opened from a scan: outlined, scrolled to and focused.
+  const [spot, setSpot] = useState<string | null>(null)
 
   const load = async () => {
     try {
@@ -167,17 +180,54 @@ export default function Items() {
   }, [orgId])
   // Read once, then drop it, so a reload doesn't jump to the form again.
   useEffect(() => {
-    if (!wantsAdd) return
-    setFocusAdd((n) => n + 1)
+    if (!wantsAdd && !codeParam) return
+    const code = codeParam ? normalizeCode(codeParam) : ''
+    if (wantsAdd) {
+      setAddCode(code || null)
+      setFocusAdd((n) => n + 1)
+    } else if (code) {
+      setOpenCode(code)
+    }
     setParams(
       (p) => {
         const next = new URLSearchParams(p)
         next.delete('add')
+        next.delete('code')
         return next
       },
       { replace: true },
     )
-  }, [wantsAdd, setParams])
+  }, [wantsAdd, codeParam, setParams])
+
+  // ?code=X: once the list is in, open that item (or say nothing has the code).
+  useEffect(() => {
+    if (!openCode || !items) return
+    setOpenCode(null)
+    const it = items.find((i) => normalizeCode(i.code) === openCode)
+    if (!it) {
+      setNote(
+        <>
+          Nothing here has the code <span className="font-mono font-bold tracking-widest">{openCode}</span>.{' '}
+          <Link to={`/staff/scan?code=${encodeURIComponent(openCode)}`} className={linkClass}>
+            Look it up in Scan an item
+          </Link>
+        </>,
+      )
+      return
+    }
+    setFilter('all')
+    setQ('')
+    setBasketMode(false)
+    if (mayEdit(it)) setPanel({ id: it.tag_id, kind: 'edit' })
+    setSpot(it.tag_id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCode, items])
+  useEffect(() => {
+    if (!spot) return
+    const el = document.getElementById(`item-${spot}`)
+    el?.scrollIntoView({ block: 'start', behavior: 'instant' })
+    el?.focus({ preventScroll: true })
+  }, [spot])
 
   // A place or sort of thing just typed goes to the front of its chips.
   const used = (it: TaggedItem) =>
@@ -325,6 +375,8 @@ export default function Items() {
           suggestions={suggestions}
           stockLink={canAddStock}
           focusRequest={focusAdd}
+          presetCode={addCode}
+          onCodeDone={() => setAddCode(null)}
           onAdded={(it) => {
             setItems((list) => [it, ...(list ?? [])])
             used(it)
@@ -449,7 +501,12 @@ export default function Items() {
           const busyRow = rowBusy === it.tag_id
           const ticked = picked.has(it.code)
           return (
-            <li key={it.tag_id} className={`rounded-2xl border bg-white p-4 shadow-sm ${basketMode && ticked ? 'border-brand-blue' : 'border-black/5'}`}>
+            <li
+              key={it.tag_id}
+              id={`item-${it.tag_id}`}
+              tabIndex={spot === it.tag_id ? -1 : undefined}
+              className={`rounded-2xl border bg-white p-4 shadow-sm ${spot === it.tag_id ? 'border-brand-blue ring-2 ring-brand-blue/40' : basketMode && ticked ? 'border-brand-blue' : 'border-black/5'}`}
+            >
               <div className="flex flex-wrap items-start gap-4">
                 {basketMode && waiting && (
                   <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center self-center">
@@ -833,6 +890,20 @@ interface LocalPhoto {
   url: string
 }
 
+/**
+ * What to say after photos are chosen or dropped: `photos` were pictures,
+ * `added` of them fitted, `given` files came in all. Nothing when all went in.
+ */
+function photoNoteFor(photos: number, added: number, given: number): string | null {
+  if (given > 0 && photos === 0) return 'That isn’t a photo. Only pictures can be added.'
+  if (added < photos) {
+    const left = photos - added
+    return `An item can have ${MAX_ITEM_PHOTOS} photos, so ${left === 1 ? 'one was' : `${left} were`} left out.`
+  }
+  if (given > photos) return 'The photos are in. The other files weren’t pictures, so they were left out.'
+  return null
+}
+
 /* ------------------------------------------------- donation details */
 
 /** The extra details as typed (update 39). Money is in dollars. */
@@ -996,6 +1067,8 @@ function AddDonation({
   suggestions,
   stockLink,
   focusRequest,
+  presetCode,
+  onCodeDone,
   onAdded,
 }: {
   orgId: string
@@ -1004,6 +1077,10 @@ function AddDonation({
   stockLink: boolean
   /** Changes when the form should come into view and take the focus (?add=1). */
   focusRequest: number
+  /** A scanned label's code (?add=1&code=X): the next donation gets it, not a new one. */
+  presetCode: string | null
+  /** The preset code is used, or not wanted: back to a new code each time. */
+  onCodeDone: () => void
   onAdded: (it: TaggedItem) => void
 }) {
   // Who it's from
@@ -1028,6 +1105,7 @@ function AddDonation({
   const [details, setDetails] = useState<Details>(emptyDetails())
   const [notes, setNotes] = useState('')
   const [photos, setPhotos] = useState<LocalPhoto[]>([])
+  const [photoNote, setPhotoNote] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [last, setLast] = useState<TaggedItem | null>(null)
@@ -1124,23 +1202,24 @@ function AddDonation({
     setDropError(null)
   }
 
-  const addPhotos = (files: FileList | null) => {
-    if (!files) return
+  /** Chosen or dropped photos, after the ones already there, up to four. `given` counts every file dropped, photos or not. */
+  const addPhotos = (list: File[], given = list.length) => {
     const room = Math.max(0, MAX_ITEM_PHOTOS - photos.length)
-    const added = Array.from(files)
-      .slice(0, room)
-      .map((file) => ({ file, url: URL.createObjectURL(file) }))
+    const added = list.slice(0, room).map((file) => ({ file, url: URL.createObjectURL(file) }))
     setPhotos((p) => [...p, ...added])
     if (fileRef.current) fileRef.current.value = ''
+    setPhotoNote(photoNoteFor(list.length, added.length, given))
   }
   const removePhoto = (i: number) => {
     const gone = photos[i]
     if (gone) URL.revokeObjectURL(gone.url)
     setPhotos((list) => list.filter((_, j) => j !== i))
+    setPhotoNote(null)
   }
   const clearPhoto = () => {
     photos.forEach((p) => URL.revokeObjectURL(p.url))
     setPhotos([])
+    setPhotoNote(null)
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -1175,6 +1254,8 @@ function AddDonation({
       }
       let it = await catalogNewItem(orgId, {
         title,
+        // A scanned label's code; otherwise the database makes one.
+        code: presetCode,
         donatedBy: d ? (d.donor_name ?? '') : donor,
         valueCents: toCents(value),
         photoUrl: urls[0] ?? null,
@@ -1191,6 +1272,7 @@ function AddDonation({
       it = { ...it, ...skipped }
       onAdded(it)
       setLast(it)
+      if (presetCode) onCodeDone()
       if (!d) rememberDonor(donor)
       // Who it's from, where it's headed and where it's kept stay: the next
       // thing is often from the same box, and a box usually goes to one place.
@@ -1227,9 +1309,22 @@ function AddDonation({
       {stockLink && (
         <p className="text-sm text-slate-600">
           Something the shop carries, bought from a supplier?{' '}
-          <Link to="/staff/hopshop?add=1" className={`inline-flex min-h-11 items-center ${linkClass}`}>
+          <Link
+            to={presetCode ? `/staff/hopshop?add=1&code=${encodeURIComponent(presetCode)}` : '/staff/hopshop?add=1'}
+            className={`inline-flex min-h-11 items-center ${linkClass}`}
+          >
             Add it in Hop Shop inventory
           </Link>
+        </p>
+      )}
+      {presetCode && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 rounded-xl bg-brand-blue-50 px-3 py-1.5 text-base text-slate-800" role="status">
+          <span>
+            Its code is <span className="font-mono font-bold tracking-widest">{presetCode}</span>, from the label you scanned.
+          </span>
+          <button type="button" onClick={onCodeDone} className="min-h-11 px-1 font-bold text-brand-blue">
+            Make a new code instead
+          </button>
         </p>
       )}
 
@@ -1322,36 +1417,53 @@ function AddDonation({
         <HeadedChips value={headed} onPick={setHeaded} />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label className={`${btn.outline} cursor-pointer ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
-          <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
-          <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" disabled={photos.length >= MAX_ITEM_PHOTOS} onChange={(e) => addPhotos(e.target.files)} />
-        </label>
-        {photos.length > 1 && (
-          <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
-            Remove all
-          </button>
-        )}
-        <span className="text-sm text-slate-600">
-          Optional, up to {MAX_ITEM_PHOTOS}. {COVER_NOTE}
-        </span>
-      </div>
-      {photos.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-3" aria-label="Photos to add, in order">
-          {photos.map((p, i) => (
-            <PhotoTile
-              key={p.url}
-              src={p.url}
-              index={i}
-              count={photos.length}
-              disabled={!!busy}
-              onMove={(dir) => setPhotos((list) => moved(list, i, dir))}
-              onCover={() => setPhotos((list) => asCover(list, i))}
-              onRemove={() => removePhoto(i)}
+      {/* Photos: chosen, or dropped here from a folder on the computer */}
+      <PhotoDrop onFiles={addPhotos} disabled={!!busy} className="mt-3 p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className={`${btn.outline} cursor-pointer bg-white ${fileFocus} ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
+            <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="sr-only"
+              disabled={photos.length >= MAX_ITEM_PHOTOS}
+              onChange={(e) => addPhotos(Array.from(e.target.files ?? []))}
             />
-          ))}
-        </ul>
-      )}
+          </label>
+          {photos.length > 1 && (
+            <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
+              Remove all
+            </button>
+          )}
+          <span className="text-sm text-slate-600">
+            {photos.length >= MAX_ITEM_PHOTOS ? `That’s ${MAX_ITEM_PHOTOS}, the most an item can have.` : 'Drop photos here, or use Add photos.'} Optional, up to{' '}
+            {MAX_ITEM_PHOTOS}. {COVER_NOTE}
+          </span>
+        </div>
+        {photoNote && (
+          <p className="mt-2 text-base font-semibold text-amber-900" role="status">
+            {photoNote}
+          </p>
+        )}
+        {photos.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-3" aria-label="Photos to add, in order">
+            {photos.map((p, i) => (
+              <PhotoTile
+                key={p.url}
+                src={p.url}
+                index={i}
+                count={photos.length}
+                disabled={!!busy}
+                onMove={(dir) => setPhotos((list) => moved(list, i, dir))}
+                onCover={() => setPhotos((list) => asCover(list, i))}
+                onRemove={() => removePhoto(i)}
+              />
+            ))}
+          </ul>
+        )}
+      </PhotoDrop>
 
       <div className="mt-3 border-t border-slate-100 pt-2">
         <div className="flex flex-wrap items-center gap-x-2">
@@ -1762,6 +1874,7 @@ function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedIte
   const photos = itemPhotos(item)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const full = photos.length >= MAX_ITEM_PHOTOS
 
@@ -1777,11 +1890,13 @@ function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedIte
     }
   }
 
-  const add = async (files: FileList | null) => {
-    if (!files || !files.length) return
+  /** Chosen or dropped photos, after the ones already there, up to four. `given` counts every file dropped. */
+  const add = async (list: File[], given = list.length) => {
+    if (busy) return
     const room = Math.max(0, MAX_ITEM_PHOTOS - photos.length)
-    const picked = Array.from(files).slice(0, room)
+    const picked = list.slice(0, room)
     if (fileRef.current) fileRef.current.value = ''
+    setNote(photoNoteFor(list.length, picked.length, given))
     if (!picked.length) return
     setBusy(picked.length === 1 ? 'Uploading the photo…' : `Uploading ${picked.length} photos…`)
     setError(null)
@@ -1796,11 +1911,14 @@ function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedIte
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <PhotoDrop onFiles={(list, given) => void add(list, given)} disabled={!!busy} className="bg-slate-50 p-3">
       <p className="text-sm font-semibold text-slate-700">
         Photos <span className="font-normal text-slate-600">(up to {MAX_ITEM_PHOTOS})</span>
       </p>
-      <p className="text-sm text-slate-600">{COVER_NOTE}</p>
+      <p className="text-sm text-slate-600">
+        {full ? '' : 'Drop photos here, or use Add photos. '}
+        {COVER_NOTE}
+      </p>
       {photos.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-3" aria-label="Photos, in order">
           {photos.map((u, i) => (
@@ -1819,9 +1937,9 @@ function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedIte
       )}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {!full && (
-          <label className={`${btn.outline} cursor-pointer ${busy ? 'pointer-events-none opacity-50' : ''}`}>
+          <label className={`${btn.outline} cursor-pointer bg-white ${fileFocus} ${busy ? 'pointer-events-none opacity-50' : ''}`}>
             <Icon name="camera" size={16} /> {photos.length ? 'Add a photo' : 'Add photos'}
-            <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void add(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void add(Array.from(e.target.files ?? []))} />
           </label>
         )}
         {busy && (
@@ -1830,7 +1948,12 @@ function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedIte
           </span>
         )}
       </div>
+      {note && (
+        <p className="mt-2 text-base font-semibold text-amber-900" role="status">
+          {note}
+        </p>
+      )}
       {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
-    </div>
+    </PhotoDrop>
   )
 }

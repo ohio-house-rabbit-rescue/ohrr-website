@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { RABBIT_READY } from './lib/constants'
@@ -35,7 +36,7 @@ import Partners from './pages/Partners'
 import PartnerPerks from './pages/PartnerPerks'
 import Privacy from './pages/Privacy'
 // Staff / owner backend (same Supabase as the app)
-import { StaffProvider } from './lib/staff'
+import { StaffProvider, Spinner } from './lib/staff'
 import StaffShell from './components/StaffShell'
 import StaffDashboard from './pages/staff/Dashboard'
 // The dashboard's groups (OHRR, 2026-10-01): /staff/g/items, /staff/g/rabbits, …
@@ -98,6 +99,9 @@ import Supporters from './pages/staff/Supporters'
 // Update 32: the Amazon wish list items, and phone notifications
 import StaffWishList from './pages/staff/WishList'
 import SendNotification from './pages/staff/SendNotification'
+// Scan an item (OHRR, 2026-10-01): its own chunk, so the camera and barcode code
+// isn't in the site's main bundle (ZXing itself loads only when it's used).
+const ScanItem = lazy(() => import('./pages/staff/ScanItem'))
 
 export default function App() {
   return (
@@ -134,6 +138,14 @@ export default function App() {
         <Route path="outreach" element={<Outreach />} />
         <Route path="impact" element={<ManageImpact />} />
         <Route path="items" element={<Items />} />
+        <Route
+          path="scan"
+          element={
+            <Suspense fallback={<Spinner />}>
+              <ScanItem />
+            </Suspense>
+          }
+        />
         <Route path="hopshop" element={<StaffHopShop />} />
         <Route path="hopshop/reorder" element={<StaffHopShop />} />
         <Route path="hopshop/suppliers" element={<StaffHopShop />} />

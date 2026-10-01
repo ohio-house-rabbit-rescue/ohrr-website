@@ -244,6 +244,16 @@ function asItem(data: unknown): TaggedItem | null {
 }
 
 /**
+ * The item with this code, or null when no item has it yet (the app's
+ * findByCode: "Scan an item" looks a label up with the same function).
+ */
+export async function findByCode(orgId: string, code: string): Promise<TaggedItem | null> {
+  const { data, error } = await supabase.rpc('item_by_code', { p_org: orgId, p_code: code })
+  if (error) throw error
+  return asItem(data)
+}
+
+/**
  * Everything with a code, newest first. Only the two arguments every database
  * version knows, so this works before and after update 36 (label_printed_at is
  * simply absent before it).

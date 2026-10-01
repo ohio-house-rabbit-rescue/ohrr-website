@@ -1,6 +1,6 @@
 // The staff dashboard, short (OHRR, 2026-10-01: "too many in the list and you
 // have to scroll a long way … bin these into groups and simplify"): a Today
-// row (Inbox, Bookings) and eight groups; each group opens a short list
+// row (Inbox, Bookings, Scan an item) and eight groups; each group opens a short list
 // (/staff/g/:group, Group.tsx). The dashboard is the menu: the path bar's
 // home goes straight here. The pages and who may open them live in
 // lib/staffTiles.ts — the same list the laptop's sidebar reads. Same as the app.

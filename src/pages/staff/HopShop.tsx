@@ -5,6 +5,10 @@
 // saved. It is the one place an item the shop carries is added (supplier,
 // cost, price, reorder point); donations are added on Items. /staff/hopshop?add=1
 // (the link under Add a donation on Items) opens the new-item form straight away.
+// From Scan an item (2026-10-01): ?add=1&code=X opens it with that label's code
+// or barcode filled in, and ?code=X opens that product's card for editing. A
+// laptop can choose a photo from the computer or drop one on the photo area;
+// "Take a photo" (the phone's camera) shows on phones and tablets.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
@@ -12,6 +16,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { isRetailBarcode, isTagCode, newTagCode, normalizeCode } from '../../lib/codes'
+import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { copyText } from '../../lib/share/share'
 import {
   deleteProduct,
@@ -180,9 +185,16 @@ function Items({
   const [rows, setRows] = useState<StockCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   // ?add=1 (from Items: "Add it in Hop Shop inventory") opens the new-item form straight away, as Add does.
+  // ?add=1&code=X (Scan an item, a new label or barcode): the same, with that code filled in.
+  // ?code=X (Scan an item, "Open it"): that product's card, opened for editing.
   const [params, setParams] = useSearchParams()
   const wantsAdd = params.get('add') === '1'
+  const codeParam = params.get('code')
   const [creating, setCreating] = useState(() => wantsAdd && perms.canCreate)
+  const [newCode, setNewCode] = useState(() => (wantsAdd && codeParam ? normalizeCode(codeParam) : ''))
+  const [openCode, setOpenCode] = useState<string | null>(null)
+  const [spot, setSpot] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const newItemRef = useRef<HTMLHeadingElement>(null)
 
@@ -190,18 +202,25 @@ function Items({
   // the top of the page, at once (the site scrolls smoothly): the dashboard's
   // scroll would otherwise carry over.
   useEffect(() => {
-    if (!wantsAdd) return
-    window.scrollTo({ top: 0, behavior: 'instant' })
-    if (perms.canCreate) setCreating(true)
+    if (!wantsAdd && !codeParam) return
+    const code = codeParam ? normalizeCode(codeParam) : ''
+    if (wantsAdd) {
+      window.scrollTo({ top: 0, behavior: 'instant' })
+      setNewCode(code)
+      if (perms.canCreate) setCreating(true)
+    } else if (code) {
+      setOpenCode(code)
+    }
     setParams(
       (p) => {
         const next = new URLSearchParams(p)
         next.delete('add')
+        next.delete('code')
         return next
       },
       { replace: true },
     )
-  }, [wantsAdd, perms.canCreate, setParams])
+  }, [wantsAdd, codeParam, perms.canCreate, setParams])
 
   // When the form opens, move focus to it (the Add button goes away), and bring
   // it into view if it is off screen.
@@ -224,6 +243,25 @@ function Items({
   useEffect(() => {
     void load()
   }, [load])
+
+  // ?code=X: once the list is in, find that product (its code, or a barcode kept as its SKU).
+  useEffect(() => {
+    if (!openCode || !rows) return
+    setOpenCode(null)
+    const hit = rows.find((p) => [p.code, p.sku].some((c) => c && normalizeCode(c) === openCode))
+    if (!hit) {
+      setNote(`No Hop Shop item has the code ${openCode}.`)
+      return
+    }
+    setQ('')
+    setSpot(hit.id)
+  }, [openCode, rows])
+  useEffect(() => {
+    if (!spot) return
+    const el = document.getElementById(`product-${spot}`)
+    el?.scrollIntoView({ block: 'start', behavior: 'instant' })
+    el?.focus({ preventScroll: true })
+  }, [spot])
 
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
@@ -249,11 +287,26 @@ function Items({
           />
         </div>
         {perms.canCreate && !creating && (
-          <button type="button" onClick={() => setCreating(true)} className={`${btn.orange} shrink-0 `}>
+          <button
+            type="button"
+            onClick={() => {
+              setNewCode('')
+              setCreating(true)
+            }}
+            className={`${btn.orange} shrink-0 `}
+          >
             <Icon name="plus" size={16} /> Add
           </button>
         )}
       </div>
+      {note && (
+        <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800" role="status">
+          {note}{' '}
+          <button type="button" onClick={() => setNote(null)} className="min-h-11 px-1 font-bold text-brand-blue">
+            OK
+          </button>
+        </p>
+      )}
       {low > 0 && (
         <p className="text-xs font-bold text-brand-orange-dark">
           {low} item{low === 1 ? ' is' : 's are'} at or below the reorder point — see the Reorder tab.
@@ -266,16 +319,22 @@ function Items({
             New item
           </h2>
           <ProductForm
+            key={newCode || 'new'}
             orgId={orgId}
             initial={null}
+            presetCode={newCode}
             suppliers={suppliers}
             canCount={perms.canInventory || perms.canCreate}
             onAddSupplier={onAddSupplier}
             onSaved={async () => {
               setCreating(false)
+              setNewCode('')
               await load()
             }}
-            onCancel={() => setCreating(false)}
+            onCancel={() => {
+              setCreating(false)
+              setNewCode('')
+            }}
           />
         </Card>
       )}
@@ -292,7 +351,14 @@ function Items({
       {rows && rows.length > 0 && shown.length === 0 && <p className="text-sm text-slate-500">Nothing matches “{q}”.</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {shown.map((p) => (
-          <ProductCard key={p.id} p={p} orgId={orgId} userId={userId} suppliers={suppliers} perms={perms} onAddSupplier={onAddSupplier} onChanged={load} />
+          <div
+            key={p.id}
+            id={`product-${p.id}`}
+            tabIndex={spot === p.id ? -1 : undefined}
+            className={spot === p.id ? 'rounded-2xl ring-2 ring-brand-blue ring-offset-2' : undefined}
+          >
+            <ProductCard p={p} orgId={orgId} userId={userId} suppliers={suppliers} perms={perms} onAddSupplier={onAddSupplier} onChanged={load} openNow={spot === p.id} />
+          </div>
         ))}
       </div>
     </div>
@@ -307,6 +373,7 @@ function ProductCard({
   perms,
   onAddSupplier,
   onChanged,
+  openNow = false,
 }: {
   p: StockCard
   orgId: string
@@ -315,8 +382,13 @@ function ProductCard({
   perms: Perms
   onAddSupplier: () => void
   onChanged: () => Promise<void>
+  /** Opened from a scan: start in the edit form (for people who may edit). */
+  openNow?: boolean
 }) {
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(() => openNow && perms.canEdit)
+  useEffect(() => {
+    if (openNow && perms.canEdit) setEditing(true)
+  }, [openNow, perms.canEdit])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -539,6 +611,7 @@ const CATEGORY_HINTS = ['Hay', 'Pellets', 'Treats', 'Toys', 'Litter', 'Housing',
 function ProductForm({
   orgId,
   initial,
+  presetCode = '',
   suppliers,
   canCount,
   onAddSupplier,
@@ -547,13 +620,15 @@ function ProductForm({
 }: {
   orgId: string
   initial: StockCard | null
+  /** A new item's code from a scanned label or barcode (Scan an item). */
+  presetCode?: string
   suppliers: Supplier[]
   canCount: boolean
   onAddSupplier: () => void
   onSaved: () => Promise<void>
   onCancel: () => void
 }) {
-  const [d, setD] = useState<Draft>(() => draftFrom(initial))
+  const [d, setD] = useState<Draft>(() => ({ ...draftFrom(initial), ...(presetCode && !initial ? { code: presetCode } : {}) }))
   const [busy, setBusy] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [preview, setPreview] = useState<string | null>(initial?.photo_url ?? null)
@@ -562,16 +637,20 @@ function ProductForm({
   const [packs, setPacks] = useState<PackRow[]>(() => packRowsFrom(initial?.packs))
   // Once a new item is saved, a second Save (after a pack-size error) updates it instead of adding another.
   const [savedId, setSavedId] = useState<string | null>(initial?.id ?? null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  // "Take a photo" is for phones and tablets; a laptop chooses a file (or drops one).
+  const [touch] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches)
   const set = (k: keyof Draft) => (e: { target: { value: string } }) => setD((x) => ({ ...x, [k]: e.target.value }))
   const digits = (k: keyof Draft) => (e: { target: { value: string } }) => setD((x) => ({ ...x, [k]: e.target.value.replace(/[^0-9]/g, '') }))
   const supplierList = suppliers.filter((s) => s.is_supplier && s.is_active)
 
-  /* photo: a file from the computer (or the phone's camera through the browser) */
-  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
+  /* photo: a file from the computer (chosen or dropped), or the phone's camera through the browser */
+  const onFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file) return
+    void savePhoto(file)
+  }
+  const savePhoto = async (file: File | undefined) => {
+    if (!file || photoBusy) return
     setError(null)
     setPhotoBusy(true)
     try {
@@ -588,6 +667,9 @@ function ProductForm({
 
   const codeInfo = (() => {
     const c = normalizeCode(d.code)
+    if (presetCode && !initial && c === presetCode) {
+      return isRetailBarcode(c) ? `Barcode ${c}, from the scan — scanning the packet opens this item.` : `${c}, from the label you scanned.`
+    }
     if (!c) return 'Make a code for a printed OHRR tag, scan or type the barcode, or type your own.'
     if (isTagCode(c)) return `Saved as ${c} — print the tag under Scanned items → Print tags.`
     if (isRetailBarcode(c)) return `Barcode ${c} — scanning the packet opens this item.`
@@ -646,19 +728,35 @@ function ProductForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      {/* Photo */}
-      <div className="flex items-center gap-3">
+      {/* Photo: choose one from the computer, drop one here, or (phones) take one */}
+      <PhotoDrop
+        onFiles={(files, n) => {
+          if (files.length) void savePhoto(files[0])
+          else if (n) setError('That isn’t a photo. Drop a picture of the item.')
+        }}
+        disabled={photoBusy}
+        className="flex flex-wrap items-center gap-3 p-2"
+      >
         <span className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-slate-300">
           {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : <Icon name="camera" size={34} />}
         </span>
-        <div className="flex flex-1 flex-col gap-2">
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={photoBusy} className={`${btn.blue} gap-2 disabled:opacity-60`}>
-            <Icon name="camera" size={18} /> {photoBusy ? 'Saving photo…' : preview ? 'Change photo' : 'Add a photo'}
-          </button>
-          <p className="text-xs text-slate-500">On a phone this opens the camera; the app takes the photo directly.</p>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
+        {/* Beside the photo on a laptop; under it on a phone, so the buttons keep their words on one line */}
+        <div className="flex min-w-0 flex-1 basis-56 flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <label className={`${btn.blue} cursor-pointer ${fileFocus} ${photoBusy ? 'pointer-events-none opacity-60' : ''}`}>
+              <Icon name="camera" size={18} /> {photoBusy ? 'Saving photo…' : preview ? 'Choose another photo' : 'Choose a photo'}
+              <input type="file" accept="image/*" className="sr-only" onChange={onFile} disabled={photoBusy} />
+            </label>
+            {touch && (
+              <label className={`${btn.outline} cursor-pointer ${fileFocus} ${photoBusy ? 'pointer-events-none opacity-60' : ''}`}>
+                <Icon name="camera" size={18} /> Take a photo
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={onFile} disabled={photoBusy} />
+              </label>
+            )}
+          </div>
+          <p className="text-sm text-slate-600">{touch ? 'Choose one from your photos, or take one now.' : 'Choose a photo on this computer, or drop one here.'}</p>
         </div>
-      </div>
+      </PhotoDrop>
 
       <label className="block text-sm font-semibold text-slate-700">
         Name
