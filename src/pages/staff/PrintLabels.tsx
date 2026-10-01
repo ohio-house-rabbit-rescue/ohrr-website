@@ -4,7 +4,7 @@
 // ones are ticked by default), then Print — one label per page, margins zero —
 // or make a PDF with one label per page to print from wherever the printer is.
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
@@ -26,7 +26,10 @@ export default function PrintLabels() {
   const orgId = membership?.orgId ?? ''
   const [items, setItems] = useState<TaggedItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [show, setShow] = useState<Show>('unprinted')
+  // ?code=OHRR-XXXXX (one or more): tick just those — "Print this label" from the catalog.
+  const [searchParams] = useSearchParams()
+  const wanted = useMemo(() => searchParams.getAll('code').map((c) => c.trim().toUpperCase()).filter(Boolean), [searchParams])
+  const [show, setShow] = useState<Show>(wanted.length ? 'all' : 'unprinted')
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [size, setSize] = useState<LabelSize>(() => loadLabelSize())
@@ -42,7 +45,15 @@ export default function PrintLabels() {
     try {
       const rows = await listItems(orgId)
       setItems(rows)
-      setPicked((p) => (p.size ? p : new Set(rows.filter((r) => !r.label_printed_at).map((r) => r.code))))
+      setPicked((p) => {
+        if (p.size) return p
+        if (wanted.length) {
+          const have = new Set(rows.map((r) => r.code))
+          const w = wanted.filter((c) => have.has(c))
+          if (w.length) return new Set(w)
+        }
+        return new Set(rows.filter((r) => !r.label_printed_at).map((r) => r.code))
+      })
     } catch (e) {
       setError(errMessage(e))
     }
