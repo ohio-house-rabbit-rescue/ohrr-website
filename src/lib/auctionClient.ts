@@ -38,7 +38,10 @@ export interface AuctionItem {
   description: string | null
   donated_by: string | null
   value_cents: number | null
+  /** The cover photo (always the first of photo_urls). */
   photo_url: string | null
+  /** Every photo, cover first, in the order staff set (update 38; missing before it). */
+  photo_urls?: string[] | null
   session: Session
   status: 'available' | 'won'
   won_kind: SaleKind | null
@@ -72,6 +75,11 @@ export interface AuctionSettings {
 
 export interface Catalog {
   now: string
+  /**
+   * The Silent Auction switch (Staff → Features), update 38; missing before it
+   * (= on). While off, visitors get no items; signed-in staff still do.
+   */
+  enabled?: boolean
   settings: AuctionSettings | null
   items: AuctionItem[]
 }

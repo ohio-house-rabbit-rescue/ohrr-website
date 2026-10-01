@@ -10,6 +10,8 @@ import { formatDate, formatShortDate, isUpcoming } from '../lib/format'
 import { useMobileVet } from '../lib/mobileVet'
 import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
 import { BandArt } from '../components/PageArt'
+import { SILENT_AUCTION_FLAG, useFeature } from '../lib/settings'
+import { isAuctionLink } from '../lib/auctionSite'
 
 // The home page, built around the rescue's purpose (2026-09-24). OHRR's
 // mission, in its own words on the About page: run the Adoption Center,
@@ -146,7 +148,10 @@ function RabbitPhotos() {
 // Staff → Homepage features (the "What's happening" group); an event's card
 // hides itself after its end date.
 function WhatsHappening() {
-  const { happening } = useHeroSlides()
+  const { happening: all } = useHeroSlides()
+  // A card that opens the Silent Auction is left out for visitors while it is switched off (Staff → Features).
+  const auction = useFeature(SILENT_AUCTION_FLAG)
+  const happening = all.filter((s) => auction.show || !isAuctionLink(s.ctaUrl))
   if (happening.length === 0) return null
   return (
     <Section className="!pb-4 !pt-6 md:!pt-8 lg:!pt-6">

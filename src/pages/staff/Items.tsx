@@ -255,6 +255,8 @@ export default function Items() {
                     swap(saved)
                     setEditing(null)
                   }}
+                  // A photo change saves at once and keeps the editor open (to reorder several).
+                  onPhotos={swap}
                 />
               )}
             </li>
@@ -265,23 +267,102 @@ export default function Items() {
   )
 }
 
+/* ------------------------------------------------------- photo order */
+
+/** The helper line under every photo editor. */
+const COVER_NOTE = 'The cover shows in the catalog, on labels and on the public pages.'
+
+/** A list with one entry moved one place earlier (-1) or later (+1). */
+function moved<T>(list: T[], i: number, dir: -1 | 1): T[] {
+  const j = i + dir
+  if (j < 0 || j >= list.length) return list
+  const next = [...list]
+  ;[next[i], next[j]] = [next[j], next[i]]
+  return next
+}
+
+/** A list with one entry made the first (the cover). */
+function asCover<T>(list: T[], i: number): T[] {
+  return [list[i], ...list.filter((_, j) => j !== i)]
+}
+
+const orderBtn =
+  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-sm font-bold text-brand-blue transition hover:border-brand-blue disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400'
+
 /**
- * Catalog a donation from the desk: name, who gave it, what it's worth, a photo
- * if there is one. The database makes the code; the item lands in "To sort"
- * and gets sorted with "Move to…" (update 36).
+ * One photo in an editor: the picture (the first carries the Cover badge),
+ * then Earlier / Later, Make cover (not on the cover) and Remove — every
+ * button at least 44 px. Used for photos already saved and for ones picked
+ * but not yet uploaded.
+ */
+function PhotoTile({
+  src,
+  index,
+  count,
+  disabled,
+  onMove,
+  onCover,
+  onRemove,
+}: {
+  src: string
+  index: number
+  count: number
+  disabled: boolean
+  onMove: (dir: -1 | 1) => void
+  onCover: () => void
+  onRemove: () => void
+}) {
+  const cover = index === 0
+  return (
+    <li className="w-[11rem] rounded-xl border border-slate-200 bg-white p-2">
+      <div className="relative">
+        <img src={src} alt={`Photo ${index + 1} of ${count}${cover ? ' (the cover)' : ''}`} className={`aspect-square w-full rounded-lg object-cover ${cover ? 'ring-2 ring-brand-blue' : ''}`} />
+        {cover && <span className="absolute left-1.5 top-1.5 rounded-full bg-brand-blue px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wide text-white">Cover</span>}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        <button type="button" disabled={disabled || index === 0} onClick={() => onMove(-1)} aria-label="Move earlier" title="Move earlier" className={orderBtn}>
+          <Icon name="chevron" size={16} className="rotate-180" /> Earlier
+        </button>
+        <button type="button" disabled={disabled || index === count - 1} onClick={() => onMove(1)} aria-label="Move later" title="Move later" className={orderBtn}>
+          Later <Icon name="chevron" size={16} />
+        </button>
+        {!cover && (
+          <button type="button" disabled={disabled} onClick={onCover} className={orderBtn}>
+            Make cover
+          </button>
+        )}
+        <button type="button" disabled={disabled} onClick={onRemove} aria-label={`Remove photo ${index + 1}`} className={`${orderBtn} !text-red-700 ${cover ? 'col-span-2' : ''}`}>
+          Remove
+        </button>
+      </div>
+    </li>
+  )
+}
+
+/** A photo picked on this computer, not uploaded yet, with its on-screen preview. */
+interface LocalPhoto {
+  file: File
+  url: string
+}
+
+/**
+ * Catalog a donation from the desk: name, who gave it, what it's worth, photos
+ * if there are any (put in order here; the first is the cover). The database
+ * makes the code; the item lands in "To sort" and gets sorted with "Move to…"
+ * (update 36).
  */
 function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedItem) => void }) {
   const [title, setTitle] = useState('')
   const [donor, setDonor] = useState('')
   const [value, setValue] = useState('')
-  const [photos, setPhotos] = useState<File[]>([])
-  const [previews, setPreviews] = useState<string[]>([])
+  const [photos, setPhotos] = useState<LocalPhoto[]>([])
   const [donors, setDonors] = useState<string[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [last, setLast] = useState<TaggedItem | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const photosRef = useRef<LocalPhoto[]>([])
 
   useEffect(() => {
     if (!orgId) return
@@ -296,18 +377,28 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
     }
   }, [orgId])
 
+  // The previews are this browser's own copies: let them go when the form does.
   useEffect(() => {
-    const urls = photos.map((f) => URL.createObjectURL(f))
-    setPreviews(urls)
-    return () => urls.forEach((u) => URL.revokeObjectURL(u))
+    photosRef.current = photos
   }, [photos])
+  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), [])
 
   const addPhotos = (files: FileList | null) => {
     if (!files) return
-    setPhotos((p) => [...p, ...Array.from(files)].slice(0, MAX_ITEM_PHOTOS))
+    const room = Math.max(0, MAX_ITEM_PHOTOS - photos.length)
+    const added = Array.from(files)
+      .slice(0, room)
+      .map((file) => ({ file, url: URL.createObjectURL(file) }))
+    setPhotos((p) => [...p, ...added])
     if (fileRef.current) fileRef.current.value = ''
   }
+  const removePhoto = (i: number) => {
+    const gone = photos[i]
+    if (gone) URL.revokeObjectURL(gone.url)
+    setPhotos((list) => list.filter((_, j) => j !== i))
+  }
   const clearPhoto = () => {
+    photos.forEach((p) => URL.revokeObjectURL(p.url))
     setPhotos([])
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -317,10 +408,11 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
     if (!title.trim() || busy) return
     setError(null)
     try {
+      // Uploaded in the order shown, so the first is the cover.
       const urls: string[] = []
       for (let i = 0; i < photos.length; i++) {
         setBusy(photos.length === 1 ? 'Uploading the photo…' : `Uploading photo ${i + 1} of ${photos.length}…`)
-        urls.push(await uploadItemPhoto(photos[i], orgId))
+        urls.push(await uploadItemPhoto(photos[i].file, orgId))
       }
       setBusy('Saving…')
       let it = await catalogNewItem(orgId, { title, donatedBy: donor, valueCents: toCents(value), photoUrl: urls[0] ?? null })
@@ -390,21 +482,31 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
           <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
           <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" disabled={photos.length >= MAX_ITEM_PHOTOS} onChange={(e) => addPhotos(e.target.files)} />
         </label>
-        {previews.map((p, i) => (
-          <span key={p} className="relative inline-block">
-            <img src={p} alt={`Photo ${i + 1}`} className={`h-14 w-14 rounded-lg object-cover ${i === 0 ? 'ring-2 ring-brand-blue' : ''}`} />
-            <button type="button" onClick={() => setPhotos((list) => list.filter((_, j) => j !== i))} aria-label={`Remove photo ${i + 1}`} className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white">
-              <Icon name="x" size={12} />
-            </button>
-          </span>
-        ))}
-        {photos.length > 0 && (
+        {photos.length > 1 && (
           <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
-            Remove {photos.length === 1 ? 'photo' : 'all'}
+            Remove all
           </button>
         )}
-        <span className="text-sm text-slate-600">Optional, up to {MAX_ITEM_PHOTOS}. The first is the main photo: the list, 4 × 6 labels, the public pages.</span>
+        <span className="text-sm text-slate-600">
+          Optional, up to {MAX_ITEM_PHOTOS}. {COVER_NOTE}
+        </span>
       </div>
+      {photos.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-3" aria-label="Photos to add, in order">
+          {photos.map((p, i) => (
+            <PhotoTile
+              key={p.url}
+              src={p.url}
+              index={i}
+              count={photos.length}
+              disabled={!!busy}
+              onMove={(dir) => setPhotos((list) => moved(list, i, dir))}
+              onCover={() => setPhotos((list) => asCover(list, i))}
+              onRemove={() => removePhoto(i)}
+            />
+          ))}
+        </ul>
+      )}
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
         <p className="mt-3 rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
@@ -511,7 +613,17 @@ function MovePanel({
   )
 }
 
-function EditForm({ item, orgId, onSaved }: { item: TaggedItem; orgId: string; onSaved: (it: TaggedItem) => void }) {
+function EditForm({
+  item,
+  orgId,
+  onSaved,
+  onPhotos,
+}: {
+  item: TaggedItem
+  orgId: string
+  onSaved: (it: TaggedItem) => void
+  onPhotos: (it: TaggedItem) => void
+}) {
   const stock = item.kind === 'stock'
   const [d, setD] = useState({
     title: item.title,
@@ -580,7 +692,7 @@ function EditForm({ item, orgId, onSaved }: { item: TaggedItem; orgId: string; o
         Description
         <textarea className={staffInput} rows={2} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
       </label>
-      <PhotosEditor orgId={orgId} item={item} onSaved={onSaved} />
+      <PhotosEditor orgId={orgId} item={item} onSaved={onPhotos} />
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
       <button type="submit" disabled={busy || !d.title.trim()} className={`${btn.orange} disabled:opacity-60`}>
         {busy ? 'Saving…' : 'Save'}
@@ -590,8 +702,9 @@ function EditForm({ item, orgId, onSaved }: { item: TaggedItem; orgId: string; o
 }
 
 /**
- * An item's photos (up to four, update 37): add, remove, make another one the
- * main photo. Every change is saved at once through set_item_photos.
+ * An item's photos (up to four, update 37): add, remove, put them in order,
+ * make another one the cover. Every change is saved at once through
+ * set_item_photos, in the order shown.
  */
 function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedItem; onSaved: (it: TaggedItem) => void }) {
   const photos = itemPhotos(item)
@@ -633,33 +746,37 @@ function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedIte
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
       <p className="text-sm font-semibold text-slate-700">
-        Photos <span className="font-normal text-slate-500">(up to {MAX_ITEM_PHOTOS}; the first is the main one)</span>
+        Photos <span className="font-normal text-slate-600">(up to {MAX_ITEM_PHOTOS})</span>
       </p>
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        {photos.map((u, i) => (
-          <div key={u} className="flex flex-col items-center gap-1">
-            <img src={u} alt={`Photo ${i + 1}`} className={`h-20 w-20 rounded-lg object-cover ${i === 0 ? 'ring-2 ring-brand-blue' : ''}`} />
-            <div className="flex gap-1">
-              {i === 0 ? (
-                <span className="px-1 text-xs font-extrabold uppercase text-brand-blue">Main</span>
-              ) : (
-                <button type="button" disabled={!!busy} onClick={() => void apply([u, ...photos.filter((x) => x !== u)], 'Saving…')} className="min-h-8 px-1 text-xs font-bold text-brand-blue">
-                  Make main
-                </button>
-              )}
-              <button type="button" disabled={!!busy} onClick={() => void apply(photos.filter((x) => x !== u), 'Removing…')} className="min-h-8 px-1 text-xs font-bold text-red-700" aria-label={`Remove photo ${i + 1}`}>
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
+      <p className="text-sm text-slate-600">{COVER_NOTE}</p>
+      {photos.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-3" aria-label="Photos, in order">
+          {photos.map((u, i) => (
+            <PhotoTile
+              key={u}
+              src={u}
+              index={i}
+              count={photos.length}
+              disabled={!!busy}
+              onMove={(dir) => void apply(moved(photos, i, dir), 'Saving the order…')}
+              onCover={() => void apply(asCover(photos, i), 'Making it the cover…')}
+              onRemove={() => void apply(photos.filter((_, j) => j !== i), 'Removing…')}
+            />
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         {!full && (
           <label className={`${btn.outline} cursor-pointer ${busy ? 'pointer-events-none opacity-50' : ''}`}>
             <Icon name="camera" size={16} /> {photos.length ? 'Add a photo' : 'Add photos'}
             <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void add(e.target.files)} />
           </label>
         )}
-        {busy && <span className="text-sm text-slate-600">{busy}</span>}
+        {busy && (
+          <span className="text-sm text-slate-600" role="status">
+            {busy}
+          </span>
+        )}
       </div>
       {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
     </div>

@@ -24,8 +24,20 @@ import {
   type MyPage,
   type Sale,
 } from '../lib/auctionClient'
-import { CATALOG_PATH, MY_BIDS_PATH, REGISTER_PATH, addressLine, cardLine, itemPath, settleCharge, useDocTitle, useMyPage, useServerNow } from '../lib/auctionSite'
-import { Chip, ErrorText, Field, ItemPhoto, TextInput } from '../components/AuctionBits'
+import {
+  CATALOG_PATH,
+  MY_BIDS_PATH,
+  REGISTER_PATH,
+  addressLine,
+  cardLine,
+  itemPath,
+  settleCharge,
+  useAuctionGate,
+  useDocTitle,
+  useMyPage,
+  useServerNow,
+} from '../lib/auctionSite'
+import { AuctionGate, Chip, ErrorText, Field, ItemPhoto, TextInput } from '../components/AuctionBits'
 
 const US_STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ')
 
@@ -205,8 +217,19 @@ function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; t
   )
 }
 
+// The Silent Auction switch (Staff → Features) comes first: while it is off,
+// visitors get the "isn't open" page and staff the page under the note.
 export default function SilentAuctionMe() {
   useDocTitle('Your bids')
+  const gate = useAuctionGate()
+  return (
+    <AuctionGate gate={gate}>
+      <MyBidsPage />
+    </AuctionGate>
+  )
+}
+
+function MyBidsPage() {
   const { token: param } = useParams()
   const navigate = useNavigate()
   const { remembered, token, page, error, reload, forget } = useMyPage(param)

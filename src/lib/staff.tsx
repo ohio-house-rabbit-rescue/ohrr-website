@@ -191,6 +191,15 @@ export function isFullAccessLevel(l: StaffLevel | null | undefined): boolean {
   return l === 'founder' || l === 'developer'
 }
 /**
+ * May this person flip the feature switches (Staff → Features)? Founders and
+ * Developers only — the database refuses anyone else after update 38. The level
+ * is my_level() (memberships.level); without one, an owner.
+ */
+export function canSwitchFeatures(m: Pick<Membership, 'level' | 'role'> | null | undefined): boolean {
+  if (!m) return false
+  return m.level ? isFullAccessLevel(m.level) : m.role === 'owner'
+}
+/**
  * The levels someone at `mine` may give, highest first: any at all for a
  * founder or developer, otherwise only those below their own. Before update 30
  * (`tiers` false) only the four levels of then.
@@ -248,6 +257,8 @@ interface StaffValue {
 }
 
 const Ctx = createContext<StaffValue | null>(null)
+/** The staff context itself, for code that must also run outside the staff area (null there). */
+export const StaffContext = Ctx
 
 export function StaffProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)

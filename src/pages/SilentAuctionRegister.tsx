@@ -10,22 +10,33 @@ import { PageHero, Section, Card, btn, Callout } from '../components/ui'
 import { Spinner } from '../lib/staff'
 import { errMessage } from '../lib/supabase'
 import CardSetup from '../components/CardSetup'
-import { auctionApi, rememberBidder, recallBidder, type Address, type Fulfil } from '../lib/auctionClient'
-import { CATALOG_PATH, MY_BIDS_PATH, biddingOffered, useCatalog, useDocTitle } from '../lib/auctionSite'
-import { ErrorText, Field, TextInput } from '../components/AuctionBits'
+import { auctionApi, rememberBidder, recallBidder, type Address, type Catalog, type Fulfil } from '../lib/auctionClient'
+import { CATALOG_PATH, MY_BIDS_PATH, biddingOffered, useAuctionGate, useCatalog, useDocTitle } from '../lib/auctionSite'
+import { AuctionGate, ErrorText, Field, TextInput } from '../components/AuctionBits'
 
 type Step = 'details' | 'address' | 'card'
 
 const US_STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ')
 
+// The Silent Auction switch (Staff → Features) comes first: while it is off,
+// visitors get the "isn't open" page and staff the form under the note.
 export default function SilentAuctionRegister() {
   useDocTitle('Register to bid')
+  const { catalog } = useCatalog(0)
+  const gate = useAuctionGate(catalog)
+  return (
+    <AuctionGate gate={gate}>
+      <RegisterPage catalog={catalog} />
+    </AuctionGate>
+  )
+}
+
+function RegisterPage({ catalog }: { catalog: Catalog | null }) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const nextRaw = params.get('next') ?? ''
   // Only a page on this site; never another address.
   const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : CATALOG_PATH
-  const { catalog } = useCatalog(0)
   const already = recallBidder()
 
   const [step, setStep] = useState<Step>('details')

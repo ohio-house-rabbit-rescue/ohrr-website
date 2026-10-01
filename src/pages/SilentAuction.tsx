@@ -3,6 +3,9 @@
 // to its own page, where people bid or Buy Now. Until update 35 has been run
 // on the database the page falls back to the plain raffle_items read and is a
 // preview, exactly as before. Raffle prizes (Scan an item) stay at the bottom.
+// Cards show each item's cover photo; its page shows them all. While the Silent
+// Auction is switched off (Staff → Features) visitors get the "isn't open" page
+// and signed-in staff the catalog under "Hidden from the public".
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRafflePrizes } from '../lib/data'
@@ -11,8 +14,8 @@ import { PageHero, Section, btn, Card, Callout, PrintButton } from '../component
 import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
 import { bidLine, closesIn, money, recallBidder, type AuctionItem } from '../lib/auctionClient'
-import { itemPath, shipLine, useCatalog, useDocTitle, useServerNow } from '../lib/auctionSite'
-import { BidderBar, Chip, ItemPhoto, SessionChip, SoldChip } from '../components/AuctionBits'
+import { itemPath, shipLine, useAuctionGate, useCatalog, useDocTitle, useServerNow } from '../lib/auctionSite'
+import { AuctionGate, BidderBar, Chip, ItemPhoto, SessionChip, SoldChip } from '../components/AuctionBits'
 
 const EVENT_SLUG = 'midwest-bunfest-2026'
 
@@ -102,6 +105,7 @@ function RafflePrizes() {
 export default function SilentAuction() {
   useDocTitle('Silent Auction')
   const { catalog, source } = useCatalog()
+  const gate = useAuctionGate(catalog)
   const now = useServerNow(catalog?.now)
   const [session, setSession] = useState<SessionFilter>('all')
   const [availableOnly, setAvailableOnly] = useState(false)
@@ -119,7 +123,7 @@ export default function SilentAuction() {
   const bidding = Boolean(catalog?.settings?.bidding_enabled)
 
   return (
-    <>
+    <AuctionGate gate={gate}>
       <PageHero
         title="Silent Auction"
         parent={{ to: '/bunfest', label: 'Midwest BunFest' }}
@@ -190,6 +194,6 @@ export default function SilentAuction() {
           <PrintButton label="Print the list" />
         </div>
       </Section>
-    </>
+    </AuctionGate>
   )
 }

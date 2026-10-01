@@ -13,7 +13,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
-import { useStaff, staffInput, Spinner } from '../../lib/staff'
+import { useStaff, staffInput, Spinner, canSwitchFeatures } from '../../lib/staff'
+import { SILENT_AUCTION_FLAG, useFeature } from '../../lib/settings'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
@@ -867,7 +868,7 @@ function SetupPanel({
                     Features
                   </Link>
                 ) : (
-                  <span>Features (owners and admins)</span>
+                  <span>Features (Founders and Developers)</span>
                 )}
                 . Tickets are sold and drawn under{' '}
                 <Link to="/staff/raffle-tickets" className="font-bold text-brand-blue hover:text-brand-blue-dark">
@@ -1148,6 +1149,8 @@ export default function SilentAuctionManager() {
   const orgId = membership?.orgId ?? ''
   const userId = user?.id ?? ''
   const allowed = can('events.bunfest.manage')
+  // The Silent Auction switch (Staff → Features): off = hidden from the public, bidding closed.
+  const switchedOn = useFeature(SILENT_AUCTION_FLAG)
 
   const [items, setItems] = useState<AuctionItem[]>([])
   const [settings, setSettings] = useState<AuctionSettings | null>(null)
@@ -1236,7 +1239,22 @@ export default function SilentAuctionManager() {
 
       {creating && <AddItem orgId={orgId} nextSortOrder={nextSortOrder} onCreate={create} onCancel={() => setCreating(false)} />}
 
-      {!loading && <SetupPanel orgId={orgId} settings={settings} canManageSettings={can('settings.manage')} onSaved={() => void load()} />}
+      {!switchedOn.loading && !switchedOn.on && (
+        <p role="note" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-base font-semibold leading-relaxed text-amber-900">
+          The Silent Auction is switched off, so visitors don’t see it on the app, the website or the BunFest site, and online bidding stays
+          closed. You can still get the items ready here. A Founder or Developer switches it on in{' '}
+          {canSwitchFeatures(membership) ? (
+            <Link to="/staff/features" className="font-bold text-brand-blue underline underline-offset-4">
+              Features
+            </Link>
+          ) : (
+            'Features'
+          )}
+          .
+        </p>
+      )}
+
+      {!loading && <SetupPanel orgId={orgId} settings={settings} canManageSettings={canSwitchFeatures(membership)} onSaved={() => void load()} />}
       {!loading && <BiddingPanel orgId={orgId} settings={settings} onSaved={() => void load()} />}
 
       <FormError>{error}</FormError>

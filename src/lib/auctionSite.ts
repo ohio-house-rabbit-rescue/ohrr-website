@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, errMessage, isConfigured } from './supabase'
 import { confirmPaymentAction } from '../components/CardSetup'
+import { SILENT_AUCTION_FLAG, useFeature, useStaffHere, type FeatureState } from './settings'
+import { itemPhotos } from './items'
 import {
   AUCTION_EVENT,
   auctionApi,
@@ -27,6 +29,58 @@ export const REGISTER_PATH = `${CATALOG_PATH}/register`
 export const MY_BIDS_PATH = `${CATALOG_PATH}/me`
 export const itemPath = (id: string) => `${CATALOG_PATH}/${id}`
 
+/**
+ * Does this link open the silent auction (any of its pages)? Covers this
+ * site's paths and the app's own "/bunfest/auction" that staff type on cards.
+ */
+export function isAuctionLink(url: string | null | undefined): boolean {
+  return /\/bunfest\/(silent-)?auction(?=[/?#]|$)/i.test(url ?? '')
+}
+
+/**
+ * The Silent Auction switch (Staff → Features) for one of its pages. After
+ * update 38 the catalog says too (`enabled`; missing = on). Switched off,
+ * visitors get the "isn't open" page; signed-in staff see the page under the
+ * "Hidden from the public" note.
+ */
+export function useAuctionGate(catalog?: Catalog | null): FeatureState {
+  const f = useFeature(SILENT_AUCTION_FLAG)
+  const staff = useStaffHere()
+  const on = f.on && catalog?.enabled !== false
+  return { on, show: on || staff.staff, preview: !on && staff.staff, loading: f.loading || (!on && !staff.known) }
+}
+
+/**
+ * Every photo of one auction item, cover first. The catalog carries photo_urls
+ * once update 38 has run; before that the item's own row (public while it is
+ * published) is asked for them, so an item still opens on all its photos.
+ */
+export function useAuctionItemPhotos(item: AuctionItem | null): string[] {
+  const id = item?.id ?? null
+  const carried = Array.isArray(item?.photo_urls)
+  const [fetched, setFetched] = useState<{ id: string; urls: string[] } | null>(null)
+  useEffect(() => {
+    if (!id || carried || !isConfigured) return
+    let live = true
+    Promise.resolve(supabase.from('raffle_items').select('photo_urls').eq('id', id).maybeSingle()).then(
+      ({ data, error }) => {
+        if (!live || error) return
+        const urls = (data as { photo_urls?: unknown } | null)?.photo_urls
+        if (Array.isArray(urls)) setFetched({ id, urls: urls.filter((u): u is string => typeof u === 'string') })
+      },
+      () => {
+        /* the photo_urls column isn't there yet: the cover is enough */
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [id, carried])
+  if (!item) return []
+  if (!carried && fetched?.id === item.id && fetched.urls.length) return itemPhotos({ photo_url: item.photo_url, photo_urls: fetched.urls })
+  return itemPhotos(item)
+}
+
 /** Is this the "function isn't in the database yet" error (update 35 not run)? */
 export function isMissingFunction(e: unknown): boolean {
   const o = e as { code?: string; message?: string } | null
@@ -41,6 +95,8 @@ interface RaffleRow {
   donated_by: string | null
   value_cents: number | null
   photo_url: string | null
+  /** Update 37; not asked for when the column isn't there. */
+  photo_urls?: string[] | null
   session: AuctionItem['session']
   status: AuctionItem['status']
   sort_order: number
@@ -54,6 +110,7 @@ function previewItem(r: RaffleRow): AuctionItem {
     donated_by: r.donated_by,
     value_cents: r.value_cents,
     photo_url: r.photo_url,
+    ...(Array.isArray(r.photo_urls) ? { photo_urls: r.photo_urls } : {}),
     session: r.session,
     status: r.status,
     won_kind: null,
@@ -73,16 +130,16 @@ function previewItem(r: RaffleRow): AuctionItem {
 
 /** The catalog before update 35: the published items, no settings, nothing open. */
 async function previewCatalog(event: string): Promise<Catalog> {
-  const [itemsRes, settingsRes] = await Promise.all([
-    supabase
-      .from('raffle_items')
-      .select('id,title,description,donated_by,value_cents,photo_url,session,status,sort_order')
-      .eq('event_slug', event)
-      .eq('is_published', true)
-      .order('sort_order', { ascending: true }),
+  const readItems = (cols: string) =>
+    supabase.from('raffle_items').select(cols).eq('event_slug', event).eq('is_published', true).order('sort_order', { ascending: true })
+  const base = 'id,title,description,donated_by,value_cents,photo_url,session,status,sort_order'
+  const [first, settingsRes] = await Promise.all([
+    readItems(`${base},photo_urls`),
     supabase.from('auction_settings').select('intro_text').eq('event_slug', event).limit(1),
   ])
-  const rows = itemsRes.error ? [] : ((itemsRes.data ?? []) as RaffleRow[])
+  // Before update 37 there is no photo_urls column: ask again without it.
+  const itemsRes = first.error ? await readItems(base) : first
+  const rows = itemsRes.error ? [] : ((itemsRes.data ?? []) as unknown as RaffleRow[])
   const intro = settingsRes.error ? null : ((settingsRes.data?.[0] as { intro_text?: string | null } | undefined)?.intro_text ?? null)
   return {
     now: new Date().toISOString(),

@@ -4,9 +4,60 @@
 // top of the catalog that says whether this person is registered.
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
-import { btn } from './ui'
+import { btn, Card, PageHero, Section } from './ui'
+import HiddenFromPublic from './HiddenFromPublic'
+import { Spinner } from '../lib/staff'
+import type { FeatureState } from '../lib/settings'
 import { money, sessionLabel, type AuctionItem, type Catalog, type RememberedBidder } from '../lib/auctionClient'
 import { MY_BIDS_PATH, REGISTER_PATH, biddingOffered } from '../lib/auctionSite'
+
+/** What a visitor sees on any silent-auction page while it is switched off (Staff → Features). */
+export function AuctionClosed() {
+  return (
+    <>
+      <PageHero title="Silent Auction" parent={{ to: '/bunfest', label: 'Midwest BunFest' }} />
+      <Section>
+        <Card className="max-w-xl space-y-4">
+          <p className="font-display text-xl font-extrabold text-ink">The silent auction isn’t open right now.</p>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/bunfest" className={btn.blue}>
+              About Midwest BunFest
+            </Link>
+            <Link to="/" className={btn.outline}>
+              OHRR home
+            </Link>
+          </div>
+        </Card>
+      </Section>
+    </>
+  )
+}
+
+/**
+ * Wraps a silent-auction page in its switch (useAuctionGate): a short wait
+ * while the switch is read, the "isn't open" page for visitors while it is
+ * off, and the page under the "Hidden from the public" note for staff.
+ */
+export function AuctionGate({ gate, children }: { gate: FeatureState; children: ReactNode }) {
+  if (gate.loading) {
+    return (
+      <Section>
+        <Spinner label="One moment…" />
+      </Section>
+    )
+  }
+  if (!gate.show) return <AuctionClosed />
+  return (
+    <>
+      {gate.preview && (
+        <div className="mx-auto max-w-6xl px-5 pt-5">
+          <HiddenFromPublic />
+        </div>
+      )}
+      {children}
+    </>
+  )
+}
 
 export function ItemPhoto({ item, className = 'aspect-[4/3]' }: { item: Pick<AuctionItem, 'title' | 'photo_url'>; className?: string }) {
   return (

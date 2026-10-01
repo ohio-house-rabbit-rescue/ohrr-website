@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, errMessage } from '../lib/supabase'
-import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate } from '../lib/staff'
+import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate, canSwitchFeatures } from '../lib/staff'
 import { myStaffVolunteerPage } from '../lib/volunteers/api'
 import { btn } from './ui'
 import { buildLabel } from '../lib/version'
@@ -162,7 +162,7 @@ type MyHours = ReturnType<typeof useMyVolunteerHours>
  * The staff menu, in groups — thirty tools in one row of buttons was too much
  * to scan. Each group only appears when the person can use something in it.
  */
-function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavItem[] }[] {
+function staffGroups(can: Can, myHours: MyHours, featureSwitches: boolean): { title: string; items: NavItem[] }[] {
   const shop = can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
   return [
     {
@@ -235,7 +235,8 @@ function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavIte
         { to: '/staff/account', label: 'My account', show: true },
         { to: '/staff/team', label: 'Team', show: can('staff.invite') || can('staff.permissions.manage') },
         { to: '/staff/details', label: 'OHRR details', show: can('settings.manage') },
-        { to: '/staff/features', label: 'Features', show: can('settings.manage') },
+        // Founders and Developers only (update 38)
+        { to: '/staff/features', label: 'Features', show: featureSwitches },
         { to: '/staff/activity', label: 'Activity', show: can('audit.view') },
       ],
     },
@@ -246,9 +247,10 @@ function staffGroups(can: Can, myHours: MyHours): { title: string; items: NavIte
 
 function StaffMenu({ can }: { can: Can }) {
   const myHours = useMyVolunteerHours()
+  const { membership } = useStaff()
   return (
     <nav aria-label="Staff tools" className="space-y-5">
-      {staffGroups(can, myHours).map((g) => (
+      {staffGroups(can, myHours, canSwitchFeatures(membership)).map((g) => (
         <div key={g.title}>
           <p className="px-3 text-sm font-extrabold uppercase tracking-wider text-slate-600">{g.title}</p>
           <ul className="mt-1 space-y-0.5">

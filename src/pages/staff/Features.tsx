@@ -1,18 +1,15 @@
-// Staff → Features: the switches an owner or admin uses to turn parts of the
-// app (and the site) on and off for everyone. Desktop mirror of the app's
-// StaffFeatures — the same `app_settings` rows, so a switch flipped here is
-// flipped in the app at once.
+// Staff → Features: the on/off switches for parts of the app, the website and
+// the BunFest site. Founders and Developers only — after update 38 the
+// database refuses anyone else. Desktop mirror of the app's StaffFeatures: the
+// same `app_settings` rows, so a switch flipped here is flipped in the app at
+// once. The list itself is APP_FEATURES in lib/settings (a copy of the app's).
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
-import { useStaff, Spinner } from '../../lib/staff'
+import { useStaff, Spinner, canSwitchFeatures } from '../../lib/staff'
 import { Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
-import { APP_FEATURES, FEATURE_GROUPS, RAFFLE_TICKETS_FLAG, fetchSettings, setSetting, type Json } from '../../lib/settings'
-
-function isEnabled(value: Json | undefined): boolean {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && value.enabled === true)
-}
+import { APP_FEATURES, FEATURE_GROUPS, RAFFLE_TICKETS_FLAG, fetchSettings, setSetting, switchValue, type Json } from '../../lib/settings'
 
 function Switch({ on, disabled, label, onChange }: { on: boolean; disabled?: boolean; label: string; onChange: (next: boolean) => void }) {
   return (
@@ -23,17 +20,29 @@ function Switch({ on, disabled, label, onChange }: { on: boolean; disabled?: boo
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!on)}
-      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition disabled:opacity-50 ${on ? 'bg-brand-blue' : 'bg-slate-300'}`}
+      // 56 × 32 px track inside a 48 px tall tap area
+      className="inline-flex min-h-12 min-w-14 shrink-0 items-center justify-center disabled:opacity-50"
     >
-      <span className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-7' : 'translate-x-1'}`} />
+      <span className={`relative inline-flex h-8 w-14 items-center rounded-full transition ${on ? 'bg-brand-blue' : 'bg-slate-300'}`}>
+        <span className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-7' : 'translate-x-1'}`} />
+      </span>
     </button>
   )
+}
+
+/** The database's refusal, in plain words (update 38: Founders and Developers only). */
+function saveError(e: unknown): string {
+  const m = errMessage(e)
+  if (/row-level security|violates row|permission denied|not allowed/i.test(m)) {
+    return `The database didn’t save that: only a Founder or Developer can switch features on and off. (${m})`
+  }
+  return `The switch didn’t save: ${m}`
 }
 
 export default function Features() {
   const { user, membership, can } = useStaff()
   const orgId = membership?.orgId ?? ''
-  const allowed = can('settings.manage')
+  const allowed = canSwitchFeatures(membership)
 
   const [values, setValues] = useState<Record<string, Json>>({})
   const [loading, setLoading] = useState(true)
@@ -65,7 +74,7 @@ export default function Features() {
       await setSetting(key, { enabled }, { orgId, userId: user?.id })
       setValues((v) => ({ ...v, [key]: { enabled } }))
     } catch (e) {
-      setError(errMessage(e))
+      setError(saveError(e))
     } finally {
       setBusyKey(null)
     }
@@ -75,9 +84,7 @@ export default function Features() {
     return (
       <div>
         <h1 className="font-display text-2xl font-black text-ink">Features</h1>
-        <p className="mt-3 text-sm text-slate-600">
-          Only an owner or admin can turn features on and off. Ask one of them for the “Change app settings” access if you need it.
-        </p>
+        <p className="mt-3 max-w-2xl text-base text-slate-700">Only a Founder or Developer can switch features on and off.</p>
       </div>
     )
   }
@@ -86,12 +93,19 @@ export default function Features() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-black text-ink">Features</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">
-          Turn parts of the app on and off for everyone. A change takes effect the next time someone opens the app — no new version needed.
+        <p className="mt-1 max-w-2xl text-base text-slate-700">
+          Switch parts of OHRR on and off for everyone. A switched-off feature disappears for visitors on the app, the website and the
+          BunFest site, while signed-in staff still see it, marked “Hidden from the public”, so it can be got ready and checked first. A
+          change takes effect the next time someone opens the page — no new version needed.
         </p>
+        <p className="mt-2 max-w-2xl text-sm text-slate-600">Only Founders and Developers see this page.</p>
       </div>
 
-      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-base font-semibold text-red-700">
+          {error}
+        </p>
+      )}
       {loading ? (
         <Spinner label="Loading features…" />
       ) : (
@@ -104,7 +118,7 @@ export default function Features() {
               <Card>
                 <ul className="divide-y divide-slate-100">
                   {items.map((f) => {
-                    const on = values[f.key] === undefined ? Boolean(f.defaultOn) : isEnabled(values[f.key])
+                    const on = switchValue(values[f.key], Boolean(f.defaultOn))
                     return (
                       <li key={f.key} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
                         <div className="min-w-0">
@@ -139,7 +153,7 @@ export default function Features() {
       <Card className="border-slate-200 bg-slate-50/80">
         <p className="text-sm text-slate-600">
           Looking for OHRR’s hours, email or address?{' '}
-          <Link to="/staff/details" className="inline-flex items-center gap-1 font-bold text-brand-blue">
+          <Link to="/staff/details" className="inline-flex min-h-11 items-center gap-1 font-bold text-brand-blue">
             OHRR details <Icon name="chevron" size={14} />
           </Link>
         </p>

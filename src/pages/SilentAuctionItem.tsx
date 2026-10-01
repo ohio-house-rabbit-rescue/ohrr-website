@@ -1,8 +1,10 @@
-// /bunfest/silent-auction/:id — one auction item: the photo and story, the
-// running bid, and the bid box. A registered bidder (this browser remembers
-// them) bids here or uses Buy Now; anyone else is sent to register first.
-// The page reads the catalog every 15 s while bidding is on, so the current
-// bid and the countdown keep up.
+// /bunfest/silent-auction/:id — one auction item: every photo (PhotoGallery,
+// cover first, in the order staff set) and the story, the running bid, and the
+// bid box. A registered bidder (this browser remembers them) bids here or uses
+// Buy Now; anyone else is sent to register first. The page reads the catalog
+// every 15 s while bidding is on, so the current bid and the countdown keep up.
+// While the Silent Auction is switched off (Staff → Features) visitors get the
+// "isn't open" page and signed-in staff the page under "Hidden from the public".
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageHero, Section, Card, btn, PrintButton } from '../components/ui'
@@ -24,8 +26,22 @@ import {
   type Bidder,
   type Catalog,
 } from '../lib/auctionClient'
-import { CATALOG_PATH, MY_BIDS_PATH, REGISTER_PATH, itemPath, settleCharge, shipLine, useCatalog, useDocTitle, useMyPage, useServerNow } from '../lib/auctionSite'
-import { BidderBar, Chip, ErrorText, ItemPhoto, SessionChip, SoldChip, TextInput } from '../components/AuctionBits'
+import {
+  CATALOG_PATH,
+  MY_BIDS_PATH,
+  REGISTER_PATH,
+  itemPath,
+  settleCharge,
+  shipLine,
+  useAuctionGate,
+  useAuctionItemPhotos,
+  useCatalog,
+  useDocTitle,
+  useMyPage,
+  useServerNow,
+} from '../lib/auctionSite'
+import { AuctionGate, BidderBar, Chip, ErrorText, ItemPhoto, SessionChip, SoldChip, TextInput } from '../components/AuctionBits'
+import PhotoGallery from '../components/PhotoGallery'
 
 const centsToInput = (c: number) => (c / 100).toFixed(2).replace(/\.00$/, '')
 
@@ -276,21 +292,26 @@ function History({ bids, myNo }: { bids: BidRow[] | null; myNo: number | null })
 export default function SilentAuctionItem() {
   const { id = '' } = useParams()
   const { catalog, source, reload } = useCatalog()
+  const gate = useAuctionGate(catalog)
   const now = useServerNow(catalog?.now)
   const { remembered, token, page, reload: reloadMe } = useMyPage(undefined, 0)
   const [bids, setBids] = useState<BidRow[] | null>(null)
 
   const item = catalog?.items.find((i) => i.id === id) ?? null
+  // Every photo, in the order staff set; the first is the cover.
+  const photos = useAuctionItemPhotos(item)
   useDocTitle(item?.title ?? 'Silent Auction')
 
+  // Only for an item the catalog has, and only while the page may be shown.
+  const known = Boolean(item)
   const loadBids = useCallback(async () => {
-    if (!id || source !== 'live') return
+    if (!id || source !== 'live' || !known || !gate.show) return
     try {
       setBids(await fetchItemBids(supabase, id))
     } catch {
       setBids(null)
     }
-  }, [id, source])
+  }, [id, source, known, gate.show])
   useEffect(() => {
     void loadBids()
   }, [loadBids])
@@ -307,14 +328,16 @@ export default function SilentAuctionItem() {
 
   if (!catalog) {
     return (
-      <Section>
-        <Spinner label="Opening the item…" />
-      </Section>
+      <AuctionGate gate={gate}>
+        <Section>
+          <Spinner label="Opening the item…" />
+        </Section>
+      </AuctionGate>
     )
   }
   if (!item) {
     return (
-      <>
+      <AuctionGate gate={gate}>
         <PageHero title="Silent Auction" parent={{ to: '/bunfest', label: 'Midwest BunFest' }} />
         <Section>
           <Card className="max-w-xl space-y-3">
@@ -325,13 +348,13 @@ export default function SilentAuctionItem() {
             </Link>
           </Card>
         </Section>
-      </>
+      </AuctionGate>
     )
   }
 
   const bidder = page?.bidder ?? null
   return (
-    <>
+    <AuctionGate gate={gate}>
       <PageHero title={item.title} parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} />
       <Section>
         <div className="no-print mb-6">
@@ -339,7 +362,11 @@ export default function SilentAuctionItem() {
         </div>
         <div className="grid gap-8 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <ItemPhoto item={item} className="aspect-[4/3] rounded-2xl ring-1 ring-black/5" />
+            {photos.length > 0 ? (
+              <PhotoGallery photos={photos} alt={item.title} />
+            ) : (
+              <ItemPhoto item={item} className="aspect-[4/3] rounded-2xl ring-1 ring-black/5" />
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <SessionChip session={item.session} />
               <SoldChip item={item} />
@@ -361,6 +388,6 @@ export default function SilentAuctionItem() {
           <PrintButton />
         </div>
       </Section>
-    </>
+    </AuctionGate>
   )
 }

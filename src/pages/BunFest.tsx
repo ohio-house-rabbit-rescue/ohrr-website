@@ -8,6 +8,8 @@ import { bunfestDest, ctaFor, iconOf, useFeatures, useFestivalYear, usePages } f
 import { EventWhenWhere } from './Events'
 import AddToCalendar from '../components/AddToCalendar'
 import BunFestFacts from '../components/BunFestFacts'
+import { SILENT_AUCTION_FLAG, useFeature } from '../lib/settings'
+import { isAuctionLink } from '../lib/auctionSite'
 
 // What's at Midwest BunFest, when this year's cards can't be read — from the
 // live announcement post. Not links: the pages behind them are read too.
@@ -31,7 +33,10 @@ function AtTheFestival() {
   const { year, loading } = useFestivalYear()
   const features = useFeatures(year)
   const pages = usePages(year)
-  const live = features.data && features.data.length > 0 ? features.data : null
+  // While the Silent Auction is switched off, a card that opens it is left out for visitors.
+  const auction = useFeature(SILENT_AUCTION_FLAG)
+  const cards = (features.data ?? []).filter((f) => auction.show || !isAuctionLink(f.link))
+  const live = features.data && features.data.length > 0 ? cards : null
   const waiting = loading || (!!year && features.loading)
 
   // Pages no card opens, so a visitor can still find them.
@@ -93,6 +98,7 @@ function AtTheFestival() {
 
 export default function BunFest() {
   const { event, source, loading } = useBunFestEvent()
+  const auction = useFeature(SILENT_AUCTION_FLAG)
 
   const subtitle = event
     ? `${formatDate(event.startsAt)}, ${formatTimeRange(event)} · ${[event.venue, event.city].filter(Boolean).join(', ')}`
@@ -150,17 +156,21 @@ export default function BunFest() {
 
         <AtTheFestival />
 
-        <Card className="mt-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="font-display text-lg font-extrabold text-brand-blue">Silent auction &amp; raffle</h3>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              Preview the silent-auction items and raffle prizes for Midwest BunFest 2026.
-            </p>
-          </div>
-          <Link to="/bunfest/silent-auction" className={btn.blue}>
-            Auction items &amp; raffle prizes
-          </Link>
-        </Card>
+        {/* Only while the Silent Auction is switched on (Staff → Features); staff always see it */}
+        {auction.show && (
+          <Card className="mt-8 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="font-display text-lg font-extrabold text-brand-blue">Silent auction &amp; raffle</h3>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                Preview the silent-auction items and raffle prizes for Midwest BunFest 2026.
+              </p>
+              {auction.preview && <p className="mt-1 text-sm font-semibold text-amber-800">Hidden from the public — only signed-in staff see this card.</p>}
+            </div>
+            <Link to="/bunfest/silent-auction" className={btn.blue}>
+              Auction items &amp; raffle prizes
+            </Link>
+          </Card>
+        )}
 
         {event?.body && (
           <div className="mt-12 max-w-3xl">

@@ -11,6 +11,8 @@ import { useAnnouncements, useCareArticles, useEvents, useRabbits, useVets } fro
 import { useCareTopics } from '../lib/bunnyhelp/useTopics'
 import { URGENCY_LABEL } from '../lib/bunnyhelp/types'
 import { formatShortDate } from '../lib/format'
+import { SILENT_AUCTION_FLAG, useFeature } from '../lib/settings'
+import { isAuctionLink } from '../lib/auctionSite'
 
 interface SearchItem {
   title: string
@@ -88,6 +90,8 @@ export default function Search() {
     setParams(t ? { q: t } : {}, { replace: true })
   }
 
+  // The Silent Auction page is left out for visitors while it is switched off (Staff → Features).
+  const auction = useFeature(SILENT_AUCTION_FLAG)
   const { articles } = useCareArticles()
   const { topics } = useCareTopics()
   const { rabbits } = useRabbits(200)
@@ -97,7 +101,7 @@ export default function Search() {
 
   const index = useMemo<SearchItem[]>(
     () => [
-      ...PAGES.map((p) => mk(p.title, p.subtitle, p.to, 'Pages', p.extra ?? '')),
+      ...PAGES.filter((p) => auction.show || !isAuctionLink(p.to)).map((p) => mk(p.title, p.subtitle, p.to, 'Pages', p.extra ?? '')),
       ...(articles ?? []).map((a) =>
         mk(
           a.title,
@@ -131,7 +135,7 @@ export default function Search() {
       ),
       ...(news ?? []).map((n) => mk(n.title, n.createdAt ? formatShortDate(n.createdAt) : 'News', '/news', 'News', n.body.slice(0, 400))),
     ],
-    [articles, topics, rabbits, vets, events, news],
+    [articles, topics, rabbits, vets, events, news, auction.show],
   )
 
   const results = useMemo(() => searchAll(index, query), [index, query])

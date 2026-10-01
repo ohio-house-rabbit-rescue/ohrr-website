@@ -542,7 +542,9 @@ export function useRaffleItems(eventSlug = 'midwest-bunfest-2026'): {
 
 // What is on the Hop Shop shelf: active products with photo, price and whether
 // any are left, via the public RPC `hopshop_public_products` (the app's
-// 20260921160000_public_shop.sql). [] until that function is pasted.
+// 20260921160000_public_shop.sql). [] until that function is pasted. After
+// update 38 each row also has photo_urls (cover first), and while "Hop Shop
+// items online" is switched off visitors get no rows (signed-in staff still do).
 export function useHopShopProducts(): HopShopProduct[] | null {
   const [items, setItems] = useState<HopShopProduct[] | null>(null)
   useEffect(() => {

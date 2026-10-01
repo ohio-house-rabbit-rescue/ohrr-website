@@ -109,7 +109,10 @@ export interface HopShopProduct {
   name: string
   description?: string | null
   price_cents: number
+  /** The cover photo (the first of photo_urls). */
   photo_url?: string | null
+  /** Every photo, cover first (update 38; missing before it). */
+  photo_urls?: string[] | null
   in_stock?: boolean
 }
 

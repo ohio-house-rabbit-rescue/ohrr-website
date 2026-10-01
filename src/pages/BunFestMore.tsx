@@ -9,6 +9,8 @@ import { PageHero, Section, DoorList, H2, PrintButton, btn, ext, type Door } fro
 import { Icon, type IconName } from '../components/icons'
 import { externalHref, formatDate, hostOf } from '../lib/format'
 import { telHref, useRescues } from '../lib/rescues'
+import { SILENT_AUCTION_FLAG, useFeature } from '../lib/settings'
+import { isAuctionLink } from '../lib/auctionSite'
 import {
   bunfestDest,
   presenterName,
@@ -82,6 +84,7 @@ export function BunFestTopic() {
   const pages = usePages(year)
   const page = pages.data?.find((p) => p.slug === slug)
   const raffle = useRaffleDetails(page?.feature === 'raffle' ? event?.slug : undefined)
+  const auction = useFeature(SILENT_AUCTION_FLAG)
 
   if (loading || (year && pages.loading)) {
     return (
@@ -136,7 +139,11 @@ export function BunFestTopic() {
       </div>
     ) : undefined
 
-  const related = page.related.map((r) => doorFor(r.label, r.to)).filter((d): d is Door => !!d)
+  // A "See also" link to the Silent Auction is left out for visitors while it is switched off.
+  const related = page.related
+    .filter((r) => auction.show || !isAuctionLink(r.to))
+    .map((r) => doorFor(r.label, r.to))
+    .filter((d): d is Door => !!d)
 
   return (
     <>

@@ -1,12 +1,19 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useHopShopProducts } from '../lib/data'
 import { PageHero, Section, btn, ext, H2, Card, Callout, LiveNote } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { PhotoStrip } from '../components/PhotoStrip'
+import PhotoGallery from '../components/PhotoGallery'
+import HiddenFromPublic from '../components/HiddenFromPublic'
+import { Icon } from '../components/icons'
 import { HOP_SHOP_PHOTOS } from '../data/ohrrPhotos'
 import { formatPrice } from '../lib/format'
 import { OHRR, AMAZON_WISH_LIST } from '../lib/constants'
 import { useOrgProfile } from '../lib/orgProfile'
+import { HOP_SHOP_ITEMS_FLAG, useFeature } from '../lib/settings'
+import { itemPhotos } from '../lib/items'
+import type { HopShopProduct } from '../lib/types'
 import WishListItems from '../components/WishListItems'
 import { useWishListItems } from '../lib/wishList'
 
@@ -24,8 +31,59 @@ const PRODUCTS = [
   '… and more!',
 ]
 
+/**
+ * One product on the shelf: its cover photo, name, price and words. With more
+ * than one photo, "See N photos" opens them all under it (cover first, in the
+ * order staff set).
+ */
+function ShelfProduct({ p }: { p: HopShopProduct }) {
+  const photos = itemPhotos(p)
+  const [open, setOpen] = useState(false)
+  const galleryId = `shelf-photos-${p.id}`
+  return (
+    <Card className={`${open ? 'sm:col-span-2' : ''} ${p.in_stock === false ? 'opacity-60' : ''}`}>
+      <div className="flex gap-4">
+        {photos[0] ? (
+          <img src={photos[0]} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-xl bg-slate-100 object-cover" />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-brand-blue-50 font-display text-2xl font-black text-brand-blue">
+            {p.name.slice(0, 1)}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="font-display text-base font-extrabold text-ink">{p.name}</h3>
+            {p.price_cents > 0 && <span className="text-sm font-bold text-brand-orange-ink">{formatPrice(p.price_cents)}</span>}
+          </div>
+          {p.description && <p className="mt-1.5 text-sm text-slate-600">{p.description}</p>}
+          {p.in_stock === false && <p className="mt-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Sold out — ask at the counter</p>}
+          {photos.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              aria-controls={galleryId}
+              className="no-print mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-brand-blue underline decoration-brand-blue/30 underline-offset-4 hover:decoration-brand-blue"
+            >
+              <Icon name="camera" size={18} />
+              {open ? 'Hide the photos' : `See ${photos.length} photos`}
+            </button>
+          )}
+        </div>
+      </div>
+      {open && photos.length > 1 && (
+        <div id={galleryId} className="mt-4">
+          <PhotoGallery photos={photos} alt={p.name} />
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function HopShop() {
   const products = useHopShopProducts()
+  // "Hop Shop items online" (Staff → Features): the shelf list only; hours and address always show.
+  const shelf = useFeature(HOP_SHOP_ITEMS_FLAG)
   const org = useOrgProfile()
   const wishList = useWishListItems()
 
@@ -60,30 +118,15 @@ export default function HopShop() {
               ))}
             </ul>
 
-            {products && products.length > 0 && (
-              <div className="mt-12">
+            {!shelf.loading && shelf.show && products && products.length > 0 && (
+              <div className="mt-12" id="on-the-shelf">
+                {shelf.preview && <HiddenFromPublic className="mb-5" />}
                 <H2>On the shelf now</H2>
                 <LiveNote source="live" />
                 <p className="mt-2 text-sm text-slate-500">Buy at the Adoption Center counter. Counts change as things sell.</p>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   {products.map((p) => (
-                    <Card key={p.id} className={`flex gap-4 ${p.in_stock === false ? 'opacity-60' : ''}`}>
-                      {p.photo_url ? (
-                        <img src={p.photo_url} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-xl bg-slate-100 object-cover" />
-                      ) : (
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-brand-blue-50 font-display text-2xl font-black text-brand-blue">
-                          {p.name.slice(0, 1)}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <h3 className="font-display text-base font-extrabold text-ink">{p.name}</h3>
-                          {p.price_cents > 0 && <span className="text-sm font-bold text-brand-orange-ink">{formatPrice(p.price_cents)}</span>}
-                        </div>
-                        {p.description && <p className="mt-1.5 text-sm text-slate-600">{p.description}</p>}
-                        {p.in_stock === false && <p className="mt-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Sold out — ask at the counter</p>}
-                      </div>
-                    </Card>
+                    <ShelfProduct key={p.id} p={p} />
                   ))}
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useStaff, levelLabel } from '../../lib/staff'
+import { useStaff, levelLabel, canSwitchFeatures } from '../../lib/staff'
 import { useMyVolunteerHours } from '../../components/StaffShell'
 import { ExpiringSponsorsNotice } from './ManageSponsors'
 import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
@@ -139,10 +139,11 @@ export default function StaffDashboard() {
       h: 'OHRR details',
       p: 'Hours, a holiday notice, the email and address, and who signs volunteer-hours letters.',
     },
-    can('settings.manage') && {
+    // Founders and Developers only (update 38)
+    canSwitchFeatures(membership) && {
       to: '/staff/features',
       h: 'Features',
-      p: 'Turn parts of the app on and off for everyone — the BunFest section, raffle tickets, volunteer self-logged hours.',
+      p: 'Switch parts of the app, the website and the BunFest site on and off — BunFest, the Silent Auction, raffle tickets, Hop Shop items online, phone notifications, volunteer hours.',
     },
     can('audit.view') && {
       to: '/staff/activity',
