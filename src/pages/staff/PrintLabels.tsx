@@ -1,40 +1,105 @@
-// Print labels for cataloged items — the desk copy of the app's page, since
-// USB label printers live next to a computer. QR + barcode + code + name +
-// donor, at the size of the printer's labels. Tick the items (the unprinted
-// ones are ticked by default), then Print — one label per page, margins zero —
-// or make a PDF with one label per page to print from wherever the printer is.
-// Each ticked label can print more than once (update 40): a copies box, and
-// for a lot of several, "One per piece".
+// Print labels — the desk copy of the app's page, since USB label printers
+// live next to a computer. Two lists, one page (as in the app, update 41):
+//   /staff/items/labels     donations and prizes: QR + barcode + DON number +
+//                           name + donor (one per piece for a lot of 50)
+//   /staff/hopshop/labels   Hop Shop price labels: QR + barcode + SKU + name +
+//                           price (one per item in stock)
+// Tick the items (the unprinted ones are ticked by default), choose the label
+// size, then Print — one label per page, margins zero — or make a PDF with one
+// label per page to print from wherever the printer is. Each ticked label can
+// print more than once: a copies box, and "One per piece" / "One per item in
+// stock". ?code=X (repeatable) ticks just those; &copies=N sets their copies.
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
-import { Icon } from '../../components/icons'
+import { Icon, type IconName } from '../../components/icons'
 import { KIND_META, UPDATE_36_NOTE, isMissingFunction, listItems, markLabelsPrinted, type TaggedItem } from '../../lib/items'
+import { listProducts, money, type StockCard } from '../../lib/hopshop'
 import { LABEL_SIZES, customLabelSize, labelDataUrl, labelsPdf, loadLabelSize, saveLabelSize, type LabelItem, type LabelSize } from '../../lib/labels'
 
 type Show = 'unprinted' | 'all'
+type Mode = 'items' | 'shop'
+
+/** One line on the page: a donation or prize, or a Hop Shop product. */
+interface Row {
+  key: string
+  code: string
+  title: string
+  /** The grey line under the name. */
+  sub: string
+  /** Read out with the tick box: "Hay, from Ann". */
+  spoken: string
+  photo_url: string | null
+  icon: IconName
+  quantity: number | null
+  label_printed_at: string | null
+  price_cents: number | null
+  label: LabelItem
+}
+
+const PRICE_KEY = 'ohrr.labels.shopPrice'
+function loadShowPrice(): boolean {
+  try {
+    return localStorage.getItem(PRICE_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
 
 /** Copies of one label: a whole number from 1 to 999 (blank or nonsense = 1). */
 const MAX_COPIES = 999
 const copiesOf = (s: string | undefined) => Math.min(MAX_COPIES, Math.max(1, parseInt(s ?? '1', 10) || 1))
 
-function toLabel(i: TaggedItem): LabelItem {
-  return { code: i.code, title: i.title, donated_by: i.donated_by, photo_url: i.photo_url, kindLabel: i.kind === 'donation' ? null : KIND_META[i.kind].label }
+function itemRow(i: TaggedItem): Row {
+  return {
+    key: i.tag_id,
+    code: i.code,
+    title: i.title,
+    sub: `${i.donated_by ? `From ${i.donated_by} · ` : ''}${KIND_META[i.kind].label}`,
+    spoken: `${i.title}${i.donated_by ? `, from ${i.donated_by}` : ''}`,
+    photo_url: i.photo_url,
+    icon: KIND_META[i.kind].icon,
+    quantity: i.quantity,
+    label_printed_at: i.label_printed_at ?? null,
+    price_cents: null,
+    label: { code: i.code, title: i.title, donated_by: i.donated_by, photo_url: i.photo_url, kindLabel: i.kind === 'donation' ? null : KIND_META[i.kind].label },
+  }
+}
+
+function productRow(p: StockCard): Row {
+  const code = p.code ?? p.sku ?? ''
+  return {
+    key: p.id,
+    code,
+    title: p.name,
+    sub: [money(p.price_cents), `${p.quantity ?? 0} in stock`, p.type_name ?? p.category, p.is_active ? null : 'hidden'].filter(Boolean).join(' · '),
+    spoken: p.name,
+    photo_url: p.photo_url,
+    icon: 'bag',
+    quantity: p.quantity,
+    label_printed_at: p.label_printed_at ?? null,
+    price_cents: p.price_cents,
+    label: { code, title: p.name, photo_url: p.photo_url, shop: true, price_cents: p.price_cents },
+  }
 }
 
 const chip = (on: boolean) =>
   `min-h-11 rounded-full px-4 text-sm font-bold transition ${on ? 'bg-brand-blue text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-brand-blue'}`
 
-export default function PrintLabels() {
+export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
+  const shop = mode === 'shop'
   const { membership } = useStaff()
   const orgId = membership?.orgId ?? ''
-  const [items, setItems] = useState<TaggedItem[] | null>(null)
+  const [items, setItems] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // ?code=OHRR-XXXXX (one or more): tick just those — "Print this label" from the catalog.
+  const [showPrice, setShowPrice] = useState(loadShowPrice)
+  // ?code=DON-00042 (one or more): tick just those — "Print its label" from Items, a product card or Scan an item.
   const [searchParams] = useSearchParams()
   const wanted = useMemo(() => searchParams.getAll('code').map((c) => c.trim().toUpperCase()).filter(Boolean), [searchParams])
+  const wantedCopies = Number(searchParams.get('copies')) || 0
+  const toLabel = (r: Row): LabelItem => (shop ? { ...r.label, price_cents: showPrice ? r.price_cents : null } : r.label)
   const [show, setShow] = useState<Show>(wanted.length ? 'all' : 'unprinted')
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -51,14 +116,20 @@ export default function PrintLabels() {
 
   const load = async () => {
     try {
-      const rows = await listItems(orgId)
+      // Hop Shop products print on their own page, as price labels.
+      const rows = shop
+        ? (await listProducts(orgId)).filter((p) => p.code || p.sku).map(productRow)
+        : (await listItems(orgId)).filter((i) => i.kind !== 'stock').map(itemRow)
       setItems(rows)
       setPicked((p) => {
         if (p.size) return p
         if (wanted.length) {
           const have = new Set(rows.map((r) => r.code))
           const w = wanted.filter((c) => have.has(c))
-          if (w.length) return new Set(w)
+          if (w.length) {
+            if (wantedCopies > 1) setCopies(Object.fromEntries(w.map((c) => [c, String(copiesOf(String(wantedCopies)))])))
+            return new Set(w)
+          }
         }
         return new Set(rows.filter((r) => !r.label_printed_at).map((r) => r.code))
       })
@@ -69,14 +140,14 @@ export default function PrintLabels() {
   useEffect(() => {
     if (orgId) void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId])
+  }, [orgId, mode])
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return (items ?? []).filter(
       (i) =>
         (show === 'all' || !i.label_printed_at) &&
-        (!needle || i.title.toLowerCase().includes(needle) || i.code.toLowerCase().includes(needle) || (i.donated_by ?? '').toLowerCase().includes(needle)),
+        (!needle || i.title.toLowerCase().includes(needle) || i.code.toLowerCase().includes(needle) || i.sub.toLowerCase().includes(needle)),
     )
   }, [items, show, q])
   const selected = useMemo(() => (items ?? []).filter((i) => picked.has(i.code)), [items, picked])
@@ -98,7 +169,8 @@ export default function PrintLabels() {
     return () => {
       alive = false
     }
-  }, [selected, shown, size])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, shown, size, showPrice])
 
   const chooseSize = (s: LabelSize) => {
     setSize(s)
@@ -110,6 +182,14 @@ export default function PrintLabels() {
     const w = Number(customW)
     const h = Number(customH)
     if (w >= 0.5 && h >= 0.5 && w <= 8.5 && h <= 11) chooseSize(customLabelSize(w, h))
+  }
+  const choosePrice = (on: boolean) => {
+    setShowPrice(on)
+    try {
+      localStorage.setItem(PRICE_KEY, on ? 'on' : 'off')
+    } catch {
+      /* private mode */
+    }
   }
 
   const toggle = (code: string) =>
@@ -175,7 +255,7 @@ export default function PrintLabels() {
         selected.flatMap((it) => Array.from({ length: copiesOf(copies[it.code]) }, () => toLabel(it))),
         size,
       )
-      const name = `ohrr-labels-${new Date().toISOString().slice(0, 10)}.pdf`
+      const name = `ohrr-${shop ? 'shop-' : ''}labels-${new Date().toISOString().slice(0, 10)}.pdf`
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -198,21 +278,26 @@ export default function PrintLabels() {
   }
 
   const unprintedCount = (items ?? []).filter((i) => !i.label_printed_at).length
-  const label = (i: TaggedItem) => `${i.title}${i.donated_by ? `, from ${i.donated_by}` : ''}`
 
   return (
     <>
       <div className="print:hidden">
-        <Link to="/staff/items" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
-          <Icon name="arrowLeft" size={16} /> Items
+        <Link to={shop ? '/staff/hopshop' : '/staff/items'} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
+          <Icon name="arrowLeft" size={16} /> {shop ? 'Hop Shop inventory' : 'Items'}
         </Link>
-        <h1 className="mt-1 font-display text-2xl font-black text-ink">Print labels</h1>
+        <h1 className="mt-1 font-display text-2xl font-black text-ink">{shop ? 'Hop Shop labels' : 'Print labels'}</h1>
         <p className="mt-1 max-w-2xl text-base text-slate-600">
-          One label per item: the QR code opens it, the barcode scans at the till or the desk, and the code can be typed. Any label printer works — tick the
-          items, choose the label size, then Print.
+          {shop
+            ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at the till; the QR code opens the item. Any label printer works.'
+            : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at the till or the desk, and the DON number can be typed. Any label printer works — tick the items, choose the label size, then Print.'}
+        </p>
+        <p className="mt-1 text-base">
+          <Link to={shop ? '/staff/items/labels' : '/staff/hopshop/labels'} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
+            {shop ? 'Donation labels →' : 'Hop Shop price labels →'}
+          </Link>
         </p>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
           {/* The items to print, ticked */}
           <section aria-label="Items to print">
             <div className="flex flex-wrap items-center gap-2">
@@ -233,7 +318,7 @@ export default function PrintLabels() {
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by name, donor or code"
+              placeholder={shop ? 'Search by name, type or SKU' : 'Search by name, donor or code'}
               aria-label="Search items"
               className={`${staffInput} mt-3 max-w-md !py-3 text-base`}
             />
@@ -242,7 +327,13 @@ export default function PrintLabels() {
             {items === null && !error && <Spinner />}
             {items && shown.length === 0 && (
               <p className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-base text-slate-500">
-                {items.length === 0 ? 'Nothing has a code yet. Add a donation on the Items page, or scan tags in the app.' : show === 'unprinted' ? 'Every label has been printed.' : 'Nothing matches.'}
+                {items.length === 0
+                  ? shop
+                    ? 'No Hop Shop items have a SKU yet. Add one in Hop Shop inventory.'
+                    : 'Nothing has a DON number yet. Add a donation on the Items page.'
+                  : show === 'unprinted'
+                    ? 'Every label has been printed.'
+                    : 'Nothing matches.'}
               </p>
             )}
             <ul className="mt-3 space-y-2">
@@ -250,25 +341,24 @@ export default function PrintLabels() {
                 const on = picked.has(i.code)
                 const pieces = i.quantity ?? 0
                 return (
-                  <li key={i.tag_id} className={`rounded-2xl border transition ${on ? 'border-brand-blue bg-brand-blue-50/50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                  <li key={i.key} className={`rounded-2xl border transition ${on ? 'border-brand-blue bg-brand-blue-50/50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
                     <label className="flex min-h-11 cursor-pointer items-center gap-3 p-3">
-                      <input type="checkbox" checked={on} onChange={() => toggle(i.code)} className="h-6 w-6 shrink-0 accent-brand-blue" aria-label={`Print a label for ${label(i)}`} />
+                      <input type="checkbox" checked={on} onChange={() => toggle(i.code)} className="h-6 w-6 shrink-0 accent-brand-blue" aria-label={`Print a label for ${i.spoken}`} />
                       {i.photo_url ? (
                         <img src={i.photo_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" loading="lazy" />
                       ) : (
                         <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                          <Icon name={KIND_META[i.kind].icon} size={22} />
+                          <Icon name={i.icon} size={22} />
                         </span>
                       )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-display text-base font-extrabold text-ink">{i.title}</span>
                         <span className="block truncate text-sm text-slate-600">
-                          {i.donated_by ? `From ${i.donated_by} · ` : ''}
-                          {KIND_META[i.kind].label}
+                          {i.sub}
                           {i.label_printed_at ? ' · printed' : ''}
                         </span>
                       </span>
-                      <span className="shrink-0 font-mono text-sm font-bold tracking-widest text-slate-500">{i.code.replace('OHRR-', '')}</span>
+                      <span className="shrink-0 font-mono text-sm font-bold text-slate-500">{i.code}</span>
                     </label>
                     {on && (
                       <div className="flex flex-wrap items-center gap-2 px-3 pb-3 sm:pl-12">
@@ -284,7 +374,7 @@ export default function PrintLabels() {
                             onChange={(e) => setCopy(i.code, e.target.value)}
                             onBlur={(e) => setCopy(i.code, String(copiesOf(e.target.value)))}
                             className={`${staffInput} !mt-0 !w-24`}
-                            aria-label={`Copies of the label for ${label(i)}`}
+                            aria-label={`Copies of the label for ${i.spoken}`}
                           />
                         </label>
                         {pieces > 1 && (
@@ -294,7 +384,7 @@ export default function PrintLabels() {
                             aria-pressed={copiesOf(copies[i.code]) === Math.min(MAX_COPIES, pieces)}
                             className="inline-flex min-h-11 items-center rounded-full border-2 border-brand-blue/60 bg-white px-4 text-sm font-bold text-brand-blue transition hover:bg-brand-blue-50"
                           >
-                            One per piece ({pieces})
+                            {shop ? 'One per item in stock' : 'One per piece'} ({Math.min(MAX_COPIES, pieces)})
                           </button>
                         )}
                       </div>
@@ -330,6 +420,12 @@ export default function PrintLabels() {
                   Use this size
                 </button>
               </div>
+              {shop && (
+                <label className="mt-3 flex min-h-11 items-center gap-2 text-base font-bold text-slate-700">
+                  <input type="checkbox" checked={showPrice} onChange={(e) => choosePrice(e.target.checked)} className="h-6 w-6 shrink-0 accent-brand-blue" />
+                  Show the price on the label
+                </label>
+              )}
               {preview && (
                 <div className="mt-4">
                   <p className="mb-1 text-sm font-semibold text-slate-700">Preview · {size.label}</p>
@@ -347,7 +443,7 @@ export default function PrintLabels() {
               </button>
             </div>
             {note && (
-              <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700" role="status">
                 {note}{' '}
                 {lastMarked.length > 0 && (
                   <button type="button" onClick={() => void undo()} className="inline-flex min-h-11 items-center font-bold text-brand-blue">

@@ -1,4 +1,5 @@
-// Items with an OHRR code — the website's copy of the app's scan/types.ts and
+// Items with an OHRR number (DON-00042, or a Hop Shop SKU like HAY-101-001 —
+// update 41) — the website's copy of the app's scan/types.ts and
 // scan/api.ts, for the Items list and the label printer. One code → one item of
 // one kind; the kind decides which table holds the details. Update 36 adds a
 // fourth kind, `donation` ("cataloged, sort later"), and label_printed_at.
@@ -295,8 +296,9 @@ export interface DonationPlan {
 }
 
 /**
- * Catalog a new item in one call. The database makes the code (OHRR-XXXXX)
- * unless a scanned tag's code is given (update 36). Before update 39 the extra
+ * Catalog a new item in one call. The database gives a donation the next DON
+ * number (update 41; a DON label nothing has yet keeps its number, a packet
+ * barcode isn't kept) (update 36). Before update 39 the extra
  * details aren't accepted: the item is saved without condition, category and
  * place, and comes back with details_skipped when any detail had been entered,
  * so the screen can say so. Update 40 takes the donation's plan (p_plan) in
@@ -385,7 +387,7 @@ export async function setDonationOutcome(orgId: string, code: string, outcome: '
   return asItem(await rpc40('set_donation_outcome', { p_org: orgId, p_code: code, p_outcome: outcome, p_note: blank(note) }))
 }
 
-/** Take some of a lot off as their own donation, with a new code. Returns the new part. */
+/** Take some of a lot off as their own donation, with the next DON number. Returns the new part. */
 export async function splitDonation(orgId: string, code: string, quantity: number, headedFor?: HeadedFor | null): Promise<TaggedItem> {
   const item = asItem(await rpc40('split_donation', { p_org: orgId, p_code: code, p_quantity: quantity, p_headed_for: headedFor ?? null }))
   if (!item) throw new Error('Split, but the new part could not be read back.')

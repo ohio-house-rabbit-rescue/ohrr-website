@@ -63,7 +63,6 @@ import OrgDetails from './pages/staff/OrgDetails'
 import Impact from './pages/Impact'
 import Book, { BookCancel } from './pages/Book'
 import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest } from './pages/Forms'
-import PrintTags from './pages/staff/PrintTags'
 import PrintLabels from './pages/staff/PrintLabels'
 // Update 40: donation drop-offs (thank-you letters) and the monthly report
 import Dropoffs, { DropoffDetail } from './pages/staff/Dropoffs'
@@ -149,6 +148,9 @@ export default function App() {
         <Route path="hopshop" element={<StaffHopShop />} />
         <Route path="hopshop/reorder" element={<StaffHopShop />} />
         <Route path="hopshop/suppliers" element={<StaffHopShop />} />
+        <Route path="hopshop/types" element={<StaffHopShop />} />
+        {/* Hop Shop price labels (update 41); its own key, so it never keeps the donation list's ticks */}
+        <Route path="hopshop/labels" element={<PrintLabels key="shop" mode="shop" />} />
         <Route path="bunfest" element={<BunFestContent />} />
         <Route path="bunfest/pages" element={<BunFestContent />} />
         <Route path="bunfest/floor" element={<BunFestContent />} />
@@ -156,8 +158,9 @@ export default function App() {
         <Route path="bunfest/partners" element={<BunFestContent />} />
         <Route path="tails" element={<HappyTails />} />
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
-        <Route path="items/tags" element={<PrintTags />} />
-        <Route path="items/labels" element={<PrintLabels />} />
+        {/* Pre-printed tag sheets are retired (update 41): every label is printed with its own number */}
+        <Route path="items/tags" element={<Navigate to="/staff/items/labels" replace />} />
+        <Route path="items/labels" element={<PrintLabels key="items" />} />
         <Route path="dropoffs" element={<Dropoffs />} />
         <Route path="dropoffs/:id" element={<DropoffDetail />} />
         <Route path="donations/report" element={<DonationsReport />} />

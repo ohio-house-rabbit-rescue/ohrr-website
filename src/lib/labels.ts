@@ -1,30 +1,18 @@
 // Copy of ohrr-app src/features/scan/labels.ts — keep in sync.
 //
 // Item labels for a label printer: a QR code (opens the item), a Code 128
-// barcode (the app's scanner reads it), the code in big type, the item's name
-// and who gave it. Painted on a canvas at the label's exact size, so the same
-// picture prints from a phone (AirPrint / the printer's app), from a laptop
-// (any label printer driver) or as a PDF with one label per page. Tall labels
-// (3 in and up) get the photo too.
+// barcode (the app's scanner reads it), the number in big type (DON-00042 or a
+// SKU like HAY-101-001), the item's name and who gave it — or, for a Hop Shop
+// price label, the price. Painted on a canvas at the label's exact size, so the
+// same picture prints from a phone (AirPrint / the printer's app), from a
+// laptop (any label printer driver) or as a PDF with one label per page. Tall
+// labels (3 in and up) get the photo too.
 //
-// Website differences: the tiny canvas helpers (loadImage, ensureFonts) and
-// the code helpers (tagUrl, shortCode) are inlined here — the QR opens the
-// APP's /t/CODE page, exactly as the tag sheets (PrintTags) do.
+// Website differences: the tiny canvas helpers (loadImage, ensureFonts) are
+// inlined here; the QR opens the APP's /t/CODE page (lib/codes.ts tagUrl).
 import QRCode from 'qrcode'
 import JsBarcode from 'jsbarcode'
-import { APP_URL } from './constants'
-
-const TAG_PREFIX = 'OHRR-'
-
-/** The URL inside a label's QR code: the app's /t/CODE page (same as the tag sheets). */
-export function tagUrl(code: string): string {
-  return `${APP_URL}/t/${shortCode(code)}`
-}
-
-/** "OHRR-7K3PX" → "7K3PX" (what's printed large on the label). */
-export function shortCode(code: string): string {
-  return code.startsWith(TAG_PREFIX) ? code.slice(TAG_PREFIX.length) : code
-}
+import { tagUrl } from './codes'
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -100,7 +88,13 @@ export interface LabelItem {
   photo_url?: string | null
   /** "Silent Auction" / "Raffle prize" / … — printed small when given. */
   kindLabel?: string | null
+  /** A Hop Shop price label: "OHRR HOP SHOP" on top and the price under the name. */
+  shop?: boolean
+  /** Printed on a shop label when given (leave out for a label without a price). */
+  price_cents?: number | null
 }
+
+export const priceText = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 /** A photo from storage, loaded so the canvas can still be exported (CORS). */
 function loadPhoto(url: string): Promise<HTMLImageElement | null> {
@@ -224,22 +218,31 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
   ctx.textBaseline = 'top'
   ctx.textAlign = 'left'
   ctx.fillStyle = '#0669ac'
-  const brand = fitBlock(ctx, 'OHIO HOUSE RABBIT RESCUE', tw, 1, brandSize, (px) => `800 ${px}px "Nunito"`)
+  const brand = fitBlock(ctx, item.shop ? 'OHRR HOP SHOP' : 'OHIO HOUSE RABBIT RESCUE', tw, 1, brandSize, (px) => `800 ${px}px "Nunito"`)
   ctx.fillText(brand.lines[0], tx, y)
   y += Math.round(brand.px * 1.35)
 
   // The name comes first and stays the biggest text: two lines (three with a
   // photo), shrinking before it is cut. Donor and kind fit in what is left.
   const bottom = top + qrSide + Math.round(m / 2)
-  const titleLines = Math.max(1, Math.min(photo ? 3 : 2, Math.floor((bottom - y) / (titleSize * 1.15))))
+  // A shop label keeps room for the price under the name.
+  const showPrice = !!item.shop && item.price_cents != null
+  const pricePx = Math.round(Math.min(titleSize * 1.15, tw / 4.5))
+  const titleRoom = bottom - y - (showPrice ? Math.round(pricePx * 1.1) : 0)
+  const titleLines = Math.max(1, Math.min(photo ? 3 : 2, Math.floor(titleRoom / (titleSize * 1.15))))
   ctx.fillStyle = '#0f172a'
   const title = fitBlock(ctx, item.title || 'Untitled', tw, titleLines, titleSize, (px) => `900 ${px}px "Nunito"`)
   for (const l of title.lines) {
     ctx.fillText(l, tx, y)
     y += Math.round(title.px * 1.15)
   }
+  if (showPrice) {
+    ctx.font = `900 ${pricePx}px "Nunito"`
+    ctx.fillText(ellipsize(ctx, priceText(item.price_cents ?? 0), tw), tx, Math.min(y, bottom - pricePx))
+    y += Math.round(pricePx * 1.1)
+  }
 
-  const meta = [item.donated_by ? `From ${item.donated_by}` : null, item.kindLabel ?? null].filter(Boolean) as string[]
+  const meta = (item.shop ? [] : [item.donated_by ? `From ${item.donated_by}` : null, item.kindLabel ?? null]).filter(Boolean) as string[]
   const metaPx = Math.min(smallSize, Math.round(title.px * 0.82))
   ctx.fillStyle = '#334155'
   ctx.font = `600 ${metaPx}px "Open Sans"`
@@ -255,9 +258,15 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
   const barW = Math.min(W - 2 * m, Math.round(bar.width * (barH / bar.height)))
   ctx.drawImage(bar, Math.round((W - barW) / 2), bandTop, barW, barH)
   ctx.fillStyle = '#0f172a'
-  ctx.font = `900 ${codeSize}px "Courier New", monospace`
+  // The whole number, as big as the width allows (HAY-101-001 is 11 characters).
+  let codePx = codeSize
+  ctx.font = `900 ${codePx}px "Courier New", monospace`
+  while (codePx > 12 && ctx.measureText(item.code).width > W - 2 * m) {
+    codePx -= 2
+    ctx.font = `900 ${codePx}px "Courier New", monospace`
+  }
   ctx.textAlign = 'center'
-  ctx.fillText(shortCode(item.code), W / 2, bandTop + barH + Math.round(codeSize * 0.15))
+  ctx.fillText(item.code, W / 2, bandTop + barH + Math.round(codeSize * 0.15))
   ctx.textAlign = 'left'
 }
 
@@ -272,12 +281,13 @@ export async function labelDataUrl(item: LabelItem, size: LabelSize, dpi = LABEL
 export async function labelsPdf(items: LabelItem[], size: LabelSize): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'in', format: [size.wIn, size.hIn], orientation: size.wIn >= size.hIn ? 'landscape' : 'portrait' })
-  // Website: copies of one label (the same code) are painted once.
+  // Website: copies of one label (the same code and words) are painted once.
   const painted = new Map<string, string>()
   for (let i = 0; i < items.length; i++) {
     if (i > 0) doc.addPage([size.wIn, size.hIn], size.wIn >= size.hIn ? 'landscape' : 'portrait')
-    const png = painted.get(items[i].code) ?? (await labelDataUrl(items[i], size, 203))
-    painted.set(items[i].code, png)
+    const key = JSON.stringify(items[i])
+    const png = painted.get(key) ?? (await labelDataUrl(items[i], size, 203))
+    painted.set(key, png)
     doc.addImage(png, 'PNG', 0, 0, size.wIn, size.hIn)
   }
   return doc.output('blob')

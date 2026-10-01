@@ -16,10 +16,11 @@
 // a lot, makes baskets, and marks things used for the rabbits or passed on.
 // Shop stock bought from a supplier is added in Hop Shop inventory only.
 // /staff/items?add=1 brings the Add a donation form into view and focuses it.
-// From Scan an item (2026-10-01): /staff/items?add=1&code=XXXXX fills that
-// label's code into Add a donation (the new donation gets it), and
-// /staff/items?code=XXXXX opens that item's edit panel. Photos can be dropped
-// onto Add a donation and the photo editor, as well as chosen.
+// From Scan an item (2026-10-01): /staff/items?add=1&code=X opens Add a
+// donation (a new donation gets the next DON number, update 41; only a
+// DON-00042 label found with nothing on it keeps its number), and
+// /staff/items?code=X opens that item's edit panel. Photos can be dropped onto
+// Add a donation and the photo editor, as well as chosen.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
@@ -72,7 +73,7 @@ import {
   type TaggedItem,
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
-import { normalizeCode } from '../../lib/codes'
+import { isDonationCode, normalizeCode } from '../../lib/codes'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 
 /** Recent places and categories (update 39; empty lists before it). */
@@ -345,16 +346,13 @@ export default function Items() {
         <div>
           <h1 className="font-display text-2xl font-black text-ink">Items</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Everything with an OHRR code: donations waiting to be sorted, auction lots, raffle prizes and shop stock. Add a donation here or catalog it in the
-            app, then decide where it goes, tidy details, mark items won or drawn, and count stock.
+            Everything with an OHRR number: donations waiting to be sorted, auction lots and raffle prizes (DON-00042), and shop stock (a SKU like
+            HAY-101-001). Add a donation here or catalog it in the app, then decide where it goes, tidy details, mark items won or drawn, and count stock.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/staff/items/labels" className={btn.blue}>
             <Icon name="printer" size={16} /> Print labels
-          </Link>
-          <Link to="/staff/items/tags" className={btn.outline}>
-            <Icon name="printer" size={16} /> Print tags
           </Link>
           {canDonations && (
             <>
@@ -481,7 +479,7 @@ export default function Items() {
       {items && shown.length === 0 && (
         <p className="mt-6 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
           {items.length === 0
-            ? 'Nothing has a code yet. Add a donation above, or print tags and scan them in the app.'
+            ? 'Nothing has a number yet. Add a donation above, or catalog donations in the app.'
             : filter === 'donation' && view !== 'done'
               ? 'Nothing waiting here.'
               : 'Nothing matches.'}
@@ -617,7 +615,19 @@ export default function Items() {
                   onMoved={(saved) => {
                     swap(saved)
                     setPanel(null)
-                    setNote(`“${saved.title}” is now in ${KIND_META[saved.kind].label} — same code, ${saved.code}, so its label still works.`)
+                    setNote(
+                      saved.kind === 'stock' && saved.code !== it.code ? (
+                        // Into the shop it gets a SKU (update 41); its DON number stays as a second code.
+                        <>
+                          “{saved.title}” is now Hop Shop stock, with the SKU <span className="font-mono font-bold">{saved.code}</span>. Its {it.code} label still scans.{' '}
+                          <Link to={`/staff/hopshop/labels?code=${encodeURIComponent(saved.code)}`} className={linkClass}>
+                            Print its price label
+                          </Link>
+                        </>
+                      ) : (
+                        `“${saved.title}” is now in ${KIND_META[saved.kind].label} — same number, ${saved.code}, so its label still works.`
+                      ),
+                    )
                   }}
                 />
               )}
@@ -630,7 +640,7 @@ export default function Items() {
                     void load()
                     setNote(
                       <>
-                        Split off {n} of “{it.title}”. The new part’s code is <span className="font-mono font-bold tracking-widest">{part.code}</span>.{' '}
+                        Split off {n} of “{it.title}”. The new part’s number is <span className="font-mono font-bold tracking-widest">{part.code}</span>.{' '}
                         <Link to={`/staff/items/labels?code=${encodeURIComponent(part.code)}`} className={linkClass}>
                           Print its label
                         </Link>
@@ -1058,7 +1068,7 @@ function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Par
  * day, so the thank-you letter lists everything they brought. Then each item:
  * photos, name, how many, a value for each or for all, and where it's headed.
  * The rest (size, condition, sort of thing, where it's kept, use by, a price,
- * notes) sits under "More details". The database makes the code. Before
+ * notes) sits under "More details". The database gives it the next DON number. Before
  * update 40 the drop-off part is left out (the donor's name goes on each
  * item) and the item is saved without where it's headed, size or use-by.
  */
@@ -1077,12 +1087,17 @@ function AddDonation({
   stockLink: boolean
   /** Changes when the form should come into view and take the focus (?add=1). */
   focusRequest: number
-  /** A scanned label's code (?add=1&code=X): the next donation gets it, not a new one. */
+  /**
+   * A scanned code nothing has yet (?add=1&code=X). A DON-00042 label keeps its
+   * number for the next donation; anything else (a packet barcode) only goes on
+   * to Hop Shop inventory — a donation gets the next DON number.
+   */
   presetCode: string | null
-  /** The preset code is used, or not wanted: back to a new code each time. */
+  /** The preset is used, or not wanted: back to the next number each time. */
   onCodeDone: () => void
   onAdded: (it: TaggedItem) => void
 }) {
+  const donationCode = presetCode && isDonationCode(presetCode) ? presetCode : null
   // Who it's from
   const [dropoff, setDropoff] = useState<Dropoff | null>(() => loadCurrentDropoff(orgId))
   /** Has the database got drop-offs (update 40)? null while finding out. */
@@ -1254,8 +1269,8 @@ function AddDonation({
       }
       let it = await catalogNewItem(orgId, {
         title,
-        // A scanned label's code; otherwise the database makes one.
-        code: presetCode,
+        // A scanned DON label nothing has yet; otherwise the database gives the next DON number.
+        code: donationCode,
         donatedBy: d ? (d.donor_name ?? '') : donor,
         valueCents: toCents(value),
         photoUrl: urls[0] ?? null,
@@ -1272,7 +1287,7 @@ function AddDonation({
       it = { ...it, ...skipped }
       onAdded(it)
       setLast(it)
-      if (presetCode) onCodeDone()
+      if (donationCode) onCodeDone()
       if (!d) rememberDonor(donor)
       // Who it's from, where it's headed and where it's kept stay: the next
       // thing is often from the same box, and a box usually goes to one place.
@@ -1300,7 +1315,7 @@ function AddDonation({
           <h2 id="add-donation-heading" className="font-display text-lg font-extrabold text-ink">
             Add a donation
           </h2>
-          <p className="mt-0.5 text-sm text-slate-600">Something given to OHRR. Name it and the code is made for you. Sort it later, or tick where it’s headed.</p>
+          <p className="mt-0.5 text-sm text-slate-600">Something given to OHRR. Name it and it gets the next DON number. Sort it later, or tick where it’s headed.</p>
         </div>
         <Link to="/staff/dropoffs" className={`inline-flex min-h-11 items-center ${linkClass} text-sm`}>
           Drop-offs and thank-you letters
@@ -1317,13 +1332,13 @@ function AddDonation({
           </Link>
         </p>
       )}
-      {presetCode && (
+      {donationCode && (
         <p className="mt-2 flex flex-wrap items-center gap-x-3 rounded-xl bg-brand-blue-50 px-3 py-1.5 text-base text-slate-800" role="status">
           <span>
-            Its code is <span className="font-mono font-bold tracking-widest">{presetCode}</span>, from the label you scanned.
+            Its number is <span className="font-mono font-bold tracking-widest">{donationCode}</span>, from the label you scanned.
           </span>
           <button type="button" onClick={onCodeDone} className="min-h-11 px-1 font-bold text-brand-blue">
-            Make a new code instead
+            Use the next number instead
           </button>
         </p>
       )}
@@ -1511,11 +1526,11 @@ function AddDonation({
       {last && (
         <div className="mt-3 space-y-2" role="status">
           <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
-            Added <strong>{last.title}</strong> — code <span className="font-mono font-bold tracking-widest">{last.code}</span>. Its label is ready in{' '}
-            <Link to="/staff/items/labels" className="font-bold text-brand-blue">
-              Print labels
+            Added <strong>{last.title}</strong> as <span className="font-mono font-bold tracking-widest">{last.code}</span>.{' '}
+            <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
+              Print its label →
             </Link>
-            .{extrasSummary(last) && <span className="block text-sm text-slate-700">{extrasSummary(last)}</span>}
+            {extrasSummary(last) && <span className="block text-sm text-slate-700">{extrasSummary(last)}</span>}
           </p>
           {last.details_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_39_ADD_NOTE}</p>}
           {last.plan_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_40_ADD_NOTE}</p>}
@@ -1579,8 +1594,8 @@ function MovePanel({
     <div className="mt-4 border-t border-slate-100 pt-4">
       <p className="text-base font-bold text-ink">Where does it go?</p>
       <p className="text-sm text-slate-600">
-        It keeps its code, <span className="font-mono font-bold tracking-widest">{item.code}</span>, so a label already printed still works. Auction lots go in as
-        all-day; change that on the Silent auction page.
+        It keeps its number, <span className="font-mono font-bold tracking-widest">{item.code}</span>, so a label already printed still works (in the Hop Shop it
+        also gets a SKU for its price label). Auction lots go in as all-day; change that on the Silent auction page.
       </p>
       {item.description && (
         <p className="mt-2 text-sm text-slate-700">
@@ -1662,7 +1677,7 @@ function SplitPanel({ item, orgId, onSplit }: { item: TaggedItem; orgId: string;
     <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-100 pt-4" aria-label={`Split ${item.title}`}>
       <p className="text-base font-bold text-ink">Split this lot</p>
       <p className="text-sm text-slate-600">
-        Take some of the {total} off as their own item, with a new code and a label of its own. The rest stay here under {item.code}.
+        Take some of the {total} off as their own item, with the next DON number and a label of its own. The rest stay here under {item.code}.
       </p>
       <label className={`${fieldLabel} max-w-xs`}>
         How many to take off? <span className="font-normal text-slate-600">(1 to {max})</span>

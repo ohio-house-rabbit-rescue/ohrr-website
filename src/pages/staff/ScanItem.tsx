@@ -6,16 +6,18 @@
 //
 // Three ways to read a label, all ending in the same look-up (item_by_code):
 //   - the big box: a USB barcode scanner types the code and presses Enter, or
-//     the code is typed by hand (OHRR-7K3PX, 7K3PX, or a shop barcode);
+//     the number is typed by hand (DON-00042, "don 42", HAY-101-001, or the
+//     barcode on a packet) — read the same way as the database (update 41);
 //   - "Use the camera": the laptop's webcam (components/Scanner.tsx);
 //   - "Read the code from a photo": a picture of the label, chosen or dropped.
 // Found: what it is, with Open it (its edit panel on Items, or its card in Hop
-// Shop inventory), Print its label and Scan another. Not found: "What is it?"
-// — a donation (Add a donation with this code) or a Hop Shop item (the new-item
-// form with this code), the same two choices as the app; a shop barcode puts
-// the Hop Shop first. The page is loaded on its own (React.lazy in App.tsx),
-// and ZXing only when the camera or a photo needs it, so the site's main
-// bundle doesn't grow.
+// Shop inventory), Print its label (donation labels, or the Hop Shop price
+// labels for shop stock) and Scan another. Not found: "What is it?" — a
+// donation (Add a donation; it gets the next DON number) or a Hop Shop item
+// (the new-item form, with a packet barcode filled in), the same two choices
+// as the app; a packet barcode puts the Hop Shop first. The page is loaded on
+// its own (React.lazy in App.tsx), and ZXing only when the camera or a photo
+// needs it, so the site's main bundle doesn't grow.
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
@@ -24,7 +26,7 @@ import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
 import Scanner from '../../components/Scanner'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
-import { isRetailBarcode, normalizeCode } from '../../lib/codes'
+import { isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
 import { KIND_META, extrasSummary, findByCode, itemPhotos, money, statusLabel, type TaggedItem } from '../../lib/items'
 import { PhotoUnreadable, readCodeFromImage } from '../../lib/readCode'
 
@@ -40,6 +42,10 @@ const toolBox = 'flex min-h-16 w-full items-center justify-center gap-2 rounded-
 /** Where an item is edited: shop stock in Hop Shop inventory, everything else on Items. */
 const openItemPath = (item: Pick<TaggedItem, 'kind' | 'code'>) =>
   item.kind === 'stock' ? `/staff/hopshop?code=${encodeURIComponent(item.code)}` : `/staff/items?code=${encodeURIComponent(item.code)}`
+
+/** Where its label prints: shop stock on the Hop Shop price labels, everything else with the donations. */
+const labelPath = (item: Pick<TaggedItem, 'kind' | 'code'>) =>
+  `${item.kind === 'stock' ? '/staff/hopshop/labels' : '/staff/items/labels'}?code=${encodeURIComponent(item.code)}`
 
 export default function ScanItem() {
   const { membership, can } = useStaff()
@@ -70,14 +76,14 @@ export default function ScanItem() {
   const lookup = useCallback(
     async (raw: string) => {
       const text = raw.trim()
-      // A QR code that is someone's web link, not an OHRR label (which carries /t/XXXXX).
+      // A QR code that is someone's web link, not an OHRR label (which carries /t/DON-00042).
       const code = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) && !/\/t\/[^/?#]+/.test(text) ? '' : normalizeCode(text)
       if (!code) {
         ticket.current++
         setBusy(null)
         setResult(null)
-        setError('That isn’t an OHRR code or a barcode. Check it and try again — an OHRR code is five letters and numbers, like 7K3PX.')
-        setSaid('That isn’t an OHRR code or a barcode.')
+        setError('That isn’t an OHRR number or a barcode. Check it and try again — a donation’s number looks like DON-00042, a Hop Shop SKU like HAY-101-001.')
+        setSaid('That isn’t an OHRR number or a barcode.')
         return
       }
       const mine = ++ticket.current
@@ -107,7 +113,7 @@ export default function ScanItem() {
     [orgId],
   )
 
-  // /staff/scan?code=XXXXX looks it up straight away (then the code leaves the address).
+  // /staff/scan?code=DON-00042 looks it up straight away (then the code leaves the address).
   const codeParam = params.get('code')
   useEffect(() => {
     if (!codeParam || !orgId) return
@@ -176,7 +182,7 @@ export default function ScanItem() {
   return (
     <div className="max-w-3xl">
       <h1 className="font-display text-2xl font-black text-ink">Scan an item</h1>
-      <p className="mt-1 text-base text-slate-600">See, change or sort anything with an OHRR label or a shop barcode.</p>
+      <p className="mt-1 text-base text-slate-600">See, change or sort anything with an OHRR label or a packet barcode.</p>
 
       {/* The box a USB scanner types into */}
       <form onSubmit={submit} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" role="search" aria-label="Find an item by its code">
@@ -184,7 +190,7 @@ export default function ScanItem() {
           Scan or type the code
         </label>
         <p id="scan-code-help" className="text-base text-slate-600">
-          With a barcode scanner, just scan the label. Or type the five letters and numbers under the square, like 7K3PX.
+          With a barcode scanner, just scan the label. Or type the number under the barcode: DON-00042 for a donation, or a Hop Shop SKU like HAY-101-001.
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <input
@@ -198,7 +204,7 @@ export default function ScanItem() {
             autoCapitalize="characters"
             spellCheck={false}
             enterKeyHint="search"
-            placeholder="7K3PX"
+            placeholder="DON-00042"
             aria-describedby="scan-code-help"
             className="min-h-16 w-full min-w-0 flex-1 rounded-xl border-2 border-slate-300 bg-white px-4 font-mono text-2xl font-bold uppercase tracking-widest text-ink outline-none transition placeholder:text-slate-300 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/20"
           />
@@ -275,13 +281,20 @@ export default function ScanItem() {
         <p className="mt-6 text-base text-slate-600">
           No label on it yet?{' '}
           <Link to="/staff/items?add=1" className={linkClass}>
-            Add a donation
+            Add it as a donation
           </Link>{' '}
-          and a code is made for you, then{' '}
-          <Link to="/staff/items/labels" className={linkClass}>
-            print its label
-          </Link>
-          .
+          — it gets the next DON number.
+          {canAddStock && (
+            <>
+              {' '}
+              Something the shop carries?{' '}
+              <Link to="/staff/hopshop?add=1" className={linkClass}>
+                Add it to Hop Shop inventory
+              </Link>{' '}
+              — it gets a SKU.
+            </>
+          )}{' '}
+          Then print its label.
         </p>
       )}
     </div>
@@ -336,7 +349,7 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
         <Link to={openItemPath(item)} className={`${btn.orange} min-w-36 text-base`} aria-describedby="open-where">
           Open it
         </Link>
-        <Link to={`/staff/items/labels?code=${encodeURIComponent(item.code)}`} className={`${btn.outline} text-base`}>
+        <Link to={labelPath(item)} className={`${btn.outline} text-base`}>
           <Icon name="printer" size={18} /> Print its label
         </Link>
         <button type="button" onClick={onAnother} className={`${btn.outline} text-base`}>
@@ -350,7 +363,7 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
   )
 }
 
-/* ------------------------------------------------------------ new code */
+/* ------------------------------------------------------------ not found */
 
 interface Choice {
   to: string
@@ -361,12 +374,21 @@ interface Choice {
 
 function NotFound({ code, canAddStock, onAnother }: { code: string; canAddStock: boolean; onAnother: () => void }) {
   const retail = isRetailBarcode(code)
+  const don = isDonationCode(code)
   const q = encodeURIComponent(code)
-  const donation: Choice = { to: `/staff/items?add=1&code=${q}`, label: 'A donation', hint: 'Something given to OHRR. Sort it later, or say where it’s headed.', icon: 'gift' }
+  const donation: Choice = {
+    to: `/staff/items?add=1&code=${q}`,
+    label: 'A donation',
+    hint: don ? `Something given to OHRR. It gets this label’s number, ${code}.` : 'Something given to OHRR. It gets the next DON number; sort it later, or say where it’s headed.',
+    icon: 'gift',
+  }
   const stock: Choice = {
-    to: `/staff/hopshop?add=1&code=${q}`,
+    // A packet barcode goes on as the product's barcode; the product gets its own SKU.
+    to: retail ? `/staff/hopshop?add=1&code=${q}` : '/staff/hopshop?add=1',
     label: 'A Hop Shop item',
-    hint: 'Something the shop carries, bought from a supplier. Opens Hop Shop inventory with this code.',
+    hint: retail
+      ? 'Something the shop carries, bought from a supplier. Opens Hop Shop inventory with this barcode; it gets a SKU.'
+      : 'Something the shop carries, bought from a supplier. Opens Hop Shop inventory; it gets a SKU.',
     icon: 'store',
   }
   const choices = canAddStock ? (retail ? [stock, donation] : [donation, stock]) : [donation]
@@ -377,7 +399,7 @@ function NotFound({ code, canAddStock, onAnother }: { code: string; canAddStock:
       </h2>
       <p className="mt-1 text-base text-slate-700">
         Nothing has the code <span className="font-mono font-bold tracking-widest">{code}</span> yet
-        {retail ? ' — it looks like a shop barcode' : ''}. Pick one and it gets this code.
+        {retail ? ' — it looks like the barcode on a packet' : ''}. Pick what it is.
       </p>
       <ul className="mt-3 grid gap-3 sm:grid-cols-2">
         {choices.map((c) => (
