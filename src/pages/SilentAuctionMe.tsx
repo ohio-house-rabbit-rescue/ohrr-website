@@ -32,12 +32,11 @@ import {
   cardLine,
   itemPath,
   settleCharge,
-  useAuctionGate,
   useDocTitle,
   useMyPage,
   useServerNow,
 } from '../lib/auctionSite'
-import { AuctionGate, Chip, ErrorText, Field, ItemPhoto, TextInput } from '../components/AuctionBits'
+import { Chip, ErrorText, Field, ItemPhoto, TextInput } from '../components/AuctionBits'
 
 const US_STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ')
 
@@ -217,16 +216,12 @@ function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; t
   )
 }
 
-// The Silent Auction switch (Staff → Features) comes first: while it is off,
-// visitors get the "isn't open" page and staff the page under the note.
+// A bidder's own page stays open while the Silent Auction is switched off
+// (Staff → Features): it shows only that person's bids and wins, and after
+// BunFest winners still need to see what they owe.
 export default function SilentAuctionMe() {
   useDocTitle('Your bids')
-  const gate = useAuctionGate()
-  return (
-    <AuctionGate gate={gate}>
-      <MyBidsPage />
-    </AuctionGate>
-  )
+  return <MyBidsPage />
 }
 
 function MyBidsPage() {
