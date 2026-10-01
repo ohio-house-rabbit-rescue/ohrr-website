@@ -104,15 +104,21 @@ export default function StaffDashboard() {
       h: 'Vets',
       p: 'The rabbit-savvy vet list, emergency and low-cost badges, and which practices give the RHDV2 vaccine.',
     },
+    // The item work sits together: items and tags, adding shop stock, and the shop's inventory.
     (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
       to: '/staff/items',
       h: 'Scanned items & tags',
       p: 'Silent Auction, raffle prizes and Hop Shop stock scanned in the app. Print tag sheets here.',
     },
+    can('hopshop.products.create') && {
+      to: '/staff/hopshop?add=1',
+      h: 'Add Hop Shop stock',
+      p: 'Something the shop sells: photo, name, how many, price, where it’s kept. It gets a code for its label.',
+    },
     (can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && {
       to: '/staff/hopshop',
-      h: 'Hop Shop',
-      p: 'Stock cards with photos, codes and prices; the reorder list by supplier; the supplier and vendor list.',
+      h: 'Hop Shop inventory',
+      p: 'What is in stock and how many, prices and photos, the reorder list by supplier, and the supplier and vendor list.',
     },
     can('events.bunfest.manage') && {
       to: '/staff/bunfest',

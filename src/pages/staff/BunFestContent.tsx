@@ -549,7 +549,7 @@ function VendorsTab({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-3">
       <Card className="text-sm text-slate-600">
-        A vendor is a company in the Hop Shop <strong>Suppliers</strong> list with “Vendor” ticked. Visitors see the name,
+        A vendor is a company in the Hop Shop inventory <strong>Suppliers</strong> list with “Vendor” ticked. Visitors see the name,
         category, <strong>About them</strong> and website; everything else on the card — contact, photo, paperwork, fees,
         what they’ve given — is for the team only.{' '}
         {rows && rows.length > 0 && (
@@ -562,7 +562,7 @@ function VendorsTab({ orgId }: { orgId: string }) {
       {rows === null && !error && <Spinner />}
       {rows && rows.length === 0 && (
         <Card className="text-sm text-slate-600">
-          No vendors yet. Add one below, or tick “Vendor” on a company in Hop Shop → Suppliers.
+          No vendors yet. Add one below, or tick “Vendor” on a company in Hop Shop inventory → Suppliers.
         </Card>
       )}
 

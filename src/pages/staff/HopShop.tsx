@@ -1,9 +1,11 @@
-// Staff → Hop Shop (website mirror of the app's): the stock cards (photo,
-// code, price, supplier, reorder point), the reorder list grouped by supplier,
-// and the supplier list itself. Everything here goes live on the public Hop
-// Shop shelf (name, photo, price, in stock) the moment it is saved.
+// Staff → Hop Shop inventory (website mirror of the app's): the stock cards
+// (photo, code, price, how many, supplier, reorder point), the reorder list
+// grouped by supplier, and the supplier list itself. Everything here goes live
+// on the public Hop Shop shelf (name, photo, price, in stock) the moment it is
+// saved. /staff/hopshop?add=1 (the dashboard's "Add Hop Shop stock" tile, and
+// the link on Items) opens the new-item form straight away.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
@@ -115,7 +117,7 @@ export default function HopShop() {
   return (
     <Screen className="space-y-4">
       <div className="pt-1">
-        <h1 className="font-display text-2xl font-black text-ink">Hop Shop</h1>
+        <h1 className="font-display text-2xl font-black text-ink">Hop Shop inventory</h1>
         <p className="mt-1 text-sm text-slate-600">
           {readOnly
             ? 'View-only — ask an owner or admin for edit access.'
@@ -176,8 +178,39 @@ function Items({
 }) {
   const [rows, setRows] = useState<StockCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  // ?add=1 ("Add Hop Shop stock") opens the new-item form straight away, as Add does.
+  const [params, setParams] = useSearchParams()
+  const wantsAdd = params.get('add') === '1'
+  const [creating, setCreating] = useState(() => wantsAdd && perms.canCreate)
   const [q, setQ] = useState('')
+  const newItemRef = useRef<HTMLHeadingElement>(null)
+
+  // Read once, then drop it, so a reload doesn't open the form again. Start at
+  // the top of the page, at once (the site scrolls smoothly): the dashboard's
+  // scroll would otherwise carry over.
+  useEffect(() => {
+    if (!wantsAdd) return
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    if (perms.canCreate) setCreating(true)
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.delete('add')
+        return next
+      },
+      { replace: true },
+    )
+  }, [wantsAdd, perms.canCreate, setParams])
+
+  // When the form opens, move focus to it (the Add button goes away), and bring
+  // it into view if it is off screen.
+  useEffect(() => {
+    const el = newItemRef.current
+    if (!creating || !el) return
+    el.focus({ preventScroll: true })
+    const top = el.getBoundingClientRect().top
+    if (top < 96 || top > window.innerHeight - 120) el.scrollIntoView({ block: 'start' })
+  }, [creating])
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -228,7 +261,9 @@ function Items({
 
       {creating && (
         <Card>
-          <p className="mb-3 font-display text-[15px] font-extrabold text-ink">New item</p>
+          <h2 ref={newItemRef} tabIndex={-1} className="mb-3 scroll-mt-24 font-display text-[15px] font-extrabold text-ink outline-none">
+            New item
+          </h2>
           <ProductForm
             orgId={orgId}
             initial={null}

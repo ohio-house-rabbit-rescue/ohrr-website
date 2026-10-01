@@ -163,6 +163,7 @@ export default function Items() {
         <AddDonation
           orgId={orgId}
           suggestions={suggestions}
+          stockLink={canAddStock}
           onAdded={(it) => {
             setItems((list) => [it, ...(list ?? [])])
             used(it)
@@ -533,7 +534,18 @@ function DetailsFields({
  * thing, where it's kept and notes; before it the item is still saved, and
  * the screen says the details need the update.
  */
-function AddDonation({ orgId, suggestions, onAdded }: { orgId: string; suggestions: Suggestions; onAdded: (it: TaggedItem) => void }) {
+function AddDonation({
+  orgId,
+  suggestions,
+  stockLink,
+  onAdded,
+}: {
+  orgId: string
+  suggestions: Suggestions
+  /** Show the way to Hop Shop stock (things the shop sells), for people who can add it. */
+  stockLink: boolean
+  onAdded: (it: TaggedItem) => void
+}) {
   const [title, setTitle] = useState('')
   const [donor, setDonor] = useState('')
   const [value, setValue] = useState('')
@@ -637,6 +649,14 @@ function AddDonation({ orgId, suggestions, onAdded }: { orgId: string; suggestio
     <form onSubmit={submit} className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
       <h2 className="font-display text-lg font-extrabold text-ink">Add a donation</h2>
       <p className="mt-0.5 text-sm text-slate-600">Name it now and the code is made for you. Decide auction, raffle or shop later with “Move to…”.</p>
+      {stockLink && (
+        <p className="text-sm text-slate-600">
+          Something the Hop Shop sells?{' '}
+          <Link to="/staff/hopshop?add=1" className="inline-flex min-h-11 items-center font-bold text-brand-blue underline-offset-2 hover:underline">
+            Add Hop Shop stock
+          </Link>
+        </p>
+      )}
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_7rem_auto] md:items-end">
         <label className="block text-sm font-semibold text-slate-700">
           What is it?
