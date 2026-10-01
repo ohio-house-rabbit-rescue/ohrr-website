@@ -14,11 +14,14 @@ import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
   KIND_META,
+  MAX_ITEM_PHOTOS,
   SORT_INTO,
   UPDATE_36_NOTE,
   catalogNewItem,
   isMissingFunction,
+  itemPhotos,
   listItems,
+  setItemPhotos,
   money,
   recentDonors,
   saveItem,
@@ -271,8 +274,8 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
   const [title, setTitle] = useState('')
   const [donor, setDonor] = useState('')
   const [value, setValue] = useState('')
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [photos, setPhotos] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [donors, setDonors] = useState<string[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -294,17 +297,18 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
   }, [orgId])
 
   useEffect(() => {
-    if (!photo) {
-      setPreview(null)
-      return
-    }
-    const url = URL.createObjectURL(photo)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [photo])
+    const urls = photos.map((f) => URL.createObjectURL(f))
+    setPreviews(urls)
+    return () => urls.forEach((u) => URL.revokeObjectURL(u))
+  }, [photos])
 
+  const addPhotos = (files: FileList | null) => {
+    if (!files) return
+    setPhotos((p) => [...p, ...Array.from(files)].slice(0, MAX_ITEM_PHOTOS))
+    if (fileRef.current) fileRef.current.value = ''
+  }
   const clearPhoto = () => {
-    setPhoto(null)
+    setPhotos([])
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -313,13 +317,14 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
     if (!title.trim() || busy) return
     setError(null)
     try {
-      let photoUrl: string | null = null
-      if (photo) {
-        setBusy('Uploading the photo…')
-        photoUrl = await uploadItemPhoto(photo, orgId)
+      const urls: string[] = []
+      for (let i = 0; i < photos.length; i++) {
+        setBusy(photos.length === 1 ? 'Uploading the photo…' : `Uploading photo ${i + 1} of ${photos.length}…`)
+        urls.push(await uploadItemPhoto(photos[i], orgId))
       }
       setBusy('Saving…')
-      const it = await catalogNewItem(orgId, { title, donatedBy: donor, valueCents: toCents(value), photoUrl })
+      let it = await catalogNewItem(orgId, { title, donatedBy: donor, valueCents: toCents(value), photoUrl: urls[0] ?? null })
+      if (urls.length > 1) it = await setItemPhotos(orgId, it.code, urls)
       onAdded(it)
       setLast(it)
       const d = donor.trim()
@@ -381,19 +386,24 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
         </div>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label className={`${btn.outline} cursor-pointer`}>
-          <Icon name="camera" size={16} /> {photo ? 'Change photo' : 'Add a photo'}
-          <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+        <label className={`${btn.outline} cursor-pointer ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
+          <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
+          <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" disabled={photos.length >= MAX_ITEM_PHOTOS} onChange={(e) => addPhotos(e.target.files)} />
         </label>
-        {preview && (
-          <>
-            <img src={preview} alt="The photo you chose" className="h-14 w-14 rounded-lg object-cover" />
-            <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
-              Remove photo
+        {previews.map((p, i) => (
+          <span key={p} className="relative inline-block">
+            <img src={p} alt={`Photo ${i + 1}`} className={`h-14 w-14 rounded-lg object-cover ${i === 0 ? 'ring-2 ring-brand-blue' : ''}`} />
+            <button type="button" onClick={() => setPhotos((list) => list.filter((_, j) => j !== i))} aria-label={`Remove photo ${i + 1}`} className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white">
+              <Icon name="x" size={12} />
             </button>
-          </>
+          </span>
+        ))}
+        {photos.length > 0 && (
+          <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
+            Remove {photos.length === 1 ? 'photo' : 'all'}
+          </button>
         )}
-        <span className="text-sm text-slate-600">Optional — shown in the list and printed on 4 × 6 labels.</span>
+        <span className="text-sm text-slate-600">Optional, up to {MAX_ITEM_PHOTOS}. The first is the main photo: the list, 4 × 6 labels, the public pages.</span>
       </div>
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
@@ -570,11 +580,88 @@ function EditForm({ item, orgId, onSaved }: { item: TaggedItem; orgId: string; o
         Description
         <textarea className={staffInput} rows={2} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
       </label>
-      <p className="text-xs text-slate-500">To change the photo, use the app (Scan an item → Photo).</p>
+      <PhotosEditor orgId={orgId} item={item} onSaved={onSaved} />
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
       <button type="submit" disabled={busy || !d.title.trim()} className={`${btn.orange} disabled:opacity-60`}>
         {busy ? 'Saving…' : 'Save'}
       </button>
     </form>
+  )
+}
+
+/**
+ * An item's photos (up to four, update 37): add, remove, make another one the
+ * main photo. Every change is saved at once through set_item_photos.
+ */
+function PhotosEditor({ orgId, item, onSaved }: { orgId: string; item: TaggedItem; onSaved: (it: TaggedItem) => void }) {
+  const photos = itemPhotos(item)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const full = photos.length >= MAX_ITEM_PHOTOS
+
+  const apply = async (urls: string[], doing: string) => {
+    setBusy(doing)
+    setError(null)
+    try {
+      onSaved(await setItemPhotos(orgId, item.code, urls))
+    } catch (e) {
+      setError(isMissingFunction(e) ? 'More than one photo needs database update 37.' : errMessage(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const add = async (files: FileList | null) => {
+    if (!files || !files.length) return
+    const room = Math.max(0, MAX_ITEM_PHOTOS - photos.length)
+    const picked = Array.from(files).slice(0, room)
+    if (fileRef.current) fileRef.current.value = ''
+    if (!picked.length) return
+    setBusy(picked.length === 1 ? 'Uploading the photo…' : `Uploading ${picked.length} photos…`)
+    setError(null)
+    try {
+      const urls: string[] = []
+      for (const f of picked) urls.push(await uploadItemPhoto(f, orgId))
+      await apply([...photos, ...urls], 'Saving…')
+    } catch (e) {
+      setError(errMessage(e))
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <p className="text-sm font-semibold text-slate-700">
+        Photos <span className="font-normal text-slate-500">(up to {MAX_ITEM_PHOTOS}; the first is the main one)</span>
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        {photos.map((u, i) => (
+          <div key={u} className="flex flex-col items-center gap-1">
+            <img src={u} alt={`Photo ${i + 1}`} className={`h-20 w-20 rounded-lg object-cover ${i === 0 ? 'ring-2 ring-brand-blue' : ''}`} />
+            <div className="flex gap-1">
+              {i === 0 ? (
+                <span className="px-1 text-xs font-extrabold uppercase text-brand-blue">Main</span>
+              ) : (
+                <button type="button" disabled={!!busy} onClick={() => void apply([u, ...photos.filter((x) => x !== u)], 'Saving…')} className="min-h-8 px-1 text-xs font-bold text-brand-blue">
+                  Make main
+                </button>
+              )}
+              <button type="button" disabled={!!busy} onClick={() => void apply(photos.filter((x) => x !== u), 'Removing…')} className="min-h-8 px-1 text-xs font-bold text-red-700" aria-label={`Remove photo ${i + 1}`}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+        {!full && (
+          <label className={`${btn.outline} cursor-pointer ${busy ? 'pointer-events-none opacity-50' : ''}`}>
+            <Icon name="camera" size={16} /> {photos.length ? 'Add a photo' : 'Add photos'}
+            <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void add(e.target.files)} />
+          </label>
+        )}
+        {busy && <span className="text-sm text-slate-600">{busy}</span>}
+      </div>
+      {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
+    </div>
   )
 }

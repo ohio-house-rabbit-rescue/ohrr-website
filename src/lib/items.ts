@@ -38,6 +38,8 @@ export interface TaggedItem {
   donated_by: string | null
   value_cents: number | null
   photo_url: string | null
+  /** All its photos, main first (update 37; missing before it). */
+  photo_urls?: string[] | null
   price_cents: number | null
   quantity: number | null
   status: string
@@ -164,6 +166,25 @@ export async function saveItem(
     p_quantity: stock ? Math.max(0, Math.round(d.quantity ?? 1)) : null,
     p_session: null,
   })
+  if (error) throw error
+  const item = asItem(data)
+  if (!item) throw new Error('Saved, but the item could not be read back.')
+  return item
+}
+
+/** Up to four photos per item (update 37). */
+export const MAX_ITEM_PHOTOS = 4
+
+/** An item's photos, main first — photo_urls, or the single photo_url before update 37. */
+export function itemPhotos(item: { photo_url: string | null; photo_urls?: string[] | null }): string[] {
+  const list = (item.photo_urls ?? []).filter(Boolean)
+  if (list.length) return list.slice(0, MAX_ITEM_PHOTOS)
+  return item.photo_url ? [item.photo_url] : []
+}
+
+/** Replace an item's photo list; the first becomes its main photo. */
+export async function setItemPhotos(orgId: string, code: string, urls: string[]): Promise<TaggedItem> {
+  const { data, error } = await supabase.rpc('set_item_photos', { p_org: orgId, p_code: code, p_photo_urls: urls.slice(0, MAX_ITEM_PHOTOS) })
   if (error) throw error
   const item = asItem(data)
   if (!item) throw new Error('Saved, but the item could not be read back.')
