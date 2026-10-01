@@ -2,6 +2,9 @@
 // scan/api.ts, for the Items list and the label printer. One code → one item of
 // one kind; the kind decides which table holds the details. Update 36 adds a
 // fourth kind, `donation` ("cataloged, sort later"), and label_printed_at.
+// Update 39 adds a donation's details: how many, a price for one, condition,
+// what sort of thing and where it's kept (and a shop product's category and
+// shelf).
 import { supabase } from './supabase'
 import type { IconName } from '../components/icons'
 
@@ -49,9 +52,65 @@ export interface TaggedItem {
   received_on?: string | null
   /** Set once its label has been printed (update 36; missing before it). */
   label_printed_at?: string | null
+  /**
+   * Update 39 (missing before it): condition (donations), what sort of thing
+   * and where it's kept (donations; for shop stock, the product's category
+   * and shelf).
+   */
+  condition?: string | null
+  category?: string | null
+  location?: string | null
+  /** Client only: the extra details couldn't be saved yet (update 39 not run). */
+  details_skipped?: boolean
   created_at: string
   updated_at?: string
 }
+
+/* ------------------------------------------------------- the details */
+
+export const CONDITIONS: { value: string; label: string }[] = [
+  { value: 'new', label: 'New' },
+  { value: 'like_new', label: 'Like new' },
+  { value: 'good', label: 'Good' },
+  { value: 'fair', label: 'Fair' },
+]
+
+export const conditionLabel = (v: string | null | undefined): string => CONDITIONS.find((c) => c.value === v)?.label ?? ''
+
+/** Starting ideas for "What sort of thing?"; anything else can be typed. */
+export const CATEGORY_IDEAS = [
+  'Food & hay',
+  'Toys & chews',
+  'Houses & pens',
+  'Litter & supplies',
+  'Grooming',
+  'Gift basket',
+  'Art & decor',
+  'Clothing & accessories',
+  'Gift card',
+]
+
+/** "6 of them · $5 each · Like new · Food & hay · Kept: Bin 3" — the extra details in one line. */
+export function extrasSummary(item: Pick<TaggedItem, 'kind' | 'quantity' | 'price_cents' | 'condition' | 'category' | 'location'>): string {
+  const parts: string[] = []
+  if (item.kind === 'donation' && item.quantity && item.quantity > 1) parts.push(`${item.quantity} of them`)
+  if (item.kind === 'donation' && item.price_cents != null) parts.push(`${money(item.price_cents)} each`)
+  if (item.condition) parts.push(conditionLabel(item.condition))
+  if (item.category) parts.push(item.category)
+  if (item.location) parts.push(`Kept: ${item.location}`)
+  return parts.join(' · ')
+}
+
+/**
+ * Has update 39 run, as far as this item can tell? After it, donations and
+ * shop stock always carry a `location` key (null when blank); before it, never.
+ */
+export const hasDetails = (item: TaggedItem): boolean => 'location' in item
+
+/** Shown after Add when the extra details could not be kept yet. */
+export const UPDATE_39_ADD_NOTE = 'The item is saved. How many, the price and the other details need database update 39.'
+/** Shown when condition, category or place can't be saved yet. */
+export const UPDATE_39_EXTRAS_NOTE = 'Condition, category and where it’s kept need database update 39.'
 
 /* ------------------------------------------------------------- money */
 
@@ -101,30 +160,95 @@ export async function listItems(orgId: string, kind: ItemKind | null = null): Pr
   return ((data ?? []) as unknown[]).map(asItem).filter((x): x is TaggedItem => x !== null)
 }
 
+const blank = (s: string | null | undefined) => (s ?? '').trim() || null
+
+export interface CatalogInput {
+  title: string
+  kind?: ItemKind
+  donatedBy?: string
+  /** Notes. */
+  description?: string
+  valueCents?: number | null
+  photoUrl?: string | null
+  code?: string | null
+  /** Update 39 details. */
+  quantity?: number | null
+  priceCents?: number | null
+  condition?: string | null
+  category?: string | null
+  location?: string | null
+}
+
 /**
  * Catalog a new item in one call. The database makes the code (OHRR-XXXXX)
- * unless a scanned tag's code is given. Update 36.
+ * unless a scanned tag's code is given (update 36). Before update 39 the extra
+ * details aren't accepted: the item is saved without condition, category and
+ * place, and comes back with details_skipped when any detail had been entered,
+ * so the screen can say so.
  */
-export async function catalogNewItem(
-  orgId: string,
-  input: { title: string; kind?: ItemKind; donatedBy?: string; description?: string; valueCents?: number | null; photoUrl?: string | null; code?: string | null },
-): Promise<TaggedItem> {
-  const { data, error } = await supabase.rpc('catalog_new_item', {
+export async function catalogNewItem(orgId: string, input: CatalogInput): Promise<TaggedItem> {
+  const base = {
     p_org: orgId,
     p_title: input.title.trim(),
     p_kind: input.kind ?? 'donation',
-    p_description: input.description?.trim() || null,
-    p_donated_by: input.donatedBy?.trim() || null,
+    p_description: blank(input.description),
+    p_donated_by: blank(input.donatedBy),
     p_value_cents: input.valueCents ?? null,
     p_photo_url: input.photoUrl ?? null,
-    p_price_cents: null,
-    p_quantity: null,
+    p_price_cents: input.priceCents ?? null,
+    p_quantity: input.quantity ?? null,
     p_code: input.code ?? null,
-  })
-  if (error) throw error
-  const item = asItem(data)
+  }
+  const extras = { p_condition: blank(input.condition), p_category: blank(input.category), p_location: blank(input.location) }
+  const first = await supabase.rpc('catalog_new_item', { ...base, ...extras })
+  if (!first.error) {
+    const item = asItem(first.data)
+    if (!item) throw new Error('Saved, but the item could not be read back.')
+    return item
+  }
+  if (!isMissingFunction(first.error)) throw first.error
+  const old = await supabase.rpc('catalog_new_item', base)
+  if (old.error) throw old.error
+  const item = asItem(old.data)
   if (!item) throw new Error('Saved, but the item could not be read back.')
-  return item
+  const wanted = (input.quantity ?? 1) > 1 || input.priceCents != null || Boolean(extras.p_condition || extras.p_category || extras.p_location)
+  return wanted ? { ...item, details_skipped: true } : item
+}
+
+/**
+ * Condition, what sort of thing and where it's kept (update 39). A donation
+ * keeps all three; shop stock keeps the category and its shelf. Blank clears.
+ */
+export async function setItemExtras(
+  orgId: string,
+  code: string,
+  x: { condition?: string | null; category?: string | null; location?: string | null },
+): Promise<TaggedItem | null> {
+  const { data, error } = await supabase.rpc('set_item_extras', {
+    p_org: orgId,
+    p_code: code,
+    p_condition: blank(x.condition),
+    p_category: blank(x.category),
+    p_location: blank(x.location),
+  })
+  if (error) {
+    if (isMissingFunction(error)) throw new Error(UPDATE_39_EXTRAS_NOTE)
+    throw error
+  }
+  return asItem(data)
+}
+
+/** Places and categories typed lately, for one-click chips (empty before update 39, or on any error). */
+export async function catalogSuggestions(orgId: string): Promise<{ locations: string[]; categories: string[] }> {
+  try {
+    const { data, error } = await supabase.rpc('catalog_suggestions', { p_org: orgId })
+    if (error || !data || typeof data !== 'object') return { locations: [], categories: [] }
+    const d = data as { locations?: unknown; categories?: unknown }
+    const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+    return { locations: strings(d.locations), categories: strings(d.categories) }
+  } catch {
+    return { locations: [], categories: [] }
+  }
 }
 
 /** After printing labels: remember which are done (or undo with printed=false). */
@@ -144,7 +268,10 @@ export async function recentDonors(orgId: string, limit = 12): Promise<string[]>
 /**
  * Move a donation into the auction, the raffle or the shop — or update any
  * item — under the same code. The photo is passed along, since a kind change
- * makes a new row. An auction lot's session defaults to all-day.
+ * makes a new row. An auction lot's session defaults to all-day. Shop stock
+ * and (update 39) donations keep a price and how many; for a donation, a null
+ * price or count keeps what it has. A donation moved into the shop takes its
+ * own price and count when none are given here.
  */
 export async function saveItem(
   orgId: string,
@@ -153,6 +280,7 @@ export async function saveItem(
   d: { title: string; description?: string | null; donatedBy?: string | null; valueCents?: number | null; photoUrl?: string | null; priceCents?: number | null; quantity?: number | null },
 ): Promise<TaggedItem> {
   const stock = kind === 'stock'
+  const donation = kind === 'donation'
   const { data, error } = await supabase.rpc('save_scanned_item', {
     p_org: orgId,
     p_code: code,
@@ -162,8 +290,8 @@ export async function saveItem(
     p_donated_by: stock ? null : d.donatedBy?.trim() || null,
     p_value_cents: stock ? null : (d.valueCents ?? null),
     p_photo_url: d.photoUrl ?? null,
-    p_price_cents: stock ? (d.priceCents ?? null) : null,
-    p_quantity: stock ? Math.max(0, Math.round(d.quantity ?? 1)) : null,
+    p_price_cents: stock || donation ? (d.priceCents ?? null) : null,
+    p_quantity: stock ? Math.max(0, Math.round(d.quantity ?? 1)) : donation && d.quantity != null ? Math.max(1, Math.round(d.quantity)) : null,
     p_session: null,
   })
   if (error) throw error

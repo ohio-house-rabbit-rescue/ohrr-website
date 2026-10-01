@@ -4,7 +4,10 @@
 // save_scanned_item / …), so an edit here shows on a phone immediately and
 // vice-versa. Update 36 adds "Add a donation" (the database makes the code),
 // "Move to…" for sorting a donation into the auction, the raffle or the shop
-// under the same code, and the label printer (/staff/items/labels).
+// under the same code, and the label printer (/staff/items/labels). Update 39
+// adds the details a donation can carry: how many, a price for one, condition,
+// what sort of thing and where it's kept (the same fields as the app's
+// Catalog donations).
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
@@ -13,14 +16,23 @@ import { uploadItemPhoto } from '../../lib/hopshop'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
+  CATEGORY_IDEAS,
+  CONDITIONS,
   KIND_META,
   MAX_ITEM_PHOTOS,
   SORT_INTO,
   UPDATE_36_NOTE,
+  UPDATE_39_ADD_NOTE,
+  UPDATE_39_EXTRAS_NOTE,
   catalogNewItem,
+  catalogSuggestions,
+  conditionLabel,
+  extrasSummary,
+  hasDetails,
   isMissingFunction,
   itemPhotos,
   listItems,
+  setItemExtras,
   setItemPhotos,
   money,
   recentDonors,
@@ -30,6 +42,18 @@ import {
   type ItemKind,
   type TaggedItem,
 } from '../../lib/items'
+
+/** Recent places and categories (update 39; empty lists before it). */
+type Suggestions = { locations: string[]; categories: string[] }
+
+/** Newest first, no repeats (ignoring case), at most `max`. */
+const bump = (list: string[], v: string, max: number) => {
+  const t = v.trim()
+  return t ? [t, ...list.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, max) : list
+}
+
+/** Dollars for a money box ("5", "12.50"), or empty. */
+const dollars = (c: number | null | undefined) => (c == null ? '' : c % 100 === 0 ? String(c / 100) : (c / 100).toFixed(2))
 
 type Filter = 'all' | ItemKind
 // "To sort" first: it is the pile on the desk.
@@ -51,6 +75,7 @@ export default function Items() {
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const [moving, setMoving] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Suggestions>({ locations: [], categories: [] })
 
   const load = async () => {
     try {
@@ -63,6 +88,17 @@ export default function Items() {
     if (orgId) void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId])
+  useEffect(() => {
+    if (!orgId) return
+    let alive = true
+    void catalogSuggestions(orgId).then((s) => alive && setSuggestions(s))
+    return () => {
+      alive = false
+    }
+  }, [orgId])
+  // A place or sort of thing just typed goes to the front of its chips.
+  const used = (it: TaggedItem) =>
+    setSuggestions((s) => ({ locations: bump(s.locations, it.location ?? '', 10), categories: bump(s.categories, it.category ?? '', 12) }))
 
   const shown = useMemo(() => {
     const n = q.trim().toLowerCase()
@@ -123,7 +159,16 @@ export default function Items() {
         </div>
       </div>
 
-      {(canAuction || canStock) && <AddDonation orgId={orgId} onAdded={(it) => setItems((list) => [it, ...(list ?? [])])} />}
+      {(canAuction || canStock) && (
+        <AddDonation
+          orgId={orgId}
+          suggestions={suggestions}
+          onAdded={(it) => {
+            setItems((list) => [it, ...(list ?? [])])
+            used(it)
+          }}
+        />
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => (
@@ -160,6 +205,7 @@ export default function Items() {
           const done = it.status === k.done
           const donation = it.kind === 'donation'
           const tile = k.tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-ink' : 'bg-brand-blue-50 text-brand-blue'
+          const extras = extrasSummary(it)
           return (
             <li key={it.tag_id} className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-start gap-4">
@@ -179,6 +225,7 @@ export default function Items() {
                     {it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
                     {donation && it.received_on ? ` · received ${shortDate(it.received_on)}` : ''}
                   </p>
+                  {extras && <p className="text-sm font-semibold text-slate-700">{extras}</p>}
                   <p className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-xs font-bold tracking-widest text-slate-400">
                     {it.code}
                     {it.label_printed_at && (
@@ -251,12 +298,15 @@ export default function Items() {
                 <EditForm
                   item={it}
                   orgId={orgId}
+                  suggestions={suggestions}
                   onSaved={(saved) => {
                     swap(saved)
+                    used(saved)
                     setEditing(null)
                   }}
-                  // A photo change saves at once and keeps the editor open (to reorder several).
-                  onPhotos={swap}
+                  // A photo change saves at once and keeps the editor open (to reorder
+                  // several); so does a save whose condition/category/place didn't go.
+                  onChanged={swap}
                 />
               )}
             </li>
@@ -345,16 +395,150 @@ interface LocalPhoto {
   url: string
 }
 
+/* ------------------------------------------------- donation details */
+
+/** The extra details as typed (update 39). Money is in dollars. */
+interface Details {
+  quantity: string
+  price: string
+  /** '', 'new', 'like_new', 'good' or 'fair'. */
+  condition: string
+  category: string
+  location: string
+}
+
+const emptyDetails = (location = ''): Details => ({ quantity: '1', price: '', condition: '', category: '', location })
+
+const detailsOf = (it: TaggedItem): Details => ({
+  quantity: String(it.quantity ?? 1),
+  price: dollars(it.price_cents),
+  condition: it.condition ?? '',
+  category: it.category ?? '',
+  location: it.location ?? '',
+})
+
+/** How many, as a whole number of at least one. */
+const count = (s: string) => Math.min(9999, Math.max(1, parseInt(s || '1', 10) || 1))
+
+const pickChip = (on: boolean) =>
+  `min-h-11 rounded-full px-3 text-sm font-semibold transition ${on ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-brand-blue'}`
+
+/** One-click choices: click to pick, click the picked one again to clear. */
+function ChoiceChips({ options, value, onPick, label }: { options: string[]; value: string; onPick: (v: string) => void; label: string }) {
+  if (options.length === 0) return null
+  return (
+    <div role="group" aria-label={label} className="contents">
+      {options.map((o) => {
+        const on = value.trim().toLowerCase() === o.toLowerCase()
+        return (
+          <button key={o} type="button" onClick={() => onPick(on ? '' : o)} aria-pressed={on} className={pickChip(on)}>
+            {o}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const fieldLabel = 'block text-sm font-semibold text-slate-700'
+
+/**
+ * How many, a price for one, condition, what sort of thing and where it's
+ * kept — each optional, the same as the app's Catalog donations. Shop stock
+ * shows only the sort of thing and its shelf (`only="place"`).
+ */
+function DetailsFields({
+  v,
+  set,
+  suggestions,
+  only,
+}: {
+  v: Details
+  set: (p: Partial<Details>) => void
+  suggestions: Suggestions
+  only?: 'place'
+}) {
+  const categories = [...new Set([...suggestions.categories, ...CATEGORY_IDEAS])].slice(0, 12)
+  return (
+    <div className="space-y-3">
+      {only !== 'place' && (
+        <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,18rem)] md:grid-cols-[8rem_18rem_minmax(0,1fr)] sm:items-start">
+          <label className={fieldLabel}>
+            How many?
+            <input
+              className={staffInput}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={9999}
+              step={1}
+              value={v.quantity}
+              onChange={(e) => set({ quantity: e.target.value })}
+            />
+          </label>
+          <label className={fieldLabel}>
+            Price for one ($) <span className="font-normal text-slate-600">(if it may be sold)</span>
+            <input className={staffInput} inputMode="decimal" value={v.price} onChange={(e) => set({ price: e.target.value })} />
+          </label>
+          <div className="sm:col-span-2 md:col-span-1">
+            <p className={fieldLabel}>Condition</p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              <ChoiceChips
+                options={CONDITIONS.map((c) => c.label)}
+                value={conditionLabel(v.condition)}
+                onPick={(l) => set({ condition: CONDITIONS.find((c) => c.label === l)?.value ?? '' })}
+                label="Condition"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      <div>
+        <p className={fieldLabel}>What sort of thing?</p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <ChoiceChips options={categories} value={v.category} onPick={(c) => set({ category: c })} label="Sort of thing" />
+          <input
+            className={`${staffInput} !mt-0 sm:!w-56`}
+            value={v.category}
+            onChange={(e) => set({ category: e.target.value })}
+            placeholder="Or type one"
+            aria-label="What sort of thing it is"
+          />
+        </div>
+      </div>
+      <div>
+        <p className={fieldLabel}>
+          Where is it kept? <span className="font-normal text-slate-600">{only === 'place' ? 'its shelf' : 'a bin, shelf or closet'}</span>
+        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <ChoiceChips options={suggestions.locations} value={v.location} onPick={(l) => set({ location: l })} label="Recent places" />
+          <input
+            className={`${staffInput} !mt-0 sm:!w-56`}
+            value={v.location}
+            onChange={(e) => set({ location: e.target.value })}
+            placeholder="Bin 3, back closet"
+            aria-label="Where it is kept"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * Catalog a donation from the desk: name, who gave it, what it's worth, photos
  * if there are any (put in order here; the first is the cover). The database
  * makes the code; the item lands in "To sort" and gets sorted with "Move to…"
- * (update 36).
+ * (update 36). Update 39 adds how many, a price for one, condition, sort of
+ * thing, where it's kept and notes; before it the item is still saved, and
+ * the screen says the details need the update.
  */
-function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedItem) => void }) {
+function AddDonation({ orgId, suggestions, onAdded }: { orgId: string; suggestions: Suggestions; onAdded: (it: TaggedItem) => void }) {
   const [title, setTitle] = useState('')
   const [donor, setDonor] = useState('')
   const [value, setValue] = useState('')
+  const [details, setDetails] = useState<Details>(emptyDetails())
+  const [notes, setNotes] = useState('')
   const [photos, setPhotos] = useState<LocalPhoto[]>([])
   const [donors, setDonors] = useState<string[]>([])
   const [busy, setBusy] = useState<string | null>(null)
@@ -415,15 +599,31 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
         urls.push(await uploadItemPhoto(photos[i].file, orgId))
       }
       setBusy('Saving…')
-      let it = await catalogNewItem(orgId, { title, donatedBy: donor, valueCents: toCents(value), photoUrl: urls[0] ?? null })
+      let it = await catalogNewItem(orgId, {
+        title,
+        donatedBy: donor,
+        valueCents: toCents(value),
+        photoUrl: urls[0] ?? null,
+        description: notes,
+        quantity: count(details.quantity),
+        priceCents: toCents(details.price),
+        condition: details.condition,
+        category: details.category,
+        location: details.location,
+      })
+      const skipped = Boolean(it.details_skipped)
       if (urls.length > 1) it = await setItemPhotos(orgId, it.code, urls)
+      if (skipped) it = { ...it, details_skipped: true }
       onAdded(it)
       setLast(it)
       const d = donor.trim()
       if (d) setDonors((prev) => [d, ...prev.filter((x) => x.toLowerCase() !== d.toLowerCase())].slice(0, 12))
-      // The donor stays — the next thing is often from the same box.
+      // The donor and the place stay — the next thing is often from the same
+      // box, and a whole box usually goes to one place.
       setTitle('')
       setValue('')
+      setNotes('')
+      setDetails((x) => emptyDetails(x.location))
       clearPhoto()
       titleRef.current?.focus()
     } catch (err) {
@@ -477,6 +677,20 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
           </datalist>
         </div>
       )}
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <p className="mb-2 text-sm text-slate-600">More details, all optional:</p>
+        <DetailsFields v={details} set={(p) => setDetails((x) => ({ ...x, ...p }))} suggestions={suggestions} />
+        <label className={`${fieldLabel} mt-3`}>
+          Notes
+          <textarea
+            className={staffInput}
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Size, colour, anything a buyer or bidder would want to know"
+          />
+        </label>
+      </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <label className={`${btn.outline} cursor-pointer ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
           <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
@@ -509,13 +723,16 @@ function AddDonation({ orgId, onAdded }: { orgId: string; onAdded: (it: TaggedIt
       )}
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
-        <p className="mt-3 rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
-          Added <strong>{last.title}</strong> — code <span className="font-mono font-bold tracking-widest">{last.code}</span>. Its label is ready in{' '}
-          <Link to="/staff/items/labels" className="font-bold text-brand-blue">
-            Print labels
-          </Link>
-          .
-        </p>
+        <div className="mt-3 space-y-2" role="status">
+          <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
+            Added <strong>{last.title}</strong> — code <span className="font-mono font-bold tracking-widest">{last.code}</span>. Its label is ready in{' '}
+            <Link to="/staff/items/labels" className="font-bold text-brand-blue">
+              Print labels
+            </Link>
+            .{extrasSummary(last) && <span className="block text-sm text-slate-700">{extrasSummary(last)}</span>}
+          </p>
+          {last.details_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_39_ADD_NOTE}</p>}
+        </div>
       )}
     </form>
   )
@@ -538,8 +755,10 @@ function MovePanel({
   onMoved: (it: TaggedItem) => void
 }) {
   const [kind, setKind] = useState<ItemKind | null>(null)
-  const [price, setPrice] = useState('')
-  const [quantity, setQuantity] = useState('1')
+  // The donation's own price and count (update 39) fill the boxes; left blank,
+  // the database would carry them across anyway.
+  const [price, setPrice] = useState(dollars(item.price_cents))
+  const [quantity, setQuantity] = useState(String(item.quantity ?? 1))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const options = SORT_INTO.filter(canMoveTo)
@@ -572,6 +791,11 @@ function MovePanel({
         It keeps its code, <span className="font-mono font-bold tracking-widest">{item.code}</span>, so a label already printed still works. Auction lots go in as
         all-day; change that on the Silent auction page.
       </p>
+      {item.description && (
+        <p className="mt-2 text-sm text-slate-700">
+          <span className="font-semibold">Notes:</span> {item.description}
+        </p>
+      )}
       {options.length === 0 && <p className="mt-2 text-sm font-semibold text-slate-600">You can’t move items — ask a lead or admin.</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((k) => (
@@ -613,26 +837,39 @@ function MovePanel({
   )
 }
 
+/**
+ * Tidy an item. A donation also has how many, a price for one, condition, sort
+ * of thing and where it's kept (update 39); shop stock its sort of thing and
+ * shelf. Name, money and counts go through save_scanned_item; condition,
+ * category and place through set_item_extras, only when they changed. Before
+ * update 39 those fields aren't offered (they couldn't be kept), and a note
+ * says why.
+ */
 function EditForm({
   item,
   orgId,
+  suggestions,
   onSaved,
-  onPhotos,
+  onChanged,
 }: {
   item: TaggedItem
   orgId: string
+  suggestions: Suggestions
   onSaved: (it: TaggedItem) => void
-  onPhotos: (it: TaggedItem) => void
+  onChanged: (it: TaggedItem) => void
 }) {
   const stock = item.kind === 'stock'
+  const donation = item.kind === 'donation'
+  const detailsReady = (stock || donation) && hasDetails(item)
   const [d, setD] = useState({
     title: item.title,
     description: item.description ?? '',
     donated_by: item.donated_by ?? '',
-    value: item.value_cents == null ? '' : String(item.value_cents / 100),
-    price: item.price_cents == null ? '' : String(item.price_cents / 100),
+    value: dollars(item.value_cents),
+    price: dollars(item.price_cents),
     quantity: String(item.quantity ?? 0),
   })
+  const [x, setX] = useState<Details>(() => detailsOf(item))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const submit = async (e: FormEvent) => {
@@ -640,16 +877,34 @@ function EditForm({
     setBusy(true)
     setError(null)
     try {
-      // photoUrl null keeps the photo it has (coalesce in the database).
-      const saved = await saveItem(orgId, item.code, item.kind, {
+      // photoUrl null keeps the photo it has (coalesce in the database). A
+      // donation's blank price keeps the one it has.
+      let saved = await saveItem(orgId, item.code, item.kind, {
         title: d.title,
         description: d.description,
         donatedBy: d.donated_by,
         valueCents: toCents(d.value),
         photoUrl: null,
-        priceCents: toCents(d.price),
-        quantity: Math.max(0, parseInt(d.quantity || '0', 10) || 0),
+        priceCents: stock ? toCents(d.price) : donation && detailsReady ? toCents(x.price) : null,
+        quantity: stock ? Math.max(0, parseInt(d.quantity || '0', 10) || 0) : donation && detailsReady ? count(x.quantity) : null,
       })
+      const changed =
+        detailsReady &&
+        (x.condition !== (item.condition ?? '') || x.category.trim() !== (item.category ?? '') || x.location.trim() !== (item.location ?? ''))
+      if (changed) {
+        try {
+          saved = (await setItemExtras(orgId, item.code, { condition: donation ? x.condition : null, category: x.category, location: x.location })) ?? saved
+        } catch (err) {
+          // The rest went in: show it, keep the form open with the message.
+          onChanged(saved)
+          setError(
+            err instanceof Error && err.message === UPDATE_39_EXTRAS_NOTE
+              ? `The rest is saved. ${UPDATE_39_EXTRAS_NOTE}`
+              : `Saved, but not the condition, category or place: ${errMessage(err)}`,
+          )
+          return
+        }
+      }
       onSaved(saved)
     } catch (err) {
       setError(errMessage(err))
@@ -688,11 +943,21 @@ function EditForm({
           </div>
         )}
       </div>
+      {(stock || donation) &&
+        (detailsReady ? (
+          <DetailsFields v={x} set={(p) => setX((cur) => ({ ...cur, ...p }))} suggestions={suggestions} only={stock ? 'place' : undefined} />
+        ) : (
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            {stock
+              ? 'What sort of thing and where it’s kept can be added here once database update 39 has run.'
+              : 'How many, a price for one, condition, sort of thing and where it’s kept can be added here once database update 39 has run.'}
+          </p>
+        ))}
       <label className="block text-sm font-semibold text-slate-700">
-        Description
+        {donation ? 'Notes' : 'Description'}
         <textarea className={staffInput} rows={2} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
       </label>
-      <PhotosEditor orgId={orgId} item={item} onSaved={onPhotos} />
+      <PhotosEditor orgId={orgId} item={item} onSaved={onChanged} />
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
       <button type="submit" disabled={busy || !d.title.trim()} className={`${btn.orange} disabled:opacity-60`}>
         {busy ? 'Saving…' : 'Save'}
