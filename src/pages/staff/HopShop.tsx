@@ -2,8 +2,9 @@
 // (photo, code, price, how many, supplier, reorder point), the reorder list
 // grouped by supplier, and the supplier list itself. Everything here goes live
 // on the public Hop Shop shelf (name, photo, price, in stock) the moment it is
-// saved. /staff/hopshop?add=1 (the dashboard's "Add Hop Shop stock" tile, and
-// the link on Items) opens the new-item form straight away.
+// saved. It is the one place an item the shop carries is added (supplier,
+// cost, price, reorder point); donations are added on Items. /staff/hopshop?add=1
+// (the link under Add a donation on Items) opens the new-item form straight away.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
@@ -178,7 +179,7 @@ function Items({
 }) {
   const [rows, setRows] = useState<StockCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // ?add=1 ("Add Hop Shop stock") opens the new-item form straight away, as Add does.
+  // ?add=1 (from Items: "Add it in Hop Shop inventory") opens the new-item form straight away, as Add does.
   const [params, setParams] = useSearchParams()
   const wantsAdd = params.get('add') === '1'
   const [creating, setCreating] = useState(() => wantsAdd && perms.canCreate)

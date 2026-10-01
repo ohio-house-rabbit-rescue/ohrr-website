@@ -3,6 +3,8 @@
 // donor, at the size of the printer's labels. Tick the items (the unprinted
 // ones are ticked by default), then Print — one label per page, margins zero —
 // or make a PDF with one label per page to print from wherever the printer is.
+// Each ticked label can print more than once (update 40): a copies box, and
+// for a lot of several, "One per piece".
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
@@ -13,6 +15,10 @@ import { KIND_META, UPDATE_36_NOTE, isMissingFunction, listItems, markLabelsPrin
 import { LABEL_SIZES, customLabelSize, labelDataUrl, labelsPdf, loadLabelSize, saveLabelSize, type LabelItem, type LabelSize } from '../../lib/labels'
 
 type Show = 'unprinted' | 'all'
+
+/** Copies of one label: a whole number from 1 to 999 (blank or nonsense = 1). */
+const MAX_COPIES = 999
+const copiesOf = (s: string | undefined) => Math.min(MAX_COPIES, Math.max(1, parseInt(s ?? '1', 10) || 1))
 
 function toLabel(i: TaggedItem): LabelItem {
   return { code: i.code, title: i.title, donated_by: i.donated_by, photo_url: i.photo_url, kindLabel: i.kind === 'donation' ? null : KIND_META[i.kind].label }
@@ -40,6 +46,8 @@ export default function PrintLabels() {
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [lastMarked, setLastMarked] = useState<string[]>([])
+  // Copies per label, as typed, by code.
+  const [copies, setCopies] = useState<Record<string, string>>({})
 
   const load = async () => {
     try {
@@ -72,6 +80,9 @@ export default function PrintLabels() {
     )
   }, [items, show, q])
   const selected = useMemo(() => (items ?? []).filter((i) => picked.has(i.code)), [items, picked])
+  // Every label to make, each repeated for its copies.
+  const labelCount = selected.reduce((n, i) => n + copiesOf(copies[i.code]), 0)
+  const setCopy = (code: string, v: string) => setCopies((c) => ({ ...c, [code]: v }))
 
   // A preview of the first ticked label, at the chosen size.
   useEffect(() => {
@@ -134,14 +145,18 @@ export default function PrintLabels() {
     setError(null)
     setNote(null)
     try {
+      // Each label is painted once; its copies are the same picture again.
       const imgs: string[] = []
-      for (const it of selected) imgs.push(await labelDataUrl(toLabel(it), size))
+      for (const it of selected) {
+        const src = await labelDataUrl(toLabel(it), size)
+        for (let c = copiesOf(copies[it.code]); c > 0; c--) imgs.push(src)
+      }
       setPrintImgs(imgs)
       // Let the print pages render before the dialog opens.
       await new Promise((r) => setTimeout(r, 200))
       window.print()
       const extra = await markPrinted(selected.map((s) => s.code))
-      setNote(`${count(selected.length)} sent to print${extra ? '.' + extra : ' and marked as printed.'}`)
+      setNote(`${count(imgs.length)} sent to print${extra ? '.' + extra : ' and marked as printed.'}`)
     } catch (e) {
       setError(errMessage(e))
     } finally {
@@ -156,7 +171,10 @@ export default function PrintLabels() {
     setError(null)
     setNote(null)
     try {
-      const blob = await labelsPdf(selected.map(toLabel), size)
+      const blob = await labelsPdf(
+        selected.flatMap((it) => Array.from({ length: copiesOf(copies[it.code]) }, () => toLabel(it))),
+        size,
+      )
       const name = `ohrr-labels-${new Date().toISOString().slice(0, 10)}.pdf`
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -165,7 +183,7 @@ export default function PrintLabels() {
       a.click()
       setTimeout(() => URL.revokeObjectURL(url), 5000)
       const extra = await markPrinted(selected.map((s) => s.code))
-      setNote(`${count(selected.length)} in the PDF, each on its own ${size.wIn} × ${size.hIn} in page${extra ? '.' + extra : ', marked as printed.'}`)
+      setNote(`${count(labelCount)} in the PDF, each on its own ${size.wIn} × ${size.hIn} in page${extra ? '.' + extra : ', marked as printed.'}`)
     } catch (e) {
       setError(errMessage(e))
     } finally {
@@ -230,9 +248,10 @@ export default function PrintLabels() {
             <ul className="mt-3 space-y-2">
               {shown.map((i) => {
                 const on = picked.has(i.code)
+                const pieces = i.quantity ?? 0
                 return (
-                  <li key={i.tag_id}>
-                    <label className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl border p-3 transition ${on ? 'border-brand-blue bg-brand-blue-50/50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                  <li key={i.tag_id} className={`rounded-2xl border transition ${on ? 'border-brand-blue bg-brand-blue-50/50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-3 p-3">
                       <input type="checkbox" checked={on} onChange={() => toggle(i.code)} className="h-6 w-6 shrink-0 accent-brand-blue" aria-label={`Print a label for ${label(i)}`} />
                       {i.photo_url ? (
                         <img src={i.photo_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" loading="lazy" />
@@ -251,6 +270,35 @@ export default function PrintLabels() {
                       </span>
                       <span className="shrink-0 font-mono text-sm font-bold tracking-widest text-slate-500">{i.code.replace('OHRR-', '')}</span>
                     </label>
+                    {on && (
+                      <div className="flex flex-wrap items-center gap-2 px-3 pb-3 sm:pl-12">
+                        <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+                          Copies
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={MAX_COPIES}
+                            step={1}
+                            value={copies[i.code] ?? '1'}
+                            onChange={(e) => setCopy(i.code, e.target.value)}
+                            onBlur={(e) => setCopy(i.code, String(copiesOf(e.target.value)))}
+                            className={`${staffInput} !mt-0 !w-24`}
+                            aria-label={`Copies of the label for ${label(i)}`}
+                          />
+                        </label>
+                        {pieces > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setCopy(i.code, String(Math.min(MAX_COPIES, pieces)))}
+                            aria-pressed={copiesOf(copies[i.code]) === Math.min(MAX_COPIES, pieces)}
+                            className="inline-flex min-h-11 items-center rounded-full border-2 border-brand-blue/60 bg-white px-4 text-sm font-bold text-brand-blue transition hover:bg-brand-blue-50"
+                          >
+                            One per piece ({pieces})
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 )
               })}
@@ -292,7 +340,7 @@ export default function PrintLabels() {
 
             <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => void print()} disabled={!!busy || selected.length === 0} className={`${btn.orange} disabled:opacity-60`}>
-                <Icon name="printer" size={16} /> {busy ?? `Print ${selected.length}`}
+                <Icon name="printer" size={16} /> {busy ?? `Print ${labelCount}`}
               </button>
               <button type="button" onClick={() => void pdf()} disabled={!!busy || selected.length === 0} className={`${btn.outline} disabled:opacity-60`}>
                 PDF
@@ -302,7 +350,7 @@ export default function PrintLabels() {
               <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 {note}{' '}
                 {lastMarked.length > 0 && (
-                  <button type="button" onClick={() => void undo()} className="font-bold text-brand-blue">
+                  <button type="button" onClick={() => void undo()} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
                     Undo — mark not printed
                   </button>
                 )}

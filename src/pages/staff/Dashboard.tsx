@@ -104,21 +104,22 @@ export default function StaffDashboard() {
       h: 'Vets',
       p: 'The rabbit-savvy vet list, emergency and low-cost badges, and which practices give the RHDV2 vaccine.',
     },
-    // The item work sits together: items and tags, adding shop stock, and the shop's inventory.
+    // The item work sits together. Two ways to add: a donation (simple), or an
+    // item the shop carries (Hop Shop inventory, with its supplier and costs).
+    (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
+      to: '/staff/items?add=1',
+      h: 'Add a donation',
+      p: 'Something given to OHRR: photo, name, how many, value. Sort it later, or tick where it’s headed.',
+    },
     (can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')) && {
       to: '/staff/items',
       h: 'Scanned items & tags',
-      p: 'Silent Auction, raffle prizes and Hop Shop stock scanned in the app. Print tag sheets here.',
-    },
-    can('hopshop.products.create') && {
-      to: '/staff/hopshop?add=1',
-      h: 'Add Hop Shop stock',
-      p: 'Something the shop sells: photo, name, how many, price, where it’s kept. It gets a code for its label.',
+      p: 'Donations waiting to be sorted, Silent Auction lots, raffle prizes and Hop Shop stock. Drop-offs, thank-you letters, the monthly report and labels.',
     },
     (can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update') || can('hopshop.orders.view')) && {
       to: '/staff/hopshop',
       h: 'Hop Shop inventory',
-      p: 'What is in stock and how many, prices and photos, the reorder list by supplier, and the supplier and vendor list.',
+      p: 'Where you add an item the shop carries (supplier, cost, price, reorder point) and see what’s in stock. The reorder list by supplier and the supplier list are here too.',
     },
     can('events.bunfest.manage') && {
       to: '/staff/bunfest',

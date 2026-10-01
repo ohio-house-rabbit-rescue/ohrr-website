@@ -220,6 +220,8 @@ function staffGroups(can: Can, myHours: MyHours, featureSwitches: boolean): { ti
         { to: '/staff/hopshop', label: 'Hop Shop inventory', show: shop || can('hopshop.orders.view') },
         { to: '/staff/items', label: 'Items & tags', show: can('events.bunfest.manage') || shop },
         { to: '/staff/items/labels', label: 'Print labels', show: can('events.bunfest.manage') || shop },
+        { to: '/staff/dropoffs', label: 'Drop-offs', show: can('events.bunfest.manage') || shop },
+        { to: '/staff/donations/report', label: 'Donations report', show: can('events.bunfest.manage') || shop },
         { to: '/staff/bunfest', label: 'BunFest', show: can('events.bunfest.manage') },
         { to: '/staff/events', label: 'Events', show: can('events.bunfest.manage') },
         { to: '/staff/sponsors', label: 'Sponsors', show: can('events.bunfest.manage') },

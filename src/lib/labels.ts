@@ -272,9 +272,12 @@ export async function labelDataUrl(item: LabelItem, size: LabelSize, dpi = LABEL
 export async function labelsPdf(items: LabelItem[], size: LabelSize): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'in', format: [size.wIn, size.hIn], orientation: size.wIn >= size.hIn ? 'landscape' : 'portrait' })
+  // Website: copies of one label (the same code) are painted once.
+  const painted = new Map<string, string>()
   for (let i = 0; i < items.length; i++) {
     if (i > 0) doc.addPage([size.wIn, size.hIn], size.wIn >= size.hIn ? 'landscape' : 'portrait')
-    const png = await labelDataUrl(items[i], size, 203)
+    const png = painted.get(items[i].code) ?? (await labelDataUrl(items[i], size, 203))
+    painted.set(items[i].code, png)
     doc.addImage(png, 'PNG', 0, 0, size.wIn, size.hIn)
   }
   return doc.output('blob')

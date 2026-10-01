@@ -62,6 +62,9 @@ import Book, { BookCancel } from './pages/Book'
 import { AdoptApply, SurrenderIntake, MailingList as MailingListPage, BecomeSupporter, FosterInterest } from './pages/Forms'
 import PrintTags from './pages/staff/PrintTags'
 import PrintLabels from './pages/staff/PrintLabels'
+// Update 40: donation drop-offs (thank-you letters) and the monthly report
+import Dropoffs, { DropoffDetail } from './pages/staff/Dropoffs'
+import DonationsReport from './pages/staff/DonationsReport'
 import VolunteerCalls, { VolunteerCallRoute } from './pages/staff/VolunteerCalls'
 import HoursLetter from './pages/staff/HoursLetter'
 import VolunteerCall from './pages/VolunteerCall'
@@ -140,6 +143,9 @@ export default function App() {
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
         <Route path="items/tags" element={<PrintTags />} />
         <Route path="items/labels" element={<PrintLabels />} />
+        <Route path="dropoffs" element={<Dropoffs />} />
+        <Route path="dropoffs/:id" element={<DropoffDetail />} />
+        <Route path="donations/report" element={<DonationsReport />} />
         <Route path="events" element={<ManageEvents />} />
         <Route path="sponsors" element={<ManageSponsors />} />
         <Route path="sponsors/renewals" element={<SponsorRenewals />} />

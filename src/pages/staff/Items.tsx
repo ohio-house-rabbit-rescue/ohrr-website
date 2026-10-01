@@ -8,40 +8,66 @@
 // adds the details a donation can carry: how many, a price for one, condition,
 // what sort of thing and where it's kept (the same fields as the app's
 // Catalog donations).
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+//
+// Update 40 (donation intake): Add a donation starts with who it is from (a
+// drop-off, for the thank-you letter), then each item: photos, name, how
+// many, a value for each or for all, and where it's headed. The list sorts
+// donations by where they're headed, moves all of one kind in one go, splits
+// a lot, makes baskets, and marks things used for the rabbits or passed on.
+// Shop stock bought from a supplier is added in Hop Shop inventory only.
+// /staff/items?add=1 brings the Add a donation form into view and focuses it.
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
-import { useStaff, staffInput, Spinner, shortDate } from '../../lib/staff'
+import { useStaff, staffInput, Spinner, shortDate, todayOhio } from '../../lib/staff'
 import { uploadItemPhoto } from '../../lib/hopshop'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
   CATEGORY_IDEAS,
   CONDITIONS,
+  HEADED_FOR,
   KIND_META,
   MAX_ITEM_PHOTOS,
   SORT_INTO,
   UPDATE_36_NOTE,
   UPDATE_39_ADD_NOTE,
   UPDATE_39_EXTRAS_NOTE,
+  UPDATE_40_ADD_NOTE,
   catalogNewItem,
   catalogSuggestions,
   conditionLabel,
+  donationValues,
   extrasSummary,
+  has40,
   hasDetails,
   isMissingFunction,
+  isNeeds40,
   itemPhotos,
+  listDropoffs,
   listItems,
-  setItemExtras,
-  setItemPhotos,
+  makeBasket,
   money,
   recentDonors,
   saveItem,
+  setDonationOutcome,
+  setDonationPlan,
+  setItemExtras,
+  setItemPhotos,
+  sortHeadedDonations,
+  splitDonation,
+  startDropoff,
   statusLabel,
   toCents,
+  dueSoon,
+  valueLine,
+  type DonationPlan,
+  type Dropoff,
+  type HeadedFor,
   type ItemKind,
   type TaggedItem,
 } from '../../lib/items'
+import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
 
 /** Recent places and categories (update 39; empty lists before it). */
 type Suggestions = { locations: string[]; categories: string[] }
@@ -56,11 +82,42 @@ const bump = (list: string[], v: string, max: number) => {
 const dollars = (c: number | null | undefined) => (c == null ? '' : c % 100 === 0 ? String(c / 100) : (c / 100).toFixed(2))
 
 type Filter = 'all' | ItemKind
-// "To sort" first: it is the pile on the desk.
+// Donations first: they are the pile on the desk.
 const FILTERS: Filter[] = ['donation', 'all', 'auction', 'raffle', 'stock']
+
+/** The donations, by where they're headed (update 40). */
+type DonationView = 'waiting' | 'unsure' | HeadedFor | 'done'
+const DONATION_VIEWS: { v: DonationView; label: string }[] = [
+  { v: 'waiting', label: 'All waiting' },
+  { v: 'unsure', label: 'Not sure yet' },
+  { v: 'raffle', label: 'Raffle' },
+  { v: 'auction', label: 'Silent Auction' },
+  { v: 'shop', label: 'Hop Shop' },
+  { v: 'rabbits', label: 'For the rabbits' },
+  { v: 'done', label: 'Done' },
+]
+
+function inView(it: TaggedItem, v: DonationView): boolean {
+  if (it.kind !== 'donation') return false
+  if (v === 'done') return Boolean(it.outcome)
+  if (it.outcome) return false
+  if (v === 'waiting') return true
+  if (v === 'unsure') return !it.headed_for
+  return it.headed_for === v
+}
+
+/** "the raffle", for "Move all 3 to the raffle". */
+const PLACE_NAME: Record<'raffle' | 'auction' | 'shop', string> = { raffle: 'the raffle', auction: 'the Silent Auction', shop: 'the Hop Shop' }
+
+type Panel = { id: string; kind: 'move' | 'edit' | 'split' } | null
 
 const chip = (on: boolean) =>
   `min-h-11 rounded-full px-4 text-sm font-bold transition ${on ? 'bg-brand-blue text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-brand-blue'}`
+
+const smallBtn =
+  'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-brand-blue disabled:opacity-60'
+
+const linkClass = 'font-bold text-brand-blue underline-offset-2 hover:underline'
 
 export default function Items() {
   const { membership, can } = useStaff()
@@ -68,14 +125,26 @@ export default function Items() {
   const canAuction = can('events.bunfest.manage')
   const canStock = can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
   const canAddStock = can('hopshop.products.create')
+  const canDonations = canAuction || canStock
   const [items, setItems] = useState<TaggedItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [note, setNote] = useState<string | null>(null)
+  const [note, setNote] = useState<ReactNode>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [view, setView] = useState<DonationView>('waiting')
   const [q, setQ] = useState('')
-  const [editing, setEditing] = useState<string | null>(null)
-  const [moving, setMoving] = useState<string | null>(null)
+  const [panel, setPanel] = useState<Panel>(null)
   const [suggestions, setSuggestions] = useState<Suggestions>({ locations: [], categories: [] })
+  // A message under one row (an outcome that didn't go, update 40 not run).
+  const [rowNote, setRowNote] = useState<{ id: string; text: string } | null>(null)
+  const [rowBusy, setRowBusy] = useState<string | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
+  const [basketMode, setBasketMode] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  // ?add=1 (the dashboard's "Add a donation"): bring the form into view, focused.
+  const [params, setParams] = useSearchParams()
+  const wantsAdd = params.get('add') === '1'
+  const [focusAdd, setFocusAdd] = useState(0)
 
   const load = async () => {
     try {
@@ -96,6 +165,20 @@ export default function Items() {
       alive = false
     }
   }, [orgId])
+  // Read once, then drop it, so a reload doesn't jump to the form again.
+  useEffect(() => {
+    if (!wantsAdd) return
+    setFocusAdd((n) => n + 1)
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.delete('add')
+        return next
+      },
+      { replace: true },
+    )
+  }, [wantsAdd, setParams])
+
   // A place or sort of thing just typed goes to the front of its chips.
   const used = (it: TaggedItem) =>
     setSuggestions((s) => ({ locations: bump(s.locations, it.location ?? '', 10), categories: bump(s.categories, it.category ?? '', 12) }))
@@ -103,9 +186,12 @@ export default function Items() {
   const shown = useMemo(() => {
     const n = q.trim().toLowerCase()
     return (items ?? []).filter(
-      (i) => (filter === 'all' || i.kind === filter) && (!n || i.title.toLowerCase().includes(n) || i.code.toLowerCase().includes(n) || (i.donated_by ?? '').toLowerCase().includes(n)),
+      (i) =>
+        (filter === 'all' || i.kind === filter) &&
+        (filter !== 'donation' || inView(i, view)) &&
+        (!n || i.title.toLowerCase().includes(n) || i.code.toLowerCase().includes(n) || (i.donated_by ?? '').toLowerCase().includes(n)),
     )
-  }, [items, filter, q])
+  }, [items, filter, view, q])
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = { all: 0, donation: 0, auction: 0, raffle: 0, stock: 0 }
@@ -113,6 +199,12 @@ export default function Items() {
       c.all++
       if (i.kind in c) c[i.kind]++
     }
+    return c
+  }, [items])
+
+  const viewCounts = useMemo(() => {
+    const c = Object.fromEntries(DONATION_VIEWS.map((d) => [d.v, 0])) as Record<DonationView, number>
+    for (const i of items ?? []) for (const d of DONATION_VIEWS) if (inView(i, d.v)) c[d.v]++
     return c
   }, [items])
 
@@ -132,12 +224,70 @@ export default function Items() {
     if (!window.confirm(`Remove “${it.title}” completely? This can’t be undone.`)) return
     const { error } = await supabase.rpc('delete_item_by_code', { p_org: orgId, p_code: it.code })
     if (error) setError(errMessage(error))
+    // A basket going frees what was in it, so read the list again then.
+    else if (it.contents?.length) void load()
     else setItems((list) => (list ?? []).filter((x) => x.tag_id !== it.tag_id))
   }
 
+  // Used for the rabbits / passed on / undo (update 40). Taking one out of a
+  // basket changes the basket too, so the list is read again.
+  const outcome = async (it: TaggedItem, o: 'rabbits' | 'passed_on' | null) => {
+    setRowBusy(it.tag_id)
+    setRowNote(null)
+    try {
+      const saved = await setDonationOutcome(orgId, it.code, o)
+      if (it.outcome === 'basket') await load()
+      else if (saved) swap(saved)
+    } catch (e) {
+      setRowNote({ id: it.tag_id, text: errMessage(e) })
+    } finally {
+      setRowBusy(null)
+    }
+  }
+
   // The database checks for real (can_manage_item_kind); this only decides what to show.
-  const mayEdit = (it: TaggedItem) => (it.kind === 'stock' ? canStock : it.kind === 'donation' ? canAuction || canStock : canAuction)
+  const mayEdit = (it: TaggedItem) => (it.kind === 'stock' ? canStock : it.kind === 'donation' ? canDonations : canAuction)
   const mayMoveTo = (k: ItemKind) => (k === 'stock' ? canAddStock : canAuction)
+
+  // "Move all" — the headed-for view picked, how many, and whether this person may.
+  const headed: HeadedFor | null = filter === 'donation' && (view === 'raffle' || view === 'auction' || view === 'shop' || view === 'rabbits') ? view : null
+  const bulkCount = headed ? viewCounts[headed] : 0
+  const mayBulk = headed === 'shop' ? canAddStock : headed === 'rabbits' ? canDonations : canAuction
+
+  const moveAll = async () => {
+    if (!headed || bulkCount === 0) return
+    const ask =
+      headed === 'rabbits'
+        ? `Mark all ${bulkCount} as used for the rabbits?`
+        : `Move all ${bulkCount} to ${PLACE_NAME[headed]}? Each keeps its code, so a label already printed still works.`
+    if (!window.confirm(ask)) return
+    setBulkBusy(true)
+    setBulkError(null)
+    try {
+      const n = await sortHeadedDonations(orgId, headed)
+      await load()
+      setNote(
+        headed === 'rabbits'
+          ? `Marked ${n} as used for the rabbits.`
+          : headed === 'shop'
+            ? `Moved ${n} to the Hop Shop. Any without a price are hidden until they’re priced in Hop Shop inventory.`
+            : `Moved ${n} to ${PLACE_NAME[headed]}. Each kept its code, so its label still works.`,
+      )
+    } catch (e) {
+      setBulkError(errMessage(e))
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  const startBasket = () => {
+    setBasketMode(true)
+    setPicked(new Set())
+    setFilter('donation')
+    if (view === 'done') setView('waiting')
+    setPanel(null)
+  }
+  const pickedItems = (items ?? []).filter((i) => picked.has(i.code))
 
   return (
     <div>
@@ -145,8 +295,8 @@ export default function Items() {
         <div>
           <h1 className="font-display text-2xl font-black text-ink">Items</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Everything with an OHRR code: donations still to sort, auction lots, raffle prizes and shop stock. Add a donation here or catalog it in the app, then
-            decide where it goes, tidy details, mark items won or drawn, and count stock.
+            Everything with an OHRR code: donations waiting to be sorted, auction lots, raffle prizes and shop stock. Add a donation here or catalog it in the
+            app, then decide where it goes, tidy details, mark items won or drawn, and count stock.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -156,14 +306,25 @@ export default function Items() {
           <Link to="/staff/items/tags" className={btn.outline}>
             <Icon name="printer" size={16} /> Print tags
           </Link>
+          {canDonations && (
+            <>
+              <Link to="/staff/dropoffs" className={btn.outline}>
+                <Icon name="gift" size={16} /> Drop-offs
+              </Link>
+              <Link to="/staff/donations/report" className={btn.outline}>
+                <Icon name="book" size={16} /> Donations report
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
-      {(canAuction || canStock) && (
+      {canDonations && (
         <AddDonation
           orgId={orgId}
           suggestions={suggestions}
           stockLink={canAddStock}
+          focusRequest={focusAdd}
           onAdded={(it) => {
             setItems((list) => [it, ...(list ?? [])])
             used(it)
@@ -173,29 +334,104 @@ export default function Items() {
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => (
-          <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={chip(filter === f)}>
-            {f === 'all' ? 'All' : f === 'donation' ? 'To sort' : KIND_META[f].label} ({counts[f]})
+          <button
+            key={f}
+            type="button"
+            onClick={() => {
+              setFilter(f)
+              if (f !== 'donation') setBasketMode(false)
+            }}
+            aria-pressed={filter === f}
+            className={chip(filter === f)}
+          >
+            {f === 'all' ? 'All' : f === 'donation' ? 'Donations' : KIND_META[f].label} ({counts[f]})
           </button>
         ))}
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, donor or code" className={`${staffInput} !mt-0 max-w-xs`} aria-label="Search items" />
       </div>
 
+      {filter === 'donation' && (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+          <div role="group" aria-label="Donations by where they’re headed" className="flex flex-wrap items-center gap-2">
+            {DONATION_VIEWS.map((d) => (
+              <button
+                key={d.v}
+                type="button"
+                onClick={() => {
+                  setView(d.v)
+                  setBulkError(null)
+                }}
+                aria-pressed={view === d.v}
+                className={chip(view === d.v)}
+              >
+                {d.label} ({viewCounts[d.v]})
+              </button>
+            ))}
+          </div>
+          {view === 'done' && <p className="mt-2 text-sm text-slate-600">Done: in a basket, used for the rabbits, or passed on.</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {headed && mayBulk && (
+              <button type="button" onClick={() => void moveAll()} disabled={bulkBusy || bulkCount === 0} className={`${btn.orange} disabled:opacity-60`}>
+                {bulkBusy
+                  ? 'Moving…'
+                  : headed === 'rabbits'
+                    ? `Mark all ${bulkCount} as used for the rabbits`
+                    : `Move all ${bulkCount} to ${PLACE_NAME[headed]}`}
+              </button>
+            )}
+            {canAuction && !basketMode && view !== 'done' && (
+              <button type="button" onClick={startBasket} className={btn.outline}>
+                <Icon name="gift" size={16} /> Make a basket
+              </button>
+            )}
+          </div>
+          {headed === 'shop' && (
+            <p className="mt-2 text-sm text-slate-600">Hop Shop ones without a price arrive hidden until they’re priced in Hop Shop inventory.</p>
+          )}
+          {bulkError && <p className="mt-2 text-base font-semibold text-red-600">{bulkError}</p>}
+        </div>
+      )}
+
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
       {note && (
-        <p className="mt-4 rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
+        <div className="mt-4 rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800" role="status">
           {note}{' '}
-          <button type="button" onClick={() => setNote(null)} className="font-bold text-brand-blue">
+          <button type="button" onClick={() => setNote(null)} className="min-h-11 px-1 font-bold text-brand-blue">
             OK
           </button>
-        </p>
+        </div>
+      )}
+      {basketMode && (
+        <BasketPanel
+          orgId={orgId}
+          picked={pickedItems}
+          onCancel={() => {
+            setBasketMode(false)
+            setPicked(new Set())
+          }}
+          onMade={(basket, adds) => {
+            setBasketMode(false)
+            setPicked(new Set())
+            void load()
+            setNote(
+              <>
+                Made the basket “{basket.title}” for {basket.kind === 'auction' ? 'the Silent Auction' : 'the raffle'}. Its code is{' '}
+                <span className="font-mono font-bold tracking-widest">{basket.code}</span>. {adds}{' '}
+                <Link to={`/staff/items/labels?code=${encodeURIComponent(basket.code)}`} className={linkClass}>
+                  Print its label
+                </Link>
+              </>,
+            )
+          }}
+        />
       )}
       {items === null && !error && <Spinner />}
       {items && shown.length === 0 && (
         <p className="mt-6 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
           {items.length === 0
             ? 'Nothing has a code yet. Add a donation above, or print tags and scan them in the app.'
-            : filter === 'donation'
-              ? 'Nothing left to sort.'
+            : filter === 'donation' && view !== 'done'
+              ? 'Nothing waiting here.'
               : 'Nothing matches.'}
         </p>
       )}
@@ -205,11 +441,34 @@ export default function Items() {
           const k = KIND_META[it.kind]
           const done = it.status === k.done
           const donation = it.kind === 'donation'
+          const waiting = donation && !it.outcome
           const tile = k.tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-ink' : 'bg-brand-blue-50 text-brand-blue'
           const extras = extrasSummary(it)
+          const open = panel?.id === it.tag_id ? panel.kind : null
+          const toggle = (kind: 'move' | 'edit' | 'split') => setPanel(open === kind ? null : { id: it.tag_id, kind })
+          const busyRow = rowBusy === it.tag_id
+          const ticked = picked.has(it.code)
           return (
-            <li key={it.tag_id} className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
+            <li key={it.tag_id} className={`rounded-2xl border bg-white p-4 shadow-sm ${basketMode && ticked ? 'border-brand-blue' : 'border-black/5'}`}>
               <div className="flex flex-wrap items-start gap-4">
+                {basketMode && waiting && (
+                  <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center self-center">
+                    <input
+                      type="checkbox"
+                      checked={ticked}
+                      onChange={() =>
+                        setPicked((p) => {
+                          const n = new Set(p)
+                          if (n.has(it.code)) n.delete(it.code)
+                          else n.add(it.code)
+                          return n
+                        })
+                      }
+                      className="h-6 w-6 accent-brand-blue"
+                      aria-label={`Put “${it.title}” in the basket`}
+                    />
+                  </label>
+                )}
                 {it.photo_url ? (
                   <img src={it.photo_url} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover" loading="lazy" />
                 ) : (
@@ -218,84 +477,112 @@ export default function Items() {
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-lg font-extrabold text-ink">{it.title}</p>
+                  <p className="font-display text-lg font-extrabold text-ink">
+                    {it.title}
+                    {waiting && dueSoon(it.use_by) && (
+                      <span className="ml-2 inline-block rounded-full bg-amber-100 px-2.5 py-0.5 align-middle font-sans text-sm font-bold text-amber-900">Use soon</span>
+                    )}
+                  </p>
                   <p className="text-sm text-slate-600">
                     {k.label} · {statusLabel(it)}
+                    {donation && it.outcome === 'basket' && it.in_basket ? ` (${it.in_basket.code})` : ''}
                     {it.kind === 'stock' ? ` · ${money(it.price_cents) || 'no price'} each` : ''}
                     {it.kind !== 'stock' && it.donated_by ? ` · from ${it.donated_by}` : ''}
-                    {it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
+                    {!donation && it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
                     {donation && it.received_on ? ` · received ${shortDate(it.received_on)}` : ''}
                   </p>
                   {extras && <p className="text-sm font-semibold text-slate-700">{extras}</p>}
-                  <p className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-xs font-bold tracking-widest text-slate-400">
+                  {!donation && it.contents && it.contents.length > 0 && <BasketContents item={it} />}
+                  <p className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-xs font-bold tracking-widest text-slate-500">
                     {it.code}
                     {it.label_printed_at && (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 font-sans text-xs font-bold tracking-normal text-slate-600">label printed</span>
                     )}
                   </p>
                 </div>
-                {mayEdit(it) && (
-                  <div className="flex flex-wrap gap-2">
-                    {donation ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMoving(moving === it.tag_id ? null : it.tag_id)
-                          setEditing(null)
-                        }}
-                        aria-expanded={moving === it.tag_id}
-                        className={btn.blue}
-                      >
-                        {moving === it.tag_id ? 'Close' : 'Move to…'}
-                      </button>
-                    ) : it.kind === 'stock' ? (
-                      <>
-                        <button type="button" onClick={() => void rpc('adjust_stock_by_code', { p_org: orgId, p_code: it.code, p_delta: -1 })} className={btn.outline} aria-label="One fewer">
-                          −1
-                        </button>
-                        <button type="button" onClick={() => void rpc('adjust_stock_by_code', { p_org: orgId, p_code: it.code, p_delta: 1 })} className={btn.outline} aria-label="One more">
-                          +1
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => void rpc('set_item_status_by_code', { p_org: orgId, p_code: it.code, p_status: done ? k.open : k.done })} className={btn.outline}>
-                          {done ? `Not ${k.doneLabel.toLowerCase()}` : `Mark ${k.doneLabel.toLowerCase()}`}
-                        </button>
-                        <button type="button" onClick={() => void rpc('set_item_published_by_code', { p_org: orgId, p_code: it.code, p_published: !it.is_published })} className={btn.outline}>
-                          {it.is_published ? 'Hide' : 'Show'}
-                        </button>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditing(editing === it.tag_id ? null : it.tag_id)
-                        setMoving(null)
-                      }}
-                      className={btn.outline}
-                    >
-                      {editing === it.tag_id ? 'Close' : 'Edit'}
-                    </button>
-                    <button type="button" onClick={() => void remove(it)} className="min-h-11 px-2 text-sm font-bold text-red-600">
-                      Remove
-                    </button>
-                  </div>
-                )}
               </div>
-              {moving === it.tag_id && (
+              {mayEdit(it) && !basketMode && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {waiting ? (
+                    <>
+                      <button type="button" onClick={() => toggle('move')} aria-expanded={open === 'move'} className={btn.blue}>
+                        {open === 'move' ? 'Close' : 'Move to…'}
+                      </button>
+                      {(it.quantity ?? 1) > 1 && (
+                        <button type="button" onClick={() => toggle('split')} aria-expanded={open === 'split'} className={btn.outline}>
+                          {open === 'split' ? 'Close' : 'Split…'}
+                        </button>
+                      )}
+                      <button type="button" disabled={busyRow} onClick={() => void outcome(it, 'rabbits')} className={smallBtn}>
+                        Used for the rabbits
+                      </button>
+                      <button type="button" disabled={busyRow} onClick={() => void outcome(it, 'passed_on')} className={smallBtn}>
+                        Passed on / not usable
+                      </button>
+                    </>
+                  ) : donation ? (
+                    <button type="button" disabled={busyRow} onClick={() => void outcome(it, null)} className={btn.outline}>
+                      {busyRow ? 'Working…' : it.outcome === 'basket' ? 'Take out of the basket' : 'Undo'}
+                    </button>
+                  ) : it.kind === 'stock' ? (
+                    <>
+                      <button type="button" onClick={() => void rpc('adjust_stock_by_code', { p_org: orgId, p_code: it.code, p_delta: -1 })} className={btn.outline} aria-label="One fewer">
+                        −1
+                      </button>
+                      <button type="button" onClick={() => void rpc('adjust_stock_by_code', { p_org: orgId, p_code: it.code, p_delta: 1 })} className={btn.outline} aria-label="One more">
+                        +1
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => void rpc('set_item_status_by_code', { p_org: orgId, p_code: it.code, p_status: done ? k.open : k.done })} className={btn.outline}>
+                        {done ? `Not ${k.doneLabel.toLowerCase()}` : `Mark ${k.doneLabel.toLowerCase()}`}
+                      </button>
+                      <button type="button" onClick={() => void rpc('set_item_published_by_code', { p_org: orgId, p_code: it.code, p_published: !it.is_published })} className={btn.outline}>
+                        {it.is_published ? 'Hide' : 'Show'}
+                      </button>
+                    </>
+                  )}
+                  <button type="button" onClick={() => toggle('edit')} aria-expanded={open === 'edit'} className={btn.outline}>
+                    {open === 'edit' ? 'Close' : 'Edit'}
+                  </button>
+                  <button type="button" onClick={() => void remove(it)} className="min-h-11 px-2 text-sm font-bold text-red-600">
+                    Remove
+                  </button>
+                </div>
+              )}
+              {rowNote?.id === it.tag_id && <p className="mt-2 text-base font-semibold text-red-600">{rowNote.text}</p>}
+              {open === 'move' && (
                 <MovePanel
                   item={it}
                   orgId={orgId}
                   canMoveTo={mayMoveTo}
                   onMoved={(saved) => {
                     swap(saved)
-                    setMoving(null)
+                    setPanel(null)
                     setNote(`“${saved.title}” is now in ${KIND_META[saved.kind].label} — same code, ${saved.code}, so its label still works.`)
                   }}
                 />
               )}
-              {editing === it.tag_id && (
+              {open === 'split' && (
+                <SplitPanel
+                  item={it}
+                  orgId={orgId}
+                  onSplit={(part, n) => {
+                    setPanel(null)
+                    void load()
+                    setNote(
+                      <>
+                        Split off {n} of “{it.title}”. The new part’s code is <span className="font-mono font-bold tracking-widest">{part.code}</span>.{' '}
+                        <Link to={`/staff/items/labels?code=${encodeURIComponent(part.code)}`} className={linkClass}>
+                          Print its label
+                        </Link>
+                      </>,
+                    )
+                  }}
+                />
+              )}
+              {open === 'edit' && (
                 <EditForm
                   item={it}
                   orgId={orgId}
@@ -303,7 +590,7 @@ export default function Items() {
                   onSaved={(saved) => {
                     swap(saved)
                     used(saved)
-                    setEditing(null)
+                    setPanel(null)
                   }}
                   // A photo change saves at once and keeps the editor open (to reorder
                   // several); so does a save whose condition/category/place didn't go.
@@ -314,7 +601,157 @@ export default function Items() {
           )
         })}
       </ul>
+
+      {/* While ticking a long list: how many are picked, and the way back up to the form. */}
+      {basketMode && pickedItems.length > 0 && (
+        <div className="sticky bottom-3 z-10 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-brand-blue bg-white px-4 py-2 shadow-xl">
+          <span className="text-base font-semibold text-ink">
+            {pickedItems.length} picked for the basket
+            {(() => {
+              const t = pickedItems.reduce((s, p) => s + (donationValues(p).total ?? 0), 0)
+              return t ? ` · ${money(t)}` : ''
+            })()}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const name = document.getElementById(BASKET_NAME_ID) as HTMLInputElement | null
+              name?.scrollIntoView({ block: 'center' })
+              name?.focus({ preventScroll: true })
+            }}
+            className={btn.blue}
+          >
+            Name it and make it
+          </button>
+        </div>
+      )}
     </div>
+  )
+}
+
+/* ------------------------------------------------------- baskets */
+
+/** "$25 + $60 = $85" — how a basket's value adds up. */
+function addsUp(values: (number | null | undefined)[]): string {
+  const have = values.filter((v): v is number => v != null)
+  if (have.length === 0) return 'None of these has a value yet.'
+  const total = have.reduce((s, v) => s + v, 0)
+  const missing = values.length - have.length
+  const sum = have.length === 1 ? money(total) : `${have.map((v) => money(v)).join(' + ')} = ${money(total)}`
+  return `Its value adds up to ${sum}${missing ? ` (${missing} with no value)` : ''}.`
+}
+
+/** What's in a basket (a raffle prize or auction lot made from donations). */
+function BasketContents({ item }: { item: TaggedItem }) {
+  const list = item.contents ?? []
+  return (
+    <div className="mt-1 rounded-xl bg-slate-50 px-3 py-2">
+      <p className="text-sm font-bold text-slate-700">In this basket:</p>
+      <ul className="text-sm text-slate-700">
+        {list.map((c, i) => (
+          <li key={`${c.code ?? ''}-${i}`}>
+            {c.quantity} × {c.title}
+            {c.size ? ` (${c.size})` : ''}
+            {c.donated_by ? ` · from ${c.donated_by}` : ''}
+            {c.value_total_cents != null ? ` · ${money(c.value_total_cents)}` : ''}
+            {c.code ? <span className="ml-1 font-mono text-xs font-bold tracking-widest text-slate-500">{c.code}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** The basket's name box, so the "Name it and make it" bar can bring it back into view. */
+const BASKET_NAME_ID = 'basket-name'
+
+/**
+ * "Make a basket": the donations ticked in the list become one raffle prize or
+ * Silent Auction lot with its own code (make_basket, update 40). The basket's
+ * value is what they're worth together.
+ */
+function BasketPanel({
+  orgId,
+  picked,
+  onCancel,
+  onMade,
+}: {
+  orgId: string
+  picked: TaggedItem[]
+  onCancel: () => void
+  onMade: (basket: TaggedItem, addsUpText: string) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [kind, setKind] = useState<'raffle' | 'auction'>('raffle')
+  const [description, setDescription] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const values = picked.map((p) => donationValues(p).total)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!picked.length || !title.trim() || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const basket = await makeBasket(
+        orgId,
+        picked.map((p) => p.code),
+        kind,
+        title,
+        description,
+      )
+      const fromDb = basket.contents?.map((c) => c.value_total_cents)
+      onMade(basket, addsUp(fromDb && fromDb.length ? fromDb : values))
+    } catch (err) {
+      setError(errMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      aria-label="Make a basket"
+      className="mt-4 rounded-2xl border-2 border-brand-blue bg-white p-4 shadow-sm"
+    >
+      <p className="font-display text-lg font-extrabold text-ink">Make a basket</p>
+      <p className="text-sm text-slate-600">
+        {picked.length === 0
+          ? 'Tick the donations that go in it, in the list below.'
+          : `${picked.length} picked. ${addsUp(values)}`}
+      </p>
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <label className="block text-sm font-semibold text-slate-700">
+          Name of the basket
+          <input id={BASKET_NAME_ID} className={staffInput} required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Bunny spa day basket" />
+        </label>
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Where it goes</p>
+          <div role="group" aria-label="Where the basket goes" className="mt-1 flex flex-wrap gap-1.5">
+            {(['raffle', 'auction'] as const).map((k) => (
+              <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k} className={pickChip(kind === k)}>
+                {k === 'raffle' ? 'Raffle' : 'Silent Auction'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <label className="mt-3 block text-sm font-semibold text-slate-700">
+        Description <span className="font-normal text-slate-600">(optional; what’s in it is added for you)</span>
+        <textarea className={staffInput} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+      </label>
+      {error && <p className="mt-2 text-base font-semibold text-red-600">{error}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="submit" disabled={busy || picked.length === 0 || !title.trim()} className={`${btn.orange} disabled:opacity-60`}>
+          {busy ? 'Making it…' : `Make the basket${picked.length ? ` (${picked.length})` : ''}`}
+        </button>
+        <button type="button" onClick={onCancel} className={btn.outline}>
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
 
@@ -441,124 +878,167 @@ function ChoiceChips({ options, value, onPick, label }: { options: string[]; val
   )
 }
 
+/** Where a donation is headed: one of five, "Not sure yet" meaning sort it later (update 40). */
+function HeadedChips({ value, onPick, label = 'Where it’s headed' }: { value: HeadedFor | ''; onPick: (v: HeadedFor | '') => void; label?: string }) {
+  return (
+    <div role="group" aria-label={label} className="mt-1 flex flex-wrap gap-1.5">
+      {HEADED_FOR.map((h) => (
+        <button key={h.value || 'unsure'} type="button" onClick={() => onPick(h.value)} aria-pressed={value === h.value} className={pickChip(value === h.value)}>
+          {h.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Is the value typed for one, or for the whole lot? (update 40) */
+function BasisToggle({ value, onPick }: { value: 'each' | 'all'; onPick: (v: 'each' | 'all') => void }) {
+  return (
+    <div role="group" aria-label="The value is for" className="inline-flex rounded-full border border-slate-300 bg-white p-0.5">
+      {(['each', 'all'] as const).map((b) => (
+        <button
+          key={b}
+          type="button"
+          onClick={() => onPick(b)}
+          aria-pressed={value === b}
+          className={`min-h-11 rounded-full px-4 text-sm font-bold transition ${value === b ? 'bg-brand-blue text-white' : 'text-slate-700 hover:text-brand-blue'}`}
+        >
+          {b === 'each' ? 'Each' : 'For all'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 const fieldLabel = 'block text-sm font-semibold text-slate-700'
 
-/**
- * How many, a price for one, condition, what sort of thing and where it's
- * kept — each optional, the same as the app's Catalog donations. Shop stock
- * shows only the sort of thing and its shelf (`only="place"`).
- */
-function DetailsFields({
-  v,
-  set,
-  suggestions,
-  only,
-}: {
-  v: Details
-  set: (p: Partial<Details>) => void
-  suggestions: Suggestions
-  only?: 'place'
-}) {
+function ConditionField({ value, set }: { value: string; set: (v: string) => void }) {
+  return (
+    <div>
+      <p className={fieldLabel}>Condition</p>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        <ChoiceChips options={CONDITIONS.map((c) => c.label)} value={conditionLabel(value)} onPick={(l) => set(CONDITIONS.find((c) => c.label === l)?.value ?? '')} label="Condition" />
+      </div>
+    </div>
+  )
+}
+
+function CategoryField({ value, set, suggestions }: { value: string; set: (v: string) => void; suggestions: Suggestions }) {
   const categories = [...new Set([...suggestions.categories, ...CATEGORY_IDEAS])].slice(0, 12)
   return (
-    <div className="space-y-3">
-      {only !== 'place' && (
-        <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,18rem)] md:grid-cols-[8rem_18rem_minmax(0,1fr)] sm:items-start">
-          <label className={fieldLabel}>
-            How many?
-            <input
-              className={staffInput}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={9999}
-              step={1}
-              value={v.quantity}
-              onChange={(e) => set({ quantity: e.target.value })}
-            />
-          </label>
-          <label className={fieldLabel}>
-            Price for one ($) <span className="font-normal text-slate-600">(if it may be sold)</span>
-            <input className={staffInput} inputMode="decimal" value={v.price} onChange={(e) => set({ price: e.target.value })} />
-          </label>
-          <div className="sm:col-span-2 md:col-span-1">
-            <p className={fieldLabel}>Condition</p>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              <ChoiceChips
-                options={CONDITIONS.map((c) => c.label)}
-                value={conditionLabel(v.condition)}
-                onPick={(l) => set({ condition: CONDITIONS.find((c) => c.label === l)?.value ?? '' })}
-                label="Condition"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-      <div>
-        <p className={fieldLabel}>What sort of thing?</p>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <ChoiceChips options={categories} value={v.category} onPick={(c) => set({ category: c })} label="Sort of thing" />
-          <input
-            className={`${staffInput} !mt-0 sm:!w-56`}
-            value={v.category}
-            onChange={(e) => set({ category: e.target.value })}
-            placeholder="Or type one"
-            aria-label="What sort of thing it is"
-          />
-        </div>
+    <div>
+      <p className={fieldLabel}>What sort of thing?</p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        <ChoiceChips options={categories} value={value} onPick={set} label="Sort of thing" />
+        <input className={`${staffInput} !mt-0 sm:!w-56`} value={value} onChange={(e) => set(e.target.value)} placeholder="Or type one" aria-label="What sort of thing it is" />
       </div>
-      <div>
-        <p className={fieldLabel}>
-          Where is it kept? <span className="font-normal text-slate-600">{only === 'place' ? 'its shelf' : 'a bin, shelf or closet'}</span>
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <ChoiceChips options={suggestions.locations} value={v.location} onPick={(l) => set({ location: l })} label="Recent places" />
-          <input
-            className={`${staffInput} !mt-0 sm:!w-56`}
-            value={v.location}
-            onChange={(e) => set({ location: e.target.value })}
-            placeholder="Bin 3, back closet"
-            aria-label="Where it is kept"
-          />
-        </div>
+    </div>
+  )
+}
+
+function PlaceField({ value, set, suggestions, shelf }: { value: string; set: (v: string) => void; suggestions: Suggestions; shelf?: boolean }) {
+  return (
+    <div>
+      <p className={fieldLabel}>
+        Where is it kept? <span className="font-normal text-slate-600">{shelf ? 'its shelf' : 'a bin, shelf or closet'}</span>
+      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        <ChoiceChips options={suggestions.locations} value={value} onPick={set} label="Recent places" />
+        <input className={`${staffInput} !mt-0 sm:!w-56`} value={value} onChange={(e) => set(e.target.value)} placeholder="Bin 3, back closet" aria-label="Where it is kept" />
       </div>
     </div>
   )
 }
 
 /**
- * Catalog a donation from the desk: name, who gave it, what it's worth, photos
- * if there are any (put in order here; the first is the cover). The database
- * makes the code; the item lands in "To sort" and gets sorted with "Move to…"
- * (update 36). Update 39 adds how many, a price for one, condition, sort of
- * thing, where it's kept and notes; before it the item is still saved, and
- * the screen says the details need the update.
+ * How many, a price for one, condition, what sort of thing and where it's
+ * kept — each optional, the same as the app's Catalog donations. Shop stock
+ * shows only the sort of thing and its shelf (`only="place"`).
+ */
+function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Partial<Details>) => void; suggestions: Suggestions; only?: 'place' }) {
+  return (
+    <div className="space-y-3">
+      {only !== 'place' && (
+        <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,18rem)] md:grid-cols-[8rem_18rem_minmax(0,1fr)] sm:items-start">
+          <label className={fieldLabel}>
+            How many?
+            <input className={staffInput} type="number" inputMode="numeric" min={1} max={9999} step={1} value={v.quantity} onChange={(e) => set({ quantity: e.target.value })} />
+          </label>
+          <label className={fieldLabel}>
+            Price for one ($) <span className="font-normal text-slate-600">(if it may be sold)</span>
+            <input className={staffInput} inputMode="decimal" value={v.price} onChange={(e) => set({ price: e.target.value })} />
+          </label>
+          <div className="sm:col-span-2 md:col-span-1">
+            <ConditionField value={v.condition} set={(condition) => set({ condition })} />
+          </div>
+        </div>
+      )}
+      <CategoryField value={v.category} set={(category) => set({ category })} suggestions={suggestions} />
+      <PlaceField value={v.location} set={(location) => set({ location })} suggestions={suggestions} shelf={only === 'place'} />
+    </div>
+  )
+}
+
+/* ------------------------------------------------- Add a donation */
+
+/**
+ * Catalog a donation from the desk (update 36; details 39; intake 40). First
+ * who it's from — a drop-off, remembered on this computer for the rest of the
+ * day, so the thank-you letter lists everything they brought. Then each item:
+ * photos, name, how many, a value for each or for all, and where it's headed.
+ * The rest (size, condition, sort of thing, where it's kept, use by, a price,
+ * notes) sits under "More details". The database makes the code. Before
+ * update 40 the drop-off part is left out (the donor's name goes on each
+ * item) and the item is saved without where it's headed, size or use-by.
  */
 function AddDonation({
   orgId,
   suggestions,
   stockLink,
+  focusRequest,
   onAdded,
 }: {
   orgId: string
   suggestions: Suggestions
-  /** Show the way to Hop Shop stock (things the shop sells), for people who can add it. */
+  /** Show the way to Hop Shop inventory (shop stock), for people who can add it. */
   stockLink: boolean
+  /** Changes when the form should come into view and take the focus (?add=1). */
+  focusRequest: number
   onAdded: (it: TaggedItem) => void
 }) {
-  const [title, setTitle] = useState('')
+  // Who it's from
+  const [dropoff, setDropoff] = useState<Dropoff | null>(() => loadCurrentDropoff(orgId))
+  /** Has the database got drop-offs (update 40)? null while finding out. */
+  const [dropoffs, setDropoffs] = useState<boolean | null>(null)
   const [donor, setDonor] = useState('')
+  const [email, setEmail] = useState('')
+  const [day, setDay] = useState(() => todayOhio())
+  const [donors, setDonors] = useState<string[]>([])
+  const [dropBusy, setDropBusy] = useState(false)
+  const [dropError, setDropError] = useState<string | null>(null)
+  // Each item
+  const [title, setTitle] = useState('')
+  const [qty, setQty] = useState('1')
   const [value, setValue] = useState('')
+  const [basis, setBasis] = useState<'each' | 'all'>('each')
+  const [headed, setHeaded] = useState<HeadedFor | ''>('')
+  const [more, setMore] = useState(false)
+  const [size, setSize] = useState('')
+  const [useBy, setUseBy] = useState('')
   const [details, setDetails] = useState<Details>(emptyDetails())
   const [notes, setNotes] = useState('')
   const [photos, setPhotos] = useState<LocalPhoto[]>([])
-  const [donors, setDonors] = useState<string[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [last, setLast] = useState<TaggedItem | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const donorRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const photosRef = useRef<LocalPhoto[]>([])
+  const focusDonorNext = useRef(false)
+  // Before update 40 there are no drop-offs, whatever this computer remembers.
+  const current = dropoffs === false ? null : dropoff
 
   useEffect(() => {
     if (!orgId) return
@@ -568,6 +1048,9 @@ function AddDonation({
       .catch(() => {
         /* before update 36 there are no chips — nothing to say */
       })
+    listDropoffs(orgId, 1)
+      .then(() => alive && setDropoffs(true))
+      .catch((e) => alive && setDropoffs(isNeeds40(e) ? false : null))
     return () => {
       alive = false
     }
@@ -578,6 +1061,68 @@ function AddDonation({
     photosRef.current = photos
   }, [photos])
   useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), [])
+
+  // ?add=1: bring the form into view and put the cursor where the next thing is typed.
+  useEffect(() => {
+    if (!focusRequest) return
+    formRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+    const target = current ? titleRef.current : (donorRef.current ?? titleRef.current)
+    target?.focus({ preventScroll: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest])
+
+  // "Start a new one" puts the cursor back in the donor's name once it shows again.
+  useEffect(() => {
+    if (!current && focusDonorNext.current) {
+      focusDonorNext.current = false
+      donorRef.current?.focus()
+    }
+  }, [current])
+
+  const rememberDonor = (name: string | null | undefined) => {
+    const d = (name ?? '').trim()
+    if (d) setDonors((prev) => [d, ...prev.filter((x) => x.toLowerCase() !== d.toLowerCase())].slice(0, 12))
+  }
+
+  /** Start the drop-off. Returns it, or null when the database hasn't got drop-offs yet. */
+  const begin = async (): Promise<Dropoff | null> => {
+    try {
+      const d = await startDropoff(orgId, { donorName: donor, donorEmail: email, receivedOn: day })
+      setDropoff(d)
+      saveCurrentDropoff(orgId, d)
+      rememberDonor(d.donor_name)
+      return d
+    } catch (e) {
+      if (isNeeds40(e)) {
+        setDropoffs(false)
+        return null
+      }
+      throw e
+    }
+  }
+
+  const start = async () => {
+    if (dropBusy) return
+    setDropBusy(true)
+    setDropError(null)
+    try {
+      if (await begin()) titleRef.current?.focus()
+    } catch (e) {
+      setDropError(errMessage(e))
+    } finally {
+      setDropBusy(false)
+    }
+  }
+
+  const startNew = () => {
+    focusDonorNext.current = true
+    setDropoff(null)
+    saveCurrentDropoff(orgId, null)
+    setDonor('')
+    setEmail('')
+    setDay(todayOhio())
+    setDropError(null)
+  }
 
   const addPhotos = (files: FileList | null) => {
     if (!files) return
@@ -599,11 +1144,21 @@ function AddDonation({
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  const q = count(qty)
+  const worth = valueLine({ value_cents: toCents(value), value_basis: basis, quantity: q })
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!title.trim() || busy) return
     setError(null)
     try {
+      // A name or email typed but not started: start the drop-off now, so the
+      // thank-you letter has this item on it.
+      let d = current
+      if (!d && dropoffs !== false && (donor.trim() || email.trim())) {
+        setBusy('Starting the drop-off…')
+        d = await begin()
+      }
       // Uploaded in the order shown, so the first is the cover.
       const urls: string[] = []
       for (let i = 0; i < photos.length; i++) {
@@ -611,29 +1166,40 @@ function AddDonation({
         urls.push(await uploadItemPhoto(photos[i].file, orgId))
       }
       setBusy('Saving…')
+      const plan: DonationPlan = {
+        headed_for: headed || null,
+        value_basis: basis,
+        size: size.trim() || null,
+        use_by: useBy || null,
+        dropoff_id: d?.id ?? null,
+      }
       let it = await catalogNewItem(orgId, {
         title,
-        donatedBy: donor,
+        donatedBy: d ? (d.donor_name ?? '') : donor,
         valueCents: toCents(value),
         photoUrl: urls[0] ?? null,
         description: notes,
-        quantity: count(details.quantity),
+        quantity: q,
         priceCents: toCents(details.price),
         condition: details.condition,
         category: details.category,
         location: details.location,
+        plan,
       })
-      const skipped = Boolean(it.details_skipped)
+      const skipped = { details_skipped: it.details_skipped, plan_skipped: it.plan_skipped }
       if (urls.length > 1) it = await setItemPhotos(orgId, it.code, urls)
-      if (skipped) it = { ...it, details_skipped: true }
+      it = { ...it, ...skipped }
       onAdded(it)
       setLast(it)
-      const d = donor.trim()
-      if (d) setDonors((prev) => [d, ...prev.filter((x) => x.toLowerCase() !== d.toLowerCase())].slice(0, 12))
-      // The donor and the place stay — the next thing is often from the same
-      // box, and a whole box usually goes to one place.
+      if (!d) rememberDonor(donor)
+      // Who it's from, where it's headed and where it's kept stay: the next
+      // thing is often from the same box, and a box usually goes to one place.
       setTitle('')
+      setQty('1')
       setValue('')
+      setBasis('each')
+      setSize('')
+      setUseBy('')
       setNotes('')
       setDetails((x) => emptyDetails(x.location))
       clearPhoto()
@@ -646,71 +1212,116 @@ function AddDonation({
   }
 
   return (
-    <form onSubmit={submit} className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-      <h2 className="font-display text-lg font-extrabold text-ink">Add a donation</h2>
-      <p className="mt-0.5 text-sm text-slate-600">Name it now and the code is made for you. Decide auction, raffle or shop later with “Move to…”.</p>
+    <form ref={formRef} onSubmit={submit} className="mt-6 scroll-mt-24 rounded-2xl border border-black/5 bg-white p-5 shadow-sm" aria-labelledby="add-donation-heading">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 id="add-donation-heading" className="font-display text-lg font-extrabold text-ink">
+            Add a donation
+          </h2>
+          <p className="mt-0.5 text-sm text-slate-600">Something given to OHRR. Name it and the code is made for you. Sort it later, or tick where it’s headed.</p>
+        </div>
+        <Link to="/staff/dropoffs" className={`inline-flex min-h-11 items-center ${linkClass} text-sm`}>
+          Drop-offs and thank-you letters
+        </Link>
+      </div>
       {stockLink && (
         <p className="text-sm text-slate-600">
-          Something the Hop Shop sells?{' '}
-          <Link to="/staff/hopshop?add=1" className="inline-flex min-h-11 items-center font-bold text-brand-blue underline-offset-2 hover:underline">
-            Add Hop Shop stock
+          Something the shop carries, bought from a supplier?{' '}
+          <Link to="/staff/hopshop?add=1" className={`inline-flex min-h-11 items-center ${linkClass}`}>
+            Add it in Hop Shop inventory
           </Link>
         </p>
       )}
-      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_7rem_auto] md:items-end">
-        <label className="block text-sm font-semibold text-slate-700">
+
+      {/* Who is it from (a drop-off) */}
+      <fieldset className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <legend className="px-1 text-base font-bold text-ink">Who is it from?</legend>
+        {current ? (
+          <p className="text-base text-slate-800">
+            Adding to:{' '}
+            <Link to={`/staff/dropoffs/${current.id}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
+              {dropoffName(current)}
+            </Link>{' '}
+            ·{' '}
+            <button type="button" onClick={startNew} className="min-h-11 px-1 font-bold text-brand-blue">
+              Start a new one
+            </button>
+          </p>
+        ) : (
+          <>
+            <div className={`grid gap-3 ${dropoffs === false ? '' : 'md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_11rem_auto] md:items-end'}`}>
+              <label className={fieldLabel}>
+                Donor’s name
+                <input ref={donorRef} className={staffInput} value={donor} onChange={(e) => setDonor(e.target.value)} list="recent-donors" autoComplete="off" />
+              </label>
+              {dropoffs !== false && (
+                <>
+                  <label className={fieldLabel}>
+                    Email <span className="font-normal text-slate-600">(optional, for the thank-you letter)</span>
+                    <input className={staffInput} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+                  </label>
+                  <label className={fieldLabel}>
+                    Date
+                    <input className={staffInput} type="date" required value={day} onChange={(e) => setDay(e.target.value || todayOhio())} />
+                  </label>
+                  <button type="button" onClick={() => void start()} disabled={dropBusy} className={`${btn.blue} disabled:opacity-60`}>
+                    {dropBusy ? 'Starting…' : 'Start'}
+                  </button>
+                </>
+              )}
+            </div>
+            {donors.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-sm text-slate-600">Recent donors:</span>
+                {donors.map((d) => (
+                  <button key={d} type="button" onClick={() => setDonor(d)} aria-pressed={donor.trim().toLowerCase() === d.toLowerCase()} className={pickChip(donor.trim().toLowerCase() === d.toLowerCase())}>
+                    {d}
+                  </button>
+                ))}
+                <datalist id="recent-donors">
+                  {donors.map((d) => (
+                    <option key={d} value={d} />
+                  ))}
+                </datalist>
+              </div>
+            )}
+            {dropoffs === false ? (
+              <p className="mt-2 text-sm text-slate-600">Drop-offs and thank-you letters need database update 40. Until then the donor’s name goes on each item.</p>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">Start keeps everything they brought together, for one thank-you letter. Leave it blank if nobody gave a name.</p>
+            )}
+            {dropError && <p className="mt-2 text-base font-semibold text-red-600">{dropError}</p>}
+          </>
+        )}
+      </fieldset>
+
+      {/* Each item */}
+      <div className="mt-4 grid grid-cols-2 items-end gap-3 md:grid-cols-[minmax(0,1fr)_7rem_9rem_auto]">
+        <label className={`${fieldLabel} col-span-2 md:col-span-1`}>
           What is it?
           <input ref={titleRef} className={staffInput} required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Hand-knitted bunny blanket" />
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
-          From (donor)
-          <input className={staffInput} value={donor} onChange={(e) => setDonor(e.target.value)} list="recent-donors" />
+        <label className={fieldLabel}>
+          How many?
+          <input className={staffInput} type="number" inputMode="numeric" min={1} max={9999} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className={fieldLabel}>
           Value ($)
           <input className={staffInput} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
         </label>
-        <button type="submit" disabled={!!busy || !title.trim()} className={`${btn.orange} disabled:opacity-60`}>
-          {busy ?? 'Add'}
-        </button>
-      </div>
-      {donors.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-sm text-slate-600">Recent donors:</span>
-          {donors.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setDonor(d)}
-              aria-pressed={donor.trim().toLowerCase() === d.toLowerCase()}
-              className={`min-h-11 rounded-full px-3 text-sm font-semibold transition ${
-                donor.trim().toLowerCase() === d.toLowerCase() ? 'bg-brand-blue text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-brand-blue'
-              }`}
-            >
-              {d}
-            </button>
-          ))}
-          <datalist id="recent-donors">
-            {donors.map((d) => (
-              <option key={d} value={d} />
-            ))}
-          </datalist>
+        <div className="col-span-2 md:col-span-1">
+          <BasisToggle value={basis} onPick={setBasis} />
         </div>
-      )}
-      <div className="mt-4 border-t border-slate-100 pt-3">
-        <p className="mb-2 text-sm text-slate-600">More details, all optional:</p>
-        <DetailsFields v={details} set={(p) => setDetails((x) => ({ ...x, ...p }))} suggestions={suggestions} />
-        <label className={`${fieldLabel} mt-3`}>
-          Notes
-          <textarea
-            className={staffInput}
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Size, colour, anything a buyer or bidder would want to know"
-          />
-        </label>
       </div>
+      <p className="mt-1 min-h-6 text-sm font-semibold text-slate-700" aria-live="polite">
+        {worth}
+      </p>
+
+      <div className="mt-2">
+        <p className={fieldLabel}>Where it’s headed</p>
+        <HeadedChips value={headed} onPick={setHeaded} />
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <label className={`${btn.outline} cursor-pointer ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
           <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
@@ -741,6 +1352,49 @@ function AddDonation({
           ))}
         </ul>
       )}
+
+      <div className="mt-3 border-t border-slate-100 pt-2">
+        <div className="flex flex-wrap items-center gap-x-2">
+          <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="add-more-details" className="inline-flex min-h-11 items-center gap-2 text-base font-bold text-brand-blue">
+            <Icon name="chevron" size={16} className={more ? 'rotate-90' : ''} /> More details
+          </button>
+          <span className="text-sm text-slate-600">Size, condition, sort of thing, where it’s kept, use by, a price, notes</span>
+        </div>
+        {more && (
+          <div id="add-more-details" className="mt-2 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] sm:items-start">
+              <label className={fieldLabel}>
+                Size <span className="font-normal text-slate-600">(e.g. 24×36)</span>
+                <input className={staffInput} value={size} onChange={(e) => setSize(e.target.value)} />
+              </label>
+              <ConditionField value={details.condition} set={(condition) => setDetails((x) => ({ ...x, condition }))} />
+            </div>
+            <CategoryField value={details.category} set={(category) => setDetails((x) => ({ ...x, category }))} suggestions={suggestions} />
+            <PlaceField value={details.location} set={(location) => setDetails((x) => ({ ...x, location }))} suggestions={suggestions} />
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,18rem)] sm:items-start">
+              <label className={fieldLabel}>
+                Use by <span className="font-normal text-slate-600">(food, medicine)</span>
+                <input className={staffInput} type="date" value={useBy} onChange={(e) => setUseBy(e.target.value)} />
+              </label>
+              <label className={fieldLabel}>
+                Price for one ($) <span className="font-normal text-slate-600">(if it may be sold)</span>
+                <input className={staffInput} inputMode="decimal" value={details.price} onChange={(e) => setDetails((x) => ({ ...x, price: e.target.value }))} />
+              </label>
+            </div>
+            <label className={fieldLabel}>
+              Notes
+              <textarea className={staffInput} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Colour, anything a buyer or bidder would want to know" />
+            </label>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={!!busy || !title.trim()} className={`${btn.orange} min-w-32 disabled:opacity-60`}>
+          {busy ?? 'Add'}
+        </button>
+        {current && <span className="text-sm text-slate-600">It goes on {dropoffName(current)}.</span>}
+      </div>
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
         <div className="mt-3 space-y-2" role="status">
@@ -752,16 +1406,21 @@ function AddDonation({
             .{extrasSummary(last) && <span className="block text-sm text-slate-700">{extrasSummary(last)}</span>}
           </p>
           {last.details_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_39_ADD_NOTE}</p>}
+          {last.plan_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_40_ADD_NOTE}</p>}
         </div>
       )}
     </form>
   )
 }
 
+/* ------------------------------------------------- sort one donation */
+
 /**
  * Sort a donation: Silent Auction, Raffle prize or Hop Shop stock. The item
  * keeps its code (the tag re-points; see save_scanned_item). Stock needs a
- * price and a count first; an auction lot goes in as all-day.
+ * price and a count first; an auction lot goes in as all-day. The value is
+ * left to the database, which carries the whole lot's worth across (update 40
+ * knows whether it was typed for each or for all).
  */
 function MovePanel({
   item,
@@ -791,7 +1450,7 @@ function MovePanel({
         title: item.title,
         description: item.description,
         donatedBy: item.donated_by,
-        valueCents: item.value_cents,
+        valueCents: null,
         photoUrl: item.photo_url,
         priceCents: k === 'stock' ? toCents(price) : null,
         quantity: k === 'stock' ? parseInt(quantity || '1', 10) || 0 : null,
@@ -858,12 +1517,68 @@ function MovePanel({
 }
 
 /**
+ * Split a lot (update 40): take some off as their own donation with a new
+ * code — say 10 of 50 for the raffle, the rest for the shop. A value typed for
+ * the whole lot is shared out by how many go with each part.
+ */
+function SplitPanel({ item, orgId, onSplit }: { item: TaggedItem; orgId: string; onSplit: (part: TaggedItem, n: number) => void }) {
+  const total = item.quantity ?? 1
+  const max = Math.max(1, total - 1)
+  const [n, setN] = useState('1')
+  const [head, setHead] = useState<HeadedFor | ''>(item.headed_for ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const take = Math.min(max, Math.max(1, parseInt(n || '1', 10) || 1))
+  const { each, total: lot } = donationValues(item)
+  const partWorth = item.value_basis === 'all' && lot != null ? Math.round((lot * take) / total) : each != null ? each * take : null
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      onSplit(await splitDonation(orgId, item.code, take, head || null), take)
+    } catch (err) {
+      setError(errMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-100 pt-4" aria-label={`Split ${item.title}`}>
+      <p className="text-base font-bold text-ink">Split this lot</p>
+      <p className="text-sm text-slate-600">
+        Take some of the {total} off as their own item, with a new code and a label of its own. The rest stay here under {item.code}.
+      </p>
+      <label className={`${fieldLabel} max-w-xs`}>
+        How many to take off? <span className="font-normal text-slate-600">(1 to {max})</span>
+        <input className={staffInput} type="number" inputMode="numeric" min={1} max={max} step={1} value={n} onChange={(e) => setN(e.target.value)} />
+      </label>
+      <div>
+        <p className={fieldLabel}>Where is that part headed?</p>
+        <HeadedChips value={head} onPick={setHead} label="Where that part is headed" />
+      </div>
+      <p className="text-sm text-slate-700">
+        {take} go{take === 1 ? 'es' : ''} to the new part{partWorth != null ? `, worth ${money(partWorth)}` : ''}; {total - take} stay here.
+      </p>
+      {error && <p className="text-base font-semibold text-red-600">{error}</p>}
+      <button type="submit" disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
+        {busy ? 'Splitting…' : `Split off ${take}`}
+      </button>
+    </form>
+  )
+}
+
+/**
  * Tidy an item. A donation also has how many, a price for one, condition, sort
  * of thing and where it's kept (update 39); shop stock its sort of thing and
  * shelf. Name, money and counts go through save_scanned_item; condition,
  * category and place through set_item_extras, only when they changed. Before
  * update 39 those fields aren't offered (they couldn't be kept), and a note
- * says why.
+ * says why. Update 40 adds a donation's plan — where it's headed, value each
+ * or for all, size and use-by — through set_donation_plan, only what changed.
  */
 function EditForm({
   item,
@@ -881,6 +1596,7 @@ function EditForm({
   const stock = item.kind === 'stock'
   const donation = item.kind === 'donation'
   const detailsReady = (stock || donation) && hasDetails(item)
+  const planReady = donation && has40(item)
   const [d, setD] = useState({
     title: item.title,
     description: item.description ?? '',
@@ -890,6 +1606,12 @@ function EditForm({
     quantity: String(item.quantity ?? 0),
   })
   const [x, setX] = useState<Details>(() => detailsOf(item))
+  const [plan, setPlan] = useState({
+    headed_for: (item.headed_for ?? '') as HeadedFor | '',
+    value_basis: (item.value_basis ?? 'each') as 'each' | 'all',
+    size: item.size ?? '',
+    use_by: item.use_by ?? '',
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const submit = async (e: FormEvent) => {
@@ -925,6 +1647,22 @@ function EditForm({
           return
         }
       }
+      if (planReady) {
+        const p: DonationPlan = {}
+        if (plan.headed_for !== (item.headed_for ?? '')) p.headed_for = plan.headed_for || null
+        if (plan.value_basis !== (item.value_basis ?? 'each')) p.value_basis = plan.value_basis
+        if (plan.size.trim() !== (item.size ?? '')) p.size = plan.size.trim() || null
+        if (plan.use_by !== (item.use_by ?? '')) p.use_by = plan.use_by || null
+        if (Object.keys(p).length) {
+          try {
+            saved = (await setDonationPlan(orgId, item.code, p)) ?? saved
+          } catch (err) {
+            onChanged(saved)
+            setError(`The rest is saved, but not where it’s headed, the value basis, size or use-by: ${errMessage(err)}`)
+            return
+          }
+        }
+      }
       onSaved(saved)
     } catch (err) {
       setError(errMessage(err))
@@ -932,6 +1670,7 @@ function EditForm({
       setBusy(false)
     }
   }
+  const editWorth = valueLine({ value_cents: toCents(d.value), value_basis: plan.value_basis, quantity: detailsReady ? count(x.quantity) : item.quantity })
   return (
     <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-100 pt-4">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -971,6 +1710,34 @@ function EditForm({
             {stock
               ? 'What sort of thing and where it’s kept can be added here once database update 39 has run.'
               : 'How many, a price for one, condition, sort of thing and where it’s kept can be added here once database update 39 has run.'}
+          </p>
+        ))}
+      {donation &&
+        (planReady ? (
+          <div className="space-y-3 rounded-xl border border-slate-200 p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={fieldLabel}>The value is</span>
+              <BasisToggle value={plan.value_basis} onPick={(value_basis) => setPlan((p) => ({ ...p, value_basis }))} />
+              {editWorth && <span className="text-sm font-semibold text-slate-700">{editWorth}</span>}
+            </div>
+            <div>
+              <p className={fieldLabel}>Where it’s headed</p>
+              <HeadedChips value={plan.headed_for} onPick={(headed_for) => setPlan((p) => ({ ...p, headed_for }))} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={fieldLabel}>
+                Size <span className="font-normal text-slate-600">(e.g. 24×36)</span>
+                <input className={staffInput} value={plan.size} onChange={(e) => setPlan((p) => ({ ...p, size: e.target.value }))} />
+              </label>
+              <label className={fieldLabel}>
+                Use by
+                <input className={staffInput} type="date" value={plan.use_by} onChange={(e) => setPlan((p) => ({ ...p, use_by: e.target.value }))} />
+              </label>
+            </div>
+          </div>
+        ) : (
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            Where it’s headed, a value for each or for all, size and use-by can be set here once database update 40 has run.
           </p>
         ))}
       <label className="block text-sm font-semibold text-slate-700">
