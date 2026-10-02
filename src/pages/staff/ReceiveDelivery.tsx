@@ -480,7 +480,7 @@ export default function ReceiveDelivery() {
             ) : (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue-50 text-brand-blue">
-                  <Icon name="book" size={28} />
+                  <Icon name="file" size={28} />
                 </span>
                 <p className="font-display text-lg font-extrabold text-ink">Drag the invoice here</p>
                 <p className="max-w-xl text-sm text-slate-600">
@@ -500,7 +500,7 @@ export default function ReceiveDelivery() {
               <ul className="space-y-1">
                 {files.map((f, i) => (
                   <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm text-slate-700">
-                    <Icon name={isPdf(f) ? 'book' : 'camera'} size={16} className="shrink-0" />
+                    <Icon name={isPdf(f) ? 'file' : 'camera'} size={16} className="shrink-0" />
                     <span className="min-w-0 flex-1 truncate">
                       {fileLabel(f, i)}
                       {!isPdf(f) && !touch && <span className="text-slate-500"> · {f.name}</span>}

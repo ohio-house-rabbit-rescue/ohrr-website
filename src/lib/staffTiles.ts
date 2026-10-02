@@ -108,7 +108,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
     { to: '/staff/hopshop', title: 'Hop Shop inventory', hint: 'What the shop carries, stock, reorder', icon: 'store', group: 'items', show: shop || can('hopshop.orders.view') },
     { to: '/staff/hopshop/deliveries/new', title: 'Add a delivery', hint: 'Stock from the supplier’s invoice', icon: 'box', group: 'items', show: shop },
     { to: '/staff/dropoffs', title: 'Drop-offs and thank-yous', hint: 'Who gave what, the letter', icon: 'mail', group: 'items', show: canItems },
-    { to: '/staff/donations/report', title: 'Monthly donations report', hint: 'Totals, by donor, a spreadsheet', icon: 'book', group: 'items', show: canItems },
+    { to: '/staff/donations/report', title: 'Monthly donations report', hint: 'Totals, by donor, a spreadsheet', icon: 'file', group: 'items', show: canItems },
     { to: '/staff/items/labels', title: 'Print labels', hint: 'Codes for items, any label size', icon: 'printer', group: 'items', show: canItems },
     { to: '/staff/scan', title: 'Scan an item', hint: 'See, change or sort a labelled item', icon: 'scan', group: 'items', today: true, show: canItems },
 
