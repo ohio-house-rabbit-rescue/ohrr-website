@@ -101,6 +101,10 @@ import SendNotification from './pages/staff/SendNotification'
 // Scan an item (OHRR, 2026-10-01): its own chunk, so the camera and barcode code
 // isn't in the site's main bundle (ZXing itself loads only when it's used).
 const ScanItem = lazy(() => import('./pages/staff/ScanItem'))
+// Add a delivery from its invoice (update 42): its own chunks too (pdf.js and
+// the text reader load only when an invoice is read).
+const ReceiveDelivery = lazy(() => import('./pages/staff/ReceiveDelivery'))
+const Deliveries = lazy(() => import('./pages/staff/Deliveries'))
 
 export default function App() {
   return (
@@ -151,6 +155,30 @@ export default function App() {
         <Route path="hopshop/types" element={<StaffHopShop />} />
         {/* Hop Shop price labels (update 41); its own key, so it never keeps the donation list's ticks */}
         <Route path="hopshop/labels" element={<PrintLabels key="shop" mode="shop" />} />
+        <Route
+          path="hopshop/deliveries/new"
+          element={
+            <Suspense fallback={<Spinner />}>
+              <ReceiveDelivery />
+            </Suspense>
+          }
+        />
+        <Route
+          path="hopshop/deliveries"
+          element={
+            <Suspense fallback={<Spinner />}>
+              <Deliveries />
+            </Suspense>
+          }
+        />
+        <Route
+          path="hopshop/deliveries/:id"
+          element={
+            <Suspense fallback={<Spinner />}>
+              <Deliveries />
+            </Suspense>
+          }
+        />
         <Route path="bunfest" element={<BunFestContent />} />
         <Route path="bunfest/pages" element={<BunFestContent />} />
         <Route path="bunfest/floor" element={<BunFestContent />} />

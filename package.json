@@ -19,12 +19,14 @@
     "@zxing/library": "^0.23.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
+    "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.0",
     "stripe": "^22.6.2",
-    "tailwindcss": "^4.3.1"
+    "tailwindcss": "^4.3.1",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260929.1",
