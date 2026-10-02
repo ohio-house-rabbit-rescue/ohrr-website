@@ -11,7 +11,8 @@
 // opens it with a scanned packet barcode filled in, and ?code=X opens that
 // product's card for editing. A laptop can choose a photo from the computer or
 // drop one on the photo area; "Take a photo" (the phone's camera) shows on
-// phones and tablets.
+// phones and tablets. Something arrived? The Reorder tab and each supplier's
+// card lead to Add a delivery (update 42): the invoice fills in the items.
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
@@ -1185,6 +1186,24 @@ function Reorder({ orgId, suppliers, canAct }: { orgId: string; suppliers: Suppl
   return (
     <div className="space-y-3">
       <FormError>{error}</FormError>
+      {canAct && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link
+            to="/staff/hopshop/deliveries/new"
+            className="flex min-h-[56px] min-w-0 flex-1 basis-80 items-center gap-3 rounded-2xl border-2 border-brand-blue/40 bg-brand-blue-50/60 px-4 py-2 text-left transition hover:border-brand-blue"
+          >
+            <Icon name="box" size={22} className="shrink-0 text-brand-blue" />
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-base font-extrabold text-ink">Something arrived? Add it from the invoice</span>
+              <span className="block text-sm text-slate-600">PDF or a photo — it fills in the items and how many</span>
+            </span>
+            <Icon name="chevron" size={18} className="shrink-0 text-brand-blue" />
+          </Link>
+          <Link to="/staff/hopshop/deliveries" className="inline-flex min-h-11 items-center text-sm font-bold text-brand-blue">
+            Past deliveries →
+          </Link>
+        </div>
+      )}
       {note && <p className="text-sm font-bold text-green-700">{note}</p>}
       {arrived && (
         <p className="rounded-xl bg-green-50 px-3 py-1 text-base text-slate-700" role="status">
@@ -1560,6 +1579,11 @@ function Suppliers({
                 </span>
               )}
               <CompanySummary c={s} gifts={gifts?.get(s.id)} />
+              {s.is_supplier && (
+                <Link to={`/staff/hopshop/deliveries?supplier=${s.id}`} className="mt-1 inline-flex min-h-11 items-center text-sm font-bold text-brand-blue">
+                  Deliveries from {s.name} →
+                </Link>
+              )}
             </span>
             {canWrite && (
               <button type="button" onClick={() => setEditing(editing === s.id ? null : s.id)} className="min-h-[44px] shrink-0 px-2 text-sm font-bold text-brand-blue">

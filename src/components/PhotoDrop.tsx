@@ -2,7 +2,8 @@
 // folder). Wraps the photo area of a form; the file picker inside it keeps
 // working as before. While one is on the page, a photo dropped just outside
 // it is ignored rather than opened by the browser — which would leave the
-// page and lose what was typed.
+// page and lose what was typed. `accept` keeps other files too (Add a
+// delivery takes the invoice's PDF as well as photos of a paper one).
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 
 const hasFiles = (e: { dataTransfer: DataTransfer | null }) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
@@ -10,21 +11,23 @@ const hasFiles = (e: { dataTransfer: DataTransfer | null }) => Array.from(e.data
 /** A file input hidden inside its label (sr-only): the label shows the keyboard focus instead. */
 export const fileFocus = 'has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-brand-orange'
 
-/** The pictures among some files (anything else is left out). */
-const imagesOf = (files: FileList | File[] | null | undefined): File[] =>
-  Array.from(files ?? []).filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp)$/i.test(f.name))
+/** A picture (by its type, or its name when the computer gives no type). */
+const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp)$/i.test(f.name)
 
 export default function PhotoDrop({
   onFiles,
   disabled = false,
   className = '',
   children,
+  accept = isImageFile,
 }: {
-  /** The pictures dropped, in the order given (non-pictures left out; may be empty). */
+  /** The pictures dropped (or the files `accept` keeps), in the order given; the rest left out; may be empty. */
   onFiles: (files: File[], droppedCount: number) => void
   disabled?: boolean
   className?: string
   children: ReactNode
+  /** Which dropped files to keep: pictures, unless told otherwise. */
+  accept?: (f: File) => boolean
 }) {
   const [over, setOver] = useState(false)
   const depth = useRef(0)
@@ -66,7 +69,7 @@ export default function PhotoDrop({
     setOver(false)
     if (disabled) return
     const all = Array.from(e.dataTransfer.files ?? [])
-    onFiles(imagesOf(all), all.length)
+    onFiles(all.filter(accept), all.length)
   }
 
   return (
