@@ -485,7 +485,7 @@ export default function AuctionDesk() {
       {notReady && (
         <Card className="mt-5 border-brand-orange/40 bg-brand-orange-50">
           <p className="text-base leading-relaxed text-slate-800">
-            <strong>Online bidding isn’t in the database yet.</strong> Run update 35 (RUN-THIS-IN-SUPABASE.sql, in the OHRR App Design folder) and
+            <strong>Online bidding isn’t in the database yet.</strong> Run update 35 (RUN-THIS-IN-SUPABASE.sql, in the 02 App Design folder) and
             this desk fills in. Until then, items are marked won by hand under Silent auction.
           </p>
         </Card>
