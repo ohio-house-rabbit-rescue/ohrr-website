@@ -11,6 +11,7 @@ import { OHRR } from '../lib/constants'
 import NotifyMe from '../components/NotifyMe'
 import VolunteerGate from '../components/VolunteerGate'
 import { MOBILE_VET_NAME, MOBILE_VET_SLUG } from '../lib/mobileVet'
+import { ANSWER_MAX, answerText, parseQuestions } from '../lib/bookingQuestions'
 import {
   bookSlot,
   bookingByToken,
@@ -263,6 +264,9 @@ function BookForm({
   onRefresh: () => void
 }) {
   const [form, setForm] = useState({ name: '', email: lockedEmail ?? '', phone: '', answer: initialAnswer, notes: '' })
+  const questions = useMemo(() => parseQuestions(type.questions), [type.questions])
+  const [replies, setReplies] = useState<string[]>([])
+  const setReply = (i: number, v: string) => setReplies((r) => Object.assign([...r], { [i]: v }))
   const [party, setParty] = useState(1)
   const [attested, setAttested] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -274,7 +278,7 @@ function BookForm({
     setBusy(true)
     setError(null)
     try {
-      onBooked(await bookSlot({ slotId: slot.slot_id, name: form.name, email: form.email, phone: form.phone, party, answer: form.answer, notes: form.notes, attested }))
+      onBooked(await bookSlot({ slotId: slot.slot_id, name: form.name, email: form.email, phone: form.phone, party, answer: answerText(questions, replies, type.ask_reason, form.answer), notes: form.notes, attested }))
     } catch (err) {
       setError(errMessage(err))
       setBusy(false)
@@ -335,10 +339,28 @@ function BookForm({
             </label>
           )}
         </div>
+        {questions.map((q, i) => (
+          <label key={i} className="block text-sm font-semibold text-slate-700">
+            {q.label}
+            {!q.required && <span className="font-normal text-slate-500"> (optional)</span>}
+            {q.options.length > 0 ? (
+              <select className={input} required={q.required} value={replies[i] ?? ''} onChange={(e) => setReply(i, e.target.value)}>
+                <option value="">Choose…</option>
+                {q.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input className={input} required={q.required} maxLength={ANSWER_MAX} value={replies[i] ?? ''} onChange={(e) => setReply(i, e.target.value)} />
+            )}
+          </label>
+        ))}
         {type.ask_reason && (
           <label className="block text-sm font-semibold text-slate-700">
             {type.ask_reason}
-            <input className={input} value={form.answer} onChange={set('answer')} />
+            <input className={input} maxLength={questions.length ? 160 : 500} value={form.answer} onChange={set('answer')} />
           </label>
         )}
         <label className="block text-sm font-semibold text-slate-700">

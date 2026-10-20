@@ -21,6 +21,7 @@ import SilentAuctionItem from './pages/SilentAuctionItem'
 import SilentAuctionRegister from './pages/SilentAuctionRegister'
 import SilentAuctionMe from './pages/SilentAuctionMe'
 import MobileVet from './pages/MobileVet'
+import Bonding from './pages/Bonding'
 import VolunteerApply from './pages/VolunteerApply'
 import VerifyLetter from './pages/VerifyLetter'
 import { BunFestSchedule, BunFestTopic, BunFestVendors } from './pages/BunFestMore'
@@ -218,6 +219,8 @@ export default function App() {
         <Route path="/adopt/policy" element={<AdoptPolicy />} />
         <Route path="/adopt/apply" element={<AdoptApply />} />
         <Route path="/adopt/rabbit/:id" element={<AdoptRabbit />} />
+        <Route path="/adopt/bonding" element={<Bonding />} />
+        <Route path="/bonding" element={<Navigate to="/adopt/bonding" replace />} />
         <Route path="/surrender/form" element={<SurrenderIntake />} />
         <Route path="/mailing-list" element={<MailingListPage />} />
         <Route path="/emails/:token" element={<EmailChoices />} />

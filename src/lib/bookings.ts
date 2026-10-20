@@ -24,6 +24,8 @@ export interface BookingType {
   attest_text: string | null
   /** Approved volunteers of this kind only ('socialization' …); null = anyone (update 25). */
   approval_role?: string | null
+  /** Questions on the form, one per line (see bookingQuestions.ts). Undefined until update 43 adds the column. */
+  questions?: string | null
   is_published: boolean
   sort_order: number
   /** Standing weekly schedule; the database keeps `auto_weeks` weeks of times filled from it. */
