@@ -34,6 +34,7 @@ const mk = (title: string, subtitle: string, to: string, group: string, extra = 
 const PAGES: { title: string; subtitle: string; to: string; extra?: string }[] = [
   { title: 'Home', subtitle: 'Ohio House Rabbit Rescue', to: '/' },
   { title: 'Adopt a rabbit', subtitle: 'Adoptable bunnies & how adopting works', to: '/adopt', extra: 'adoption apply application petfinder bonded pair' },
+  { title: 'Bunny bonding (bunny dates)', subtitle: 'Bring your bunny to meet adoptable rabbits', to: '/adopt/bonding', extra: 'bonding bond matchmaking friend companion date pair book appointment' },
   { title: 'Adoption policy', subtitle: 'Requirements, fees & procedure', to: '/adopt/policy', extra: 'policy fee indoor' },
   { title: 'Adoption application', subtitle: 'Apply to adopt', to: '/adopt/apply', extra: 'form apply' },
   { title: 'Rabbit care', subtitle: 'Care articles from OHRR', to: '/learn', extra: 'learn diet housing health litter toys bonding' },

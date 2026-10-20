@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useRabbits } from '../lib/data'
 import type { Rabbit } from '../lib/types'
 import { PageHero, Section, RabbitCard, LiveNote, btn, ext, H2, Card, Callout } from '../components/ui'
+import { Icon } from '../components/icons'
 import { OhrrPhoto } from '../components/PhotoStrip'
 import { ADOPTION_PHOTO } from '../data/ohrrPhotos'
 import { APPLY, ADOPTION_POLICY_PDF, PETFINDER, ADOPT_A_PET, BUNNY_DATES_ARTICLE, OHRR, RABBIT_READY } from '../lib/constants'
@@ -175,6 +176,9 @@ export default function Adopt() {
               </Link>
               .
             </p>
+            <Link to="/adopt/bonding" className={`${btn.outline} mt-3`}>
+              <Icon name="calendar" size={16} /> Set up a bunny date
+            </Link>
           </div>
         </div>
 
