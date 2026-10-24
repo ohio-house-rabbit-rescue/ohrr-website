@@ -43,6 +43,7 @@ import {
   catalogSuggestions,
   conditionLabel,
   donationValues,
+  headedLabel,
   extrasSummary,
   has40,
   hasDetails,
@@ -75,6 +76,8 @@ import {
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
 import { isDonationCode, normalizeCode } from '../../lib/codes'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
+import { todayStamp, type SheetColumn, type SheetRow, type SheetSpec } from '../../lib/inventoryExport'
+import ExportButtons from './ExportButtons'
 
 /** Recent places and categories (update 39; empty lists before it). */
 type Suggestions = { locations: string[]; categories: string[] }
@@ -89,6 +92,57 @@ const bump = (list: string[], v: string, max: number) => {
 const dollars = (c: number | null | undefined) => (c == null ? '' : c % 100 === 0 ? String(c / 100) : (c / 100).toFixed(2))
 
 type Filter = 'all' | ItemKind
+
+/** The spreadsheet's columns, after the photo (Download with photos). */
+const SHEET_COLUMNS: SheetColumn[] = [
+  { header: 'Number', width: 14 },
+  { header: 'Name', width: 32 },
+  { header: 'Kind', width: 20 },
+  { header: 'Status', width: 26 },
+  { header: 'Donated by', width: 22 },
+  { header: 'Received', width: 13, kind: 'date' },
+  { header: 'Headed for', width: 15 },
+  { header: 'How many', width: 10, kind: 'number' },
+  { header: 'Size', width: 12 },
+  { header: 'Value each', width: 12, kind: 'money' },
+  { header: 'Value in all', width: 12, kind: 'money' },
+  { header: 'Price', width: 10, kind: 'money' },
+  { header: 'Condition', width: 11 },
+  { header: 'Sort of thing', width: 16 },
+  { header: 'Where it’s kept', width: 18 },
+  { header: 'Use by', width: 13, kind: 'date' },
+  { header: 'Description', width: 40 },
+  { header: 'Label printed', width: 13, kind: 'date' },
+  { header: 'Added', width: 13, kind: 'date' },
+]
+
+function sheetRow(i: TaggedItem): SheetRow {
+  const v = i.kind === 'donation' ? donationValues(i) : { each: null, total: i.value_cents }
+  return {
+    photos: itemPhotos(i),
+    cells: [
+      i.code,
+      i.title,
+      KIND_META[i.kind].label,
+      statusLabel(i),
+      i.donated_by,
+      i.received_on,
+      headedLabel(i.headed_for),
+      i.quantity,
+      i.size,
+      v.each,
+      v.total,
+      i.price_cents,
+      conditionLabel(i.condition),
+      i.category,
+      i.location,
+      i.use_by,
+      i.description,
+      i.label_printed_at,
+      i.created_at,
+    ],
+  }
+}
 // Donations first: they are the pile on the desk.
 const FILTERS: Filter[] = ['donation', 'all', 'auction', 'raffle', 'stock']
 
@@ -340,6 +394,19 @@ export default function Items() {
   }
   const pickedItems = (items ?? []).filter((i) => picked.has(i.code))
 
+  // What the list shows, as a spreadsheet with a photo in each row.
+  const sheet = (): SheetSpec => {
+    const what = filter === 'all' ? 'Everything' : KIND_META[filter].label
+    const made = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return {
+      filename: `ohrr-items-${filter}-${todayStamp()}`,
+      sheetName: 'Items',
+      title: `Ohio House Rabbit Rescue — items: ${what}${q.trim() ? ` matching “${q.trim()}”` : ''} · ${shown.length} · ${made}`,
+      columns: SHEET_COLUMNS,
+      rows: shown.map(sheetRow),
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -398,6 +465,7 @@ export default function Items() {
           </button>
         ))}
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, donor or code" className={`${staffInput} !mt-0 max-w-xs`} aria-label="Search items" />
+        {shown.length > 0 && <ExportButtons spec={sheet} label={`Download ${shown.length} with photos`} />}
       </div>
 
       {filter === 'donation' && (
