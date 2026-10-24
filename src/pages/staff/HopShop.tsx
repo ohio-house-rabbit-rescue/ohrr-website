@@ -67,6 +67,68 @@ import { giftTotals, withScheme, type GiftTotals } from '../../lib/companies'
 import { CompanyForm, CompanySummary, CompanyThumb, useVendorRecordsReady } from './CompanyForm'
 import { PackEditor, packRowsFrom, packRowsToInput, type PackRow } from './PackEditor'
 import { NewTypeForm, TypesPanel } from './TypesPanel'
+import { itemPhotos } from '../../lib/items'
+import { todayStamp, type SheetColumn, type SheetSpec } from '../../lib/inventoryExport'
+import ExportButtons from './ExportButtons'
+
+/** Hop Shop inventory as a spreadsheet, after the photo column (Download with photos). */
+const SHEET_COLUMNS: SheetColumn[] = [
+  { header: 'SKU', width: 14 },
+  { header: 'Name', width: 32 },
+  { header: 'Type', width: 16 },
+  { header: 'In stock', width: 9, kind: 'number' },
+  { header: 'Unit', width: 9 },
+  { header: 'Price', width: 10, kind: 'money' },
+  { header: 'Cost', width: 10, kind: 'money' },
+  { header: 'Supplier', width: 20 },
+  { header: 'Supplier’s item no.', width: 16 },
+  { header: 'Barcode', width: 15 },
+  { header: 'Category', width: 15 },
+  { header: 'Shelf', width: 12 },
+  { header: 'Reorder at', width: 10, kind: 'number' },
+  { header: 'Reorder how many', width: 10, kind: 'number' },
+  { header: 'On order', width: 9, kind: 'number' },
+  { header: 'In the shop', width: 10 },
+  { header: 'Came in as', width: 12 },
+  { header: 'Description', width: 40 },
+  { header: 'Label printed', width: 13, kind: 'date' },
+  { header: 'Last changed', width: 13, kind: 'date' },
+]
+
+function sheetSpec(list: StockCard[], q: string): SheetSpec {
+  const made = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return {
+    filename: `ohrr-hop-shop-inventory-${todayStamp()}`,
+    sheetName: 'Hop Shop',
+    title: `Ohio House Rabbit Rescue — Hop Shop inventory${q.trim() ? ` matching “${q.trim()}”` : ''} · ${list.length} items · ${made}`,
+    columns: SHEET_COLUMNS,
+    rows: list.map((p) => ({
+      photos: itemPhotos(p),
+      cells: [
+        p.code ?? p.sku,
+        p.name,
+        p.type_name,
+        p.quantity,
+        p.unit,
+        p.price_cents,
+        p.cost_cents,
+        p.supplier_name,
+        p.supplier_sku,
+        p.barcode,
+        p.category,
+        p.shelf,
+        p.reorder_point,
+        p.reorder_qty,
+        p.on_order_qty || null,
+        p.is_active ? 'Yes' : 'Hidden',
+        p.donation_code,
+        p.description,
+        p.label_printed_at,
+        p.updated_at,
+      ],
+    })),
+  }
+}
 
 // The camera view loads only when "Scan the barcode on the packet" is used.
 const Scanner = lazy(() => import('../../components/Scanner'))
@@ -345,6 +407,7 @@ function Items({
           </button>
         )}
       </div>
+      {shown.length > 0 && <ExportButtons spec={() => sheetSpec(shown, q)} label={`Download ${shown.length} with photos`} />}
       {note && (
         <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800" role="status">
           {note}{' '}
