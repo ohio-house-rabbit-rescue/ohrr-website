@@ -30,5 +30,6 @@ export function bccMailto(emails: string[], subject: string, body = ''): string 
   params.set('bcc', list)
   params.set('subject', subject)
   if (body) params.set('body', body)
-  return `mailto:?${params.toString()}`
+  // A mailto: reads "+" as a plus sign, so spaces go as %20 (same as the app).
+  return `mailto:?${params.toString().replace(/\+/g, '%20')}`
 }

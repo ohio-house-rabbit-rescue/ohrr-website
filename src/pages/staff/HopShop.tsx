@@ -68,6 +68,7 @@ import { CompanyForm, CompanySummary, CompanyThumb, useVendorRecordsReady } from
 import { PackEditor, packRowsFrom, packRowsToInput, type PackRow } from './PackEditor'
 import { NewTypeForm, TypesPanel } from './TypesPanel'
 import { NewSupplierForm } from './NewSupplierForm'
+import { openMail } from '../../lib/emailWith'
 import { clearNewItemDraft, readNewItemDraft, writeNewItemDraft } from '../../lib/newItemDraft'
 import { itemPhotos } from '../../lib/items'
 import { todayStamp, type SheetColumn, type SheetSpec } from '../../lib/inventoryExport'
@@ -1295,7 +1296,7 @@ function Reorder({ orgId, suppliers, canAct }: { orgId: string; suppliers: Suppl
   const sendList = async (name: string, list: StockCard[], s: Supplier | null) => {
     const text = orderText(name, list, s?.account_number, choiceMap(list))
     if (s?.email) {
-      window.location.href = `mailto:${s.email}?subject=${encodeURIComponent(`Order — Ohio House Rabbit Rescue`)}&body=${encodeURIComponent(text)}`
+      openMail(`mailto:${s.email}?subject=${encodeURIComponent(`Order — Ohio House Rabbit Rescue`)}&body=${encodeURIComponent(text)}`)
       return
     }
     const ok = await copyText(text)
