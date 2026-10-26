@@ -1,24 +1,26 @@
-// /bunfest/silent-auction/register?next=… — register to bid: name and
-// contact, pickup or shipping (the address on its own step so no step has more
-// than six fields), then Stripe's card form. The card goes straight to Stripe;
-// OHRR only ever holds a customer id and the last four digits. Once the card
-// is saved the browser remembers the bidder and goes back to `next` (the item
-// they were looking at) or the catalog.
+// /bunfest/silent-auction/register?next=… and /auction/register — register to
+// bid: name and contact, pickup or shipping (the address on its own step so no
+// step has more than six fields), then Square's card form. The card goes
+// straight to Square; OHRR only ever holds Square's ids and the last four
+// digits. The details and the card are saved together on the last step; if the
+// details save but the card doesn't, the next try only saves a card. Then the
+// browser remembers the bidder and goes back to `next` (the item they were
+// looking at) or the catalog.
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHero, Section, Card, btn, Callout } from '../components/ui'
 import { Spinner } from '../lib/staff'
-import { errMessage } from '../lib/supabase'
 import CardSetup from '../components/CardSetup'
-import { auctionApi, rememberBidder, recallBidder, type Address, type Catalog, type Fulfil } from '../lib/auctionClient'
-import { CATALOG_PATH, MY_BIDS_PATH, biddingOffered, useAuctionGate, useCatalog, useDocTitle } from '../lib/auctionSite'
+import { AuctionApiError, auctionApi, rememberBidder, recallBidder, type Address, type Bidder, type Catalog, type Fulfil } from '../lib/auctionClient'
+import { biddingOffered, useAuctionGate, useCatalog, useDocTitle } from '../lib/auctionSite'
+import { useAuctionEvent, useAuctionPaths } from '../lib/auctionEvent'
 import { AuctionGate, ErrorText, Field, TextInput } from '../components/AuctionBits'
 
 type Step = 'details' | 'address' | 'card'
 
 const US_STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ')
 
-// The Silent Auction switch (Staff → Features) comes first: while it is off,
+// The auction's switch (Staff → Features) comes first: while it is off,
 // visitors get the "isn't open" page and staff the form under the note.
 export default function SilentAuctionRegister() {
   useDocTitle('Register to bid')
@@ -32,12 +34,17 @@ export default function SilentAuctionRegister() {
 }
 
 function RegisterPage({ catalog }: { catalog: Catalog | null }) {
+  const ev = useAuctionEvent()
+  const paths = useAuctionPaths()
+  const CATALOG_PATH = paths.catalog
+  const MY_BIDS_PATH = paths.me
+  const parent = { to: CATALOG_PATH, label: ev.name }
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const nextRaw = params.get('next') ?? ''
   // Only a page on this site; never another address.
   const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : CATALOG_PATH
-  const already = recallBidder()
+  const already = recallBidder(ev.slug)
 
   const [step, setStep] = useState<Step>('details')
   const [name, setName] = useState('')
@@ -45,9 +52,9 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
   const [phone, setPhone] = useState('')
   const [fulfil, setFulfil] = useState<Fulfil>('pickup')
   const [addr, setAddr] = useState<Address>({ line1: '', line2: '', city: '', state: 'OH', zip: '' })
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [setup, setSetup] = useState<{ token: string; client_secret: string; bidder_no: number } | null>(null)
+  // Registered, but the card didn't save: the next try only saves a card.
+  const [pending, setPending] = useState<Bidder | null>(null)
 
   if (!catalog) {
     return (
@@ -58,17 +65,17 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
   }
 
   const settings = catalog.settings
-  const pk = settings?.stripe_publishable_key ?? null
-  if (!biddingOffered(catalog) || !pk) {
+  if (!biddingOffered(catalog) || !settings?.square_application_id || !settings.square_location_id) {
     return (
       <>
-        <PageHero title="Register to bid" parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} />
+        <PageHero title="Register to bid" parent={parent} />
         <Section>
           <Card className="max-w-xl space-y-3">
             <p className="font-display text-lg font-extrabold text-ink">Bidding hasn’t opened yet.</p>
             <p className="text-base leading-relaxed text-slate-700">
-              Online bidding opens before BunFest. Until then you can look through the items; on the day, the auction table takes bids
-              too.
+              {ev.online
+                ? 'You can look through the items now. Registration opens when the auction does.'
+                : 'Online bidding opens before BunFest. Until then you can look through the items; on the day, the auction table takes bids too.'}
             </p>
             <Link to={CATALOG_PATH} className={btn.blue}>
               ← Back to the auction items
@@ -79,10 +86,13 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
     )
   }
 
-  if (already && !setup) {
+  const applicationId = settings.square_application_id
+  const locationId = settings.square_location_id
+
+  if (already && !pending) {
     return (
       <>
-        <PageHero title="Register to bid" parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} />
+        <PageHero title="Register to bid" parent={parent} />
         <Section>
           <Card className="max-w-xl space-y-3">
             <p className="font-display text-lg font-extrabold text-ink">You’re already registered as Bidder #{already.bidder_no}.</p>
@@ -115,34 +125,30 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
       setStep('address')
       return
     }
-    void register()
+    setStep('card')
   }
 
-  const register = async () => {
-    setBusy(true)
-    setError(null)
+  // Square's one-time card token: save the bidder and the card together.
+  const saveCard = async (cardToken: string) => {
     try {
-      const r = await auctionApi.register({
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim() || undefined,
-        fulfil,
-        address: fulfil === 'ship' ? addr : null,
-      })
-      setSetup({ token: r.bidder.access_token, client_secret: r.client_secret, bidder_no: r.bidder.bidder_no })
-      setStep('card')
-    } catch (e) {
-      setError(errMessage(e))
-    } finally {
-      setBusy(false)
+      const { bidder } = pending
+        ? await auctionApi.newCard(pending.access_token, cardToken)
+        : await auctionApi.register({
+            event: ev.slug,
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim() || undefined,
+            fulfil,
+            address: fulfil === 'ship' ? addr : null,
+            card_token: cardToken,
+          })
+      rememberBidder(bidder)
+      navigate(next)
+    } catch (err) {
+      const b = err instanceof AuctionApiError ? (err.data.bidder as Bidder | undefined) : undefined
+      if (b?.access_token) setPending(b)
+      throw err
     }
-  }
-
-  const cardSaved = async (setupIntentId: string) => {
-    if (!setup) return
-    const { bidder } = await auctionApi.cardSaved(setup.token, setupIntentId)
-    rememberBidder(bidder)
-    navigate(next)
   }
 
   const stepNo = step === 'details' ? 1 : step === 'address' ? 2 : fulfil === 'ship' ? 3 : 2
@@ -151,7 +157,7 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
 
   return (
     <>
-      <PageHero title="Register to bid" parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} subtitle="Your details once, then bid on anything in the auction." />
+      <PageHero title="Register to bid" parent={parent} subtitle="Your details once, then bid on anything in the auction." />
       <Section>
         <div className="grid gap-8 lg:grid-cols-5">
           <Card className="space-y-4 lg:col-span-3">
@@ -175,7 +181,7 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
                   <div className="mt-2 space-y-2">
                     {(
                       [
-                        ['pickup', 'I’ll pick it up at BunFest'],
+                        ['pickup', ev.online ? 'I’ll pick it up from OHRR' : 'I’ll pick it up at BunFest'],
                         ['ship', 'Ship it to me (items marked “Ships”; the fee is added)'],
                       ] as [Fulfil, string][]
                     ).map(([v, label]) => (
@@ -189,8 +195,8 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
                 {fulfil === 'pickup' && settings?.pickup_note && <p className="whitespace-pre-line text-base text-slate-700">{settings.pickup_note}</p>}
                 {fulfil === 'ship' && settings?.shipping_note && <p className="whitespace-pre-line text-base text-slate-700">{settings.shipping_note}</p>}
                 <ErrorText>{error}</ErrorText>
-                <button type="submit" disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
-                  {busy ? 'One moment…' : fulfil === 'ship' ? 'Next: shipping address' : 'Next: save a card'}
+                <button type="submit" className={btn.orange}>
+                  {fulfil === 'ship' ? 'Next: shipping address' : 'Next: save a card'}
                 </button>
               </form>
             )}
@@ -223,24 +229,39 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
                 </div>
                 <ErrorText>{error}</ErrorText>
                 <div className="flex flex-wrap gap-2">
-                  <button type="submit" disabled={busy} className={`${btn.orange} disabled:opacity-60`}>
-                    {busy ? 'One moment…' : 'Next: save a card'}
+                  <button type="submit" className={btn.orange}>
+                    Next: save a card
                   </button>
-                  <button type="button" disabled={busy} onClick={() => setStep('details')} className={btn.outline}>
+                  <button type="button" onClick={() => setStep('details')} className={btn.outline}>
                     Back
                   </button>
                 </div>
               </form>
             )}
 
-            {step === 'card' && setup && (
+            {step === 'card' && (
               <div className="space-y-4">
-                <p className="font-display text-lg font-extrabold text-ink">You’re Bidder #{setup.bidder_no}. Now save a card.</p>
-                <p className="text-base leading-relaxed text-slate-700">
-                  Stripe holds the card. It is charged only if you win an item or use Buy Now — for the amount you bid plus shipping if you
-                  chose it.
+                <p className="font-display text-lg font-extrabold text-ink">
+                  {pending ? `You’re Bidder #${pending.bidder_no}. Your details are saved; the card wasn’t — please try it again, or another card.` : 'Last step: save a card.'}
                 </p>
-                <CardSetup publishableKey={pk} clientSecret={setup.client_secret} onSaved={cardSaved} buttonClassName={`${btn.orange} w-full disabled:opacity-60`} label="Save card and start bidding" />
+                <p className="text-base leading-relaxed text-slate-700">
+                  Square holds the card. It is charged {settings.auto_charge ? 'automatically when the auction closes, only' : 'only'} if you win an item or use
+                  Buy Now — for the amount you bid plus shipping if you chose it.
+                </p>
+                <CardSetup
+                  applicationId={applicationId}
+                  locationId={locationId}
+                  holder={() => ({ name, email, phone, address: fulfil === 'ship' ? addr : null })}
+                  onToken={saveCard}
+                  buttonClassName={`${btn.orange} w-full disabled:opacity-60`}
+                  label={pending ? 'Save card and start bidding' : 'Register and start bidding'}
+                  busyLabel="Saving your card…"
+                />
+                {!pending && (
+                  <button type="button" onClick={() => setStep(fulfil === 'ship' ? 'address' : 'details')} className={btn.outline}>
+                    Back
+                  </button>
+                )}
               </div>
             )}
           </Card>
@@ -251,7 +272,7 @@ function RegisterPage({ catalog }: { catalog: Catalog | null }) {
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-base leading-relaxed text-slate-700">
                 <li>You get a bidder number. Other bidders see the number, never your name.</li>
                 <li>A card is saved now and charged only if you win or use Buy Now.</li>
-                <li>OHRR never sees your card number — Stripe keeps it.</li>
+                <li>OHRR never sees your card number — Square keeps it.</li>
                 <li>Every bid is a promise to pay if you win.</li>
               </ul>
             </Callout>

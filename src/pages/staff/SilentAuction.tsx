@@ -10,15 +10,20 @@
 // Staff → Features). The public catalog shows the intro line only, never the
 // times. Scanned items (Staff → Items) lists the same auction items by tag;
 // this page is the full catalogue editor.
+//
+// Update 45: the same page runs the OHRR Online Auction (?auction=online) —
+// its own items, one closing time, no raffle tickets or sessions. Cards are
+// saved and charged with Square (application id + location id here; the
+// access token is a Supabase secret). "Charge winners automatically" lets the
+// database close and charge items itself a few minutes after the close.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner, canSwitchFeatures } from '../../lib/staff'
-import { SILENT_AUCTION_FLAG, useFeature } from '../../lib/settings'
+import { useFeature } from '../../lib/settings'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import {
-  AUCTION_EVENT_SLUG,
   AUCTION_PRICE_COLUMNS,
   AUCTION_SESSIONS,
   centsToDollars,
@@ -40,6 +45,7 @@ import {
   type AuctionSettings,
 } from '../../lib/auction'
 import { auctionApi } from '../../lib/auctionClient'
+import { AuctionEventProvider, BUNFEST_AUCTION, ONLINE_AUCTION, useAuctionEvent } from '../../lib/auctionEvent'
 import { listSuppliers, type Supplier } from '../../lib/hopshop'
 import { vendorRecordsReady } from '../../lib/companies'
 
@@ -302,6 +308,7 @@ function ItemForm({
   onSubmit: (d: Draft) => Promise<void>
   onCancel: () => void
 }) {
+  const ev = useAuctionEvent()
   const [draft, setDraft] = useState<Draft>(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -385,16 +392,18 @@ function ItemForm({
           Value ($)
           <input className={staffInput} type="number" inputMode="decimal" min="0" step="0.01" placeholder="0" value={draft.value} onChange={set('value')} />
         </label>
-        <label className="block text-sm font-semibold text-slate-700">
-          Session
-          <select className={staffInput} value={draft.session} onChange={set('session')}>
-            {AUCTION_SESSIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!ev.online && (
+          <label className="block text-sm font-semibold text-slate-700">
+            Session
+            <select className={staffInput} value={draft.session} onChange={set('session')}>
+              {AUCTION_SESSIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3">
@@ -417,7 +426,7 @@ function ItemForm({
           <label className="block text-sm font-semibold text-slate-700">
             Getting it to the winner
             <select className={staffInput} value={draft.ship} onChange={(e) => setDraft((d) => ({ ...d, ship: e.target.value === 'ship' ? 'ship' : 'pickup' }))}>
-              <option value="pickup">Pickup only (at BunFest)</option>
+              <option value="pickup">{ev.online ? 'Pickup only (from OHRR)' : 'Pickup only (at BunFest)'}</option>
               <option value="ship">Can be shipped</option>
             </select>
           </label>
@@ -523,10 +532,22 @@ function ItemCard({
   onChanged: () => void
   onMove: (dir: -1 | 1) => Promise<void>
 }) {
+  const ev = useAuctionEvent()
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const other = ev.online ? BUNFEST_AUCTION : ONLINE_AUCTION
+
+  // Over to the other auction — only before anyone has bid (update 45).
+  const moveToOther = async () => {
+    setBusy(true)
+    setError(null)
+    const { error } = await supabase.rpc('auction_move_item', { p_item_id: item.id, p_event: other.slug })
+    setBusy(false)
+    if (error) setError(missingFunction(error) ? 'Moving items needs database update 45.' : errMessage(error))
+    else onChanged()
+  }
 
   const patch = async (values: Partial<AuctionItem>) => {
     setBusy(true)
@@ -626,7 +647,7 @@ function ItemCard({
               <Badge tone="blue">Available</Badge>
             )}
             {!item.is_published && <Badge tone="slate">Hidden</Badge>}
-            <Badge tone="slate">{sessionLabel(item.session)}</Badge>
+            {!ev.online && <Badge tone="slate">{sessionLabel(item.session)}</Badge>}
           </div>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
@@ -653,7 +674,7 @@ function ItemCard({
 
       <div className="flex flex-wrap items-center gap-2">
         {sold ? (
-          <Link to="/staff/auction/desk" className={btn.outline}>
+          <Link to={`/staff/auction/desk${ev.online ? '?auction=online' : ''}`} className={btn.outline}>
             See the sale at the desk
           </Link>
         ) : won ? (
@@ -671,6 +692,11 @@ function ItemCard({
         <button type="button" onClick={() => setEditing(true)} className={btn.outline}>
           Edit
         </button>
+        {bidding && !sold && bidCount === 0 && (
+          <button type="button" disabled={busy} onClick={() => void moveToOther()} className={btn.outline}>
+            Move to {other.online ? 'the Online Auction' : 'BunFest'}
+          </button>
+        )}
         {confirmDelete ? (
           <>
             <button type="button" onClick={doDelete} disabled={busy} className="inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
@@ -706,7 +732,10 @@ function SetupPanel({
   canManageSettings: boolean
   onSaved: () => void
 }) {
+  const ev = useAuctionEvent()
   const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState('')
+  const [closesAt, setClosesAt] = useState('')
   const [morning, setMorning] = useState('')
   const [afternoon, setAfternoon] = useState('')
   const [intro, setIntro] = useState('')
@@ -719,6 +748,8 @@ function SetupPanel({
   const [error, setError] = useState<string | null>(null)
 
   const startEdit = () => {
+    setTitle(settings?.title ?? '')
+    setClosesAt(isoToEventDateTime(settings?.afternoon_closes_at))
     setMorning(isoToEventTime(settings?.morning_closes_at))
     setAfternoon(isoToEventTime(settings?.afternoon_closes_at))
     setIntro(settings?.intro_text ?? '')
@@ -743,24 +774,43 @@ function SetupPanel({
       return
     }
     const { error } = await supabase.from('auction_settings').upsert(
-      {
-        org_id: orgId,
-        event_slug: AUCTION_EVENT_SLUG,
-        morning_closes_at: eventTimeToIso(morning),
-        afternoon_closes_at: eventTimeToIso(afternoon),
-        intro_text: intro.trim() || null,
-        raffle_ticket_price_cents: dollarsToCents(ticketPrice),
-        raffle_bundle_qty: bundle_qty,
-        raffle_bundle_price_cents: bundle_price,
-        raffle_details: raffleDetails.trim() || null,
-      },
+      ev.online
+        ? {
+            // One closing time for the whole online auction (items are "all day").
+            org_id: orgId,
+            event_slug: ev.slug,
+            morning_closes_at: null,
+            afternoon_closes_at: eventDateTimeToIso(closesAt),
+            intro_text: intro.trim() || null,
+          }
+        : {
+            org_id: orgId,
+            event_slug: ev.slug,
+            morning_closes_at: eventTimeToIso(morning),
+            afternoon_closes_at: eventTimeToIso(afternoon),
+            intro_text: intro.trim() || null,
+            raffle_ticket_price_cents: dollarsToCents(ticketPrice),
+            raffle_bundle_qty: bundle_qty,
+            raffle_bundle_price_cents: bundle_price,
+            raffle_details: raffleDetails.trim() || null,
+          },
       { onConflict: 'org_id,event_slug' },
     )
-    setBusy(false)
     if (error) {
+      setBusy(false)
       setError(errMessage(error))
       return
     }
+    if (ev.online) {
+      // The name is an update-45 column, saved like the bidding settings.
+      const { error: rpcError } = await supabase.rpc('auction_save_settings', { p_org: orgId, p_event: ev.slug, p_patch: { title: title.trim() } })
+      if (rpcError) {
+        setBusy(false)
+        setError(errMessage(rpcError))
+        return
+      }
+    }
+    setBusy(false)
     setEditing(false)
     onSaved()
   }
@@ -775,25 +825,42 @@ function SetupPanel({
       <Card className="space-y-3">
         {editing ? (
           <form onSubmit={save} className="space-y-3">
-            <p className="text-sm leading-relaxed text-slate-600">
-              Close times are on BunFest day (Oct 25, 2026), Eastern time. Visitors see the session names on each item, not these
-              times.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-semibold text-slate-700">
-                Morning closes
-                <input className={staffInput} type="time" value={morning} onChange={(e) => setMorning(e.target.value)} />
-              </label>
-              <label className="block text-sm font-semibold text-slate-700">
-                Afternoon closes
-                <input className={staffInput} type="time" value={afternoon} onChange={(e) => setAfternoon(e.target.value)} />
-              </label>
-            </div>
+            {ev.online ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-semibold text-slate-700">
+                  Auction name
+                  <input className={staffInput} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="OHRR Online Auction" />
+                </label>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Auction closes <span className="font-normal text-slate-500">Eastern</span>
+                  <input className={staffInput} type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
+                  <span className="mt-1 block text-xs font-normal text-slate-500">Every item closes at this time. Visitors see it on the catalog.</span>
+                </label>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  Close times are on BunFest day (Oct 25, 2026), Eastern time. Visitors see the session names on each item, not these
+                  times.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Morning closes
+                    <input className={staffInput} type="time" value={morning} onChange={(e) => setMorning(e.target.value)} />
+                  </label>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Afternoon closes
+                    <input className={staffInput} type="time" value={afternoon} onChange={(e) => setAfternoon(e.target.value)} />
+                  </label>
+                </div>
+              </>
+            )}
             <label className="block text-sm font-semibold text-slate-700">
               Intro line (optional)
               <input className={staffInput} value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="Shown at the top of the public catalog" />
             </label>
 
+            {!ev.online && (
             <div className="space-y-3 border-t border-slate-100 pt-3">
               <div>
                 <p className="font-display text-lg font-extrabold text-ink">Raffle tickets</p>
@@ -826,6 +893,7 @@ function SetupPanel({
                 />
               </label>
             </div>
+            )}
 
             <FormError>{error}</FormError>
             <div className="flex flex-wrap gap-2">
@@ -839,22 +907,36 @@ function SetupPanel({
           </form>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 text-base">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Morning closes</p>
-                <p className="mt-0.5 font-semibold text-ink">{morningLabel ?? 'Not set'}</p>
+            {ev.online ? (
+              <div className="grid grid-cols-2 gap-3 text-base">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Name</p>
+                  <p className="mt-0.5 font-semibold text-ink">{settings?.title || ev.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Closes</p>
+                  <p className="mt-0.5 font-semibold text-ink">{formatEventDateTime(settings?.afternoon_closes_at) ?? 'Not set'}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Afternoon closes</p>
-                <p className="mt-0.5 font-semibold text-ink">{afternoonLabel ?? 'Not set'}</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 text-base">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Morning closes</p>
+                  <p className="mt-0.5 font-semibold text-ink">{morningLabel ?? 'Not set'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Afternoon closes</p>
+                  <p className="mt-0.5 font-semibold text-ink">{afternoonLabel ?? 'Not set'}</p>
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Intro line</p>
               <p className="mt-0.5 text-base text-slate-700">
                 {settings?.intro_text?.trim() || <span className="text-slate-600">None — the catalog shows items only</span>}
               </p>
             </div>
+            {!ev.online && (
             <div className="space-y-2 border-t border-slate-100 pt-3">
               <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Raffle tickets</p>
               <p className="text-base font-semibold text-ink">
@@ -877,6 +959,7 @@ function SetupPanel({
                 .
               </p>
             </div>
+            )}
             <div>
               <button type="button" onClick={startEdit} className={btn.outline}>
                 {settings ? 'Edit setup' : 'Set up'}
@@ -895,7 +978,7 @@ function SetupPanel({
 
 type Health = Awaited<ReturnType<typeof auctionApi.health>>
 
-// Is the payment server (the website's /api/auction) set up? Plain words, no secrets.
+// Is the payment server (Supabase Edge Function ohrr-auction) set up? Plain words, no secrets.
 function PaymentServerLine() {
   const [health, setHealth] = useState<Health | undefined>(undefined)
   useEffect(() => {
@@ -911,37 +994,83 @@ function PaymentServerLine() {
   if (!health) {
     return (
       <p className="text-sm leading-relaxed text-slate-700">
-        <strong>Payment server:</strong> could not be reached from here. On the live website it runs next to the site (Cloudflare Pages); a
-        local copy of the site cannot see it.
+        <strong>Payment server:</strong> not reachable. The Supabase function <code>ohrr-auction</code> isn’t deployed yet (or this computer is
+        offline). Registering and Buy Now need it; the catalog and bids don’t.
       </p>
     )
   }
-  const ok = health.stripe && health.webhook && health.supabase
+  const ok = health.square && health.supabase
   return (
     <div className="space-y-1 text-sm leading-relaxed text-slate-700">
       <p>
         <strong>Payment server:</strong> {ok ? 'ready' : 'not fully set up'} —{' '}
-        {health.stripe ? `Stripe ${health.stripe_mode === 'live' ? 'LIVE' : 'test'} key set` : 'Stripe secret key missing'} ·{' '}
-        {health.webhook ? 'webhook set' : 'webhook secret missing'} · {health.supabase ? 'database key set' : 'database key missing'}
+        {health.square
+          ? `Square access token set (${[health.square_live && 'LIVE — real cards', health.square_sandbox && 'sandbox — no real charges'].filter(Boolean).join(' · ')})`
+          : 'Square access token missing'}{' '}
+        · {health.supabase ? 'database key set' : 'database key missing'}
       </p>
-      {!ok && (
+      {!health.square && (
         <p className="text-slate-600">
-          These are set in Cloudflare Pages → the website project → Settings → Environment variables: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-          and SUPABASE_SERVICE_ROLE_KEY. Never paste them anywhere on this page.
+          It is set in Supabase → Edge Functions → Secrets as SQUARE_ACCESS_TOKEN (or SQUARE_SANDBOX_ACCESS_TOKEN to test). Never paste it anywhere
+          on this page.
         </p>
       )}
-      {health.stripe && health.stripe_mode === 'test' && <p className="text-slate-600">Test mode: cards are not really charged. Switch to the live keys before BunFest.</p>}
+    </div>
+  )
+}
+
+// Fills the Square location from the access token (staff only).
+function FindLocation({ event, applicationId, onPick }: { event: string; applicationId: string; onPick: (id: string) => void }) {
+  const [list, setList] = useState<{ id: string; name: string; active: boolean }[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const find = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const jwt = (await supabase.auth.getSession()).data.session?.access_token
+      if (!jwt) throw new Error('Please sign in again.')
+      const r = await auctionApi.locations(jwt, event, applicationId.trim())
+      setList(r.locations)
+      const active = r.locations.filter((l) => l.active)
+      if (active.length === 1) onPick(active[0].id)
+    } catch (e) {
+      setError(errMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="space-y-1.5">
+      <button type="button" disabled={busy || !applicationId.trim()} onClick={() => void find()} className={`${cancelBtn} disabled:opacity-60`}>
+        {busy ? 'Asking Square…' : 'Find it from Square'}
+      </button>
+      {list && list.length === 0 && <p className="text-sm text-amber-800">Square has no locations for this token.</p>}
+      {list && list.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {list.map((l) => (
+            <button key={l.id} type="button" onClick={() => onPick(l.id)} className={cancelBtn}>
+              {l.name}
+              {!l.active && ' (inactive)'}
+            </button>
+          ))}
+        </div>
+      )}
+      <FormError>{error}</FormError>
     </div>
   )
 }
 
 function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: AuctionSettings | null; onSaved: () => void }) {
+  const ev = useAuctionEvent()
   const [editing, setEditing] = useState(false)
   const [enabled, setEnabled] = useState(false)
   const [opensAt, setOpensAt] = useState('')
   const [extend, setExtend] = useState('5')
   const [step, setStep] = useState('5')
-  const [pk, setPk] = useState('')
+  const [squareApp, setSquareApp] = useState('')
+  const [squareLoc, setSquareLoc] = useState('')
+  const [autoCharge, setAutoCharge] = useState(false)
   const [biddingNote, setBiddingNote] = useState('')
   const [pickupNote, setPickupNote] = useState('')
   const [shippingNote, setShippingNote] = useState('')
@@ -956,7 +1085,9 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
     setOpensAt(isoToEventDateTime(settings?.bidding_opens_at))
     setExtend(String(settings?.extend_minutes ?? 5))
     setStep(centsToDollars(settings?.default_increment_cents ?? 500))
-    setPk(settings?.stripe_publishable_key ?? '')
+    setSquareApp(settings?.square_application_id ?? '')
+    setSquareLoc(settings?.square_location_id ?? '')
+    setAutoCharge(settings?.auto_charge ?? ev.online)
     setBiddingNote(settings?.bidding_note ?? '')
     setPickupNote(settings?.pickup_note ?? '')
     setShippingNote(settings?.shipping_note ?? '')
@@ -967,13 +1098,10 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
   const save = async (e: { preventDefault(): void }) => {
     e.preventDefault()
     setError(null)
-    const key = pk.trim()
-    if (key && !/^pk_(live|test)_/.test(key)) {
-      setError('That is not a publishable key. It starts with pk_live_ or pk_test_. (The secret key, sk_…, never goes here.)')
-      return
-    }
-    if (key.startsWith('sk_')) {
-      setError('That is the SECRET key. Never paste it here — it belongs in Cloudflare only.')
+    const app = squareApp.trim()
+    const loc = squareLoc.trim()
+    if (app && !/^(sandbox-)?sq0id[a-z]-/.test(app)) {
+      setError('That is not a Square application id — it starts with sq0idp- (or sandbox-sq0idb- for testing). The access token never goes here.')
       return
     }
     const stepCents = dollarsToCents(step)
@@ -986,20 +1114,26 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
       setError('“Going once” is 0 to 60 minutes.')
       return
     }
-    if (enabled && !key) {
-      setError('To switch bidding on, add the Stripe publishable key first.')
+    if (enabled && (!app || !loc)) {
+      setError('To switch bidding on, paste the Square application id and location id.')
+      return
+    }
+    if (enabled && ev.online && !settings?.afternoon_closes_at) {
+      setError('Give the auction a closing time in Auction setup before switching bidding on.')
       return
     }
     setBusy(true)
     const { error } = await supabase.rpc('auction_save_settings', {
       p_org: orgId,
-      p_event: AUCTION_EVENT_SLUG,
+      p_event: ev.slug,
       p_patch: {
+        auto_charge: autoCharge,
+        square_application_id: app,
+        square_location_id: loc,
         bidding_enabled: enabled,
         bidding_opens_at: eventDateTimeToIso(opensAt) ?? '',
         extend_minutes: ext,
         default_increment_cents: stepCents,
-        stripe_publishable_key: key,
         bidding_note: biddingNote.trim(),
         pickup_note: pickupNote.trim(),
         shipping_note: shippingNote.trim(),
@@ -1014,7 +1148,8 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
     onSaved()
   }
 
-  const keyShown = settings?.stripe_publishable_key ? `${settings.stripe_publishable_key.slice(0, 12)}…` : null
+  const squareShown =
+    settings?.square_application_id && settings.square_location_id ? (settings.square_application_id.startsWith('sandbox-') ? 'Sandbox (no real charges)' : 'Live') : null
 
   return (
     <section className="space-y-2.5">
@@ -1047,15 +1182,32 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
             </div>
             <p className="text-xs leading-relaxed text-slate-500">
               A bid in the last few minutes pushes that item’s close out by the same number of minutes (0 switches this off). Items close at
-              their session’s time, set in Auction setup.
+              {ev.online ? ' the auction’s closing time' : ' their session’s time'}, set in Auction setup.
             </p>
-            <label className="block text-sm font-semibold text-slate-700">
-              Stripe publishable key
-              <input className={`${staffInput} font-mono`} value={pk} onChange={(e) => setPk(e.target.value)} placeholder="pk_live_… or pk_test_…" autoComplete="off" spellCheck={false} />
+            <label className="flex items-start gap-3 text-base font-semibold text-slate-700">
+              <input type="checkbox" className="mt-0.5 h-6 w-6 rounded border-slate-300 accent-brand-blue" checked={autoCharge} onChange={(e) => setAutoCharge(e.target.checked)} />
+              <span>
+                Charge winners automatically
+                <span className="mt-0.5 block text-sm font-normal leading-relaxed text-slate-600">
+                  Within about 5 minutes of an item closing, the winner’s saved card is charged — no one needs to press anything. Off = staff close
+                  and charge from the auction desk.
+                </span>
+              </span>
             </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                Square application id
+                <input className={`${staffInput} font-mono`} value={squareApp} onChange={(e) => setSquareApp(e.target.value)} placeholder="sq0idp-… (or sandbox-sq0idb-… to test)" autoComplete="off" spellCheck={false} />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Square location id
+                <input className={`${staffInput} font-mono`} value={squareLoc} onChange={(e) => setSquareLoc(e.target.value)} placeholder="L…" autoComplete="off" spellCheck={false} />
+              </label>
+            </div>
+            <FindLocation event={ev.slug} applicationId={squareApp} onPick={setSquareLoc} />
             <p className="text-xs leading-relaxed text-slate-500">
-              From Stripe → Developers → API keys, the <strong>Publishable key</strong> (pk_…). It is safe to be public. The <strong>Secret key</strong>{' '}
-              (sk_…) never goes here — it goes in Cloudflare, next to the website, as STRIPE_SECRET_KEY.
+              From developer.squareup.com → your app → Credentials. The application id is safe to be public. The <strong>access token</strong> never
+              goes here — it goes in Supabase → Edge Functions → Secrets.
             </p>
             <label className="block text-sm font-semibold text-slate-700">
               Bidding note <span className="font-normal text-slate-500">shown on the catalog and when registering</span>
@@ -1064,11 +1216,11 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-slate-700">
                 Pickup note
-                <textarea className={staffInput} rows={2} value={pickupNote} onChange={(e) => setPickupNote(e.target.value)} placeholder="Where and when to collect at BunFest" />
+                <textarea className={staffInput} rows={2} value={pickupNote} onChange={(e) => setPickupNote(e.target.value)} placeholder={ev.online ? 'Where and when to collect from OHRR' : 'Where and when to collect at BunFest'} />
               </label>
               <label className="block text-sm font-semibold text-slate-700">
                 Shipping note
-                <textarea className={staffInput} rows={2} value={shippingNote} onChange={(e) => setShippingNote(e.target.value)} placeholder="e.g. Ships within two weeks after BunFest, US only" />
+                <textarea className={staffInput} rows={2} value={shippingNote} onChange={(e) => setShippingNote(e.target.value)} placeholder={ev.online ? 'e.g. Ships within two weeks after the close, US only' : 'e.g. Ships within two weeks after BunFest, US only'} />
               </label>
             </div>
             <FormError>{error}</FormError>
@@ -1086,6 +1238,7 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
             <div className="flex flex-wrap items-center gap-2">
               {settings?.bidding_enabled ? <Badge tone="orange">Bidding is ON</Badge> : <Badge tone="slate">Bidding is off — catalog is a preview</Badge>}
               {settings?.bidding_opens_at && <Badge tone="blue">Opens {formatEventDateTime(settings.bidding_opens_at)}</Badge>}
+              <Badge tone="slate">{settings?.auto_charge ? 'Winners charged automatically' : 'Staff charge from the desk'}</Badge>
             </div>
             <div className="grid gap-3 text-base sm:grid-cols-3">
               <div>
@@ -1097,8 +1250,8 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
                 <p className="mt-0.5 font-semibold text-ink">{settings?.default_increment_cents ? formatValue(settings.default_increment_cents) : 'Not set'}</p>
               </div>
               <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Stripe publishable key</p>
-                <p className="mt-0.5 font-mono text-sm font-semibold text-ink">{keyShown ?? <span className="font-sans text-slate-600">Not set</span>}</p>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Square</p>
+                <p className="mt-0.5 font-semibold text-ink">{squareShown ?? <span className="text-slate-600">Not set up</span>}</p>
               </div>
             </div>
             {(settings?.bidding_note || settings?.pickup_note || settings?.shipping_note) && (
@@ -1126,10 +1279,10 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
               <button type="button" onClick={startEdit} className={btn.outline}>
                 {ready ? 'Edit online bidding' : 'Set up online bidding'}
               </button>
-              <Link to="/staff/auction/desk" className={btn.blue}>
+              <Link to={`/staff/auction/desk${ev.online ? '?auction=online' : ''}`} className={btn.blue}>
                 Open the auction desk
               </Link>
-              <Link to="/bunfest/silent-auction" className={cancelBtn}>
+              <Link to={ev.base} className={cancelBtn}>
                 See the public catalog
               </Link>
             </div>
@@ -1145,12 +1298,23 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
 /* ------------------------------------------------------------------ */
 
 export default function SilentAuctionManager() {
+  const [params, setParams] = useSearchParams()
+  const ev = params.get('auction') === 'online' ? ONLINE_AUCTION : BUNFEST_AUCTION
+  return (
+    <AuctionEventProvider value={ev}>
+      <AuctionManager key={ev.slug} onSwitch={(online) => setParams(online ? { auction: 'online' } : {}, { replace: true })} />
+    </AuctionEventProvider>
+  )
+}
+
+function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
+  const ev = useAuctionEvent()
   const { user, membership, can } = useStaff()
   const orgId = membership?.orgId ?? ''
   const userId = user?.id ?? ''
   const allowed = can('events.bunfest.manage')
-  // The Silent Auction switch (Staff → Features): off = hidden from the public, bidding closed.
-  const switchedOn = useFeature(SILENT_AUCTION_FLAG)
+  // The auction's switch (Staff → Features): off = hidden from the public, bidding closed.
+  const switchedOn = useFeature(ev.flag)
 
   const [items, setItems] = useState<AuctionItem[]>([])
   const [settings, setSettings] = useState<AuctionSettings | null>(null)
@@ -1165,8 +1329,8 @@ export default function SilentAuctionManager() {
     }
     setError(null)
     const [itemsRes, settingsRes] = await Promise.all([
-      supabase.from('raffle_items').select('*').eq('org_id', orgId).eq('event_slug', AUCTION_EVENT_SLUG).order('sort_order').order('title'),
-      supabase.from('auction_settings').select('*').eq('org_id', orgId).eq('event_slug', AUCTION_EVENT_SLUG).maybeSingle(),
+      supabase.from('raffle_items').select('*').eq('org_id', orgId).eq('event_slug', ev.slug).order('sort_order').order('title'),
+      supabase.from('auction_settings').select('*').eq('org_id', orgId).eq('event_slug', ev.slug).maybeSingle(),
     ])
     if (itemsRes.error) {
       setError(errMessage(itemsRes.error))
@@ -1176,7 +1340,7 @@ export default function SilentAuctionManager() {
     setItems(sortForStaff((itemsRes.data ?? []) as AuctionItem[]))
     setSettings((settingsRes.data as AuctionSettings | null) ?? null)
     setLoading(false)
-  }, [orgId, allowed])
+  }, [orgId, allowed, ev.slug])
 
   useEffect(() => {
     void load()
@@ -1184,8 +1348,8 @@ export default function SilentAuctionManager() {
 
   const create = async (d: Draft) => {
     const { pricesSaved } = await saveItemRow(
-      (row) => supabase.from('raffle_items').insert({ org_id: orgId, event_slug: AUCTION_EVENT_SLUG, ...row, created_by: userId }),
-      d,
+      (row) => supabase.from('raffle_items').insert({ org_id: orgId, event_slug: ev.slug, ...row, created_by: userId }),
+      ev.online ? { ...d, session: 'all-day' } : d,
     )
     setCreating(false)
     if (!pricesSaved) setError('Item added — but its bidding prices need update 35 in the database first.')
@@ -1210,9 +1374,9 @@ export default function SilentAuctionManager() {
   if (!allowed) {
     return (
       <div>
-        <h1 className="font-display text-2xl font-black text-ink">Silent Auction</h1>
+        <h1 className="font-display text-2xl font-black text-ink">Auctions</h1>
         <p className="mt-3 text-sm text-slate-600">
-          You don’t have access to manage the Silent Auction. An owner or admin can grant the “Manage Midwest BunFest info” capability.
+          You don’t have access to manage the auctions. An owner or admin can grant the “Manage Midwest BunFest info” capability.
         </p>
       </div>
     )
@@ -1223,11 +1387,27 @@ export default function SilentAuctionManager() {
 
   return (
     <div className="space-y-6">
+      <div className="grid max-w-md grid-cols-2 gap-1 rounded-full bg-slate-100 p-1" role="tablist" aria-label="Which auction">
+        {[BUNFEST_AUCTION, ONLINE_AUCTION].map((a) => (
+          <button
+            key={a.slug}
+            type="button"
+            role="tab"
+            aria-selected={a.slug === ev.slug}
+            onClick={() => onSwitch(a.online)}
+            className={`min-h-[40px] rounded-full px-3 text-sm font-bold ${a.slug === ev.slug ? 'bg-white text-brand-blue shadow-sm' : 'text-slate-500'}`}
+          >
+            {a.online ? 'Online Auction' : 'BunFest'}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-black text-ink">Silent Auction</h1>
+          <h1 className="font-display text-2xl font-black text-ink">{ev.online ? settings?.title || ev.name : 'Silent Auction'}</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Items appear in the BunFest app and on this website’s Silent Auction page while they’re published. Mark items won as the day goes.
+            {ev.online
+              ? 'Items appear at /auction in the app and on this website while they’re published and the Online Auction is switched on.'
+              : 'Items appear in the BunFest app and on this website’s Silent Auction page while they’re published. Mark items won as the day goes.'}
           </p>
         </div>
         {!creating && (
@@ -1241,8 +1421,9 @@ export default function SilentAuctionManager() {
 
       {!switchedOn.loading && !switchedOn.on && (
         <p role="note" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-base font-semibold leading-relaxed text-amber-900">
-          The Silent Auction is switched off, so visitors don’t see it on the app, the website or the BunFest site, and online bidding stays
-          closed. You can still get the items ready here. A Founder or Developer switches it on in{' '}
+          {ev.online
+            ? 'The Online Auction is switched off, so visitors don’t see it on the app or the website, and its bidding stays closed.'
+            : 'The Silent Auction is switched off, so visitors don’t see it on the app, the website or the BunFest site, and online bidding stays closed.'} You can still get the items ready here. A Founder or Developer switches it on in{' '}
           {canSwitchFeatures(membership) ? (
             <Link to="/staff/features" className="font-bold text-brand-blue underline underline-offset-4">
               Features
@@ -1263,7 +1444,9 @@ export default function SilentAuctionManager() {
         <Spinner label="Loading items…" />
       ) : items.length === 0 ? (
         <Card className="border-slate-200 bg-slate-50/80 text-center">
-          <p className="text-sm leading-relaxed text-slate-600">No items yet. Choose “Add an item” to photograph the first one — visitors see it in the BunFest app right away.</p>
+          <p className="text-sm leading-relaxed text-slate-600">
+            No items yet. Choose “Add an item” to photograph the first one — visitors see it {ev.online ? 'in the Online Auction' : 'in the BunFest app'} right away.
+          </p>
         </Card>
       ) : (
         <section className="space-y-2.5">

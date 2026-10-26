@@ -1,19 +1,21 @@
 // Staff → Auction desk: the silent auction on the day and after (update 35).
 // One read, auction_desk(), gives every item with its bids and sale, every
 // bidder, and the money totals; it is read again every 20 s and after each
-// action. Closing and charging goes through the payment server (the website's
-// /api/auction/charge) with the staff member's own session token — Postgres
-// checks their permission, the server only does the charging. Everything else
-// (table sales, pickup, shipping, cash, refunds, blocking) is a Postgres
-// function called straight from here.
+// action. Closing and charging goes through the payment server (Supabase Edge
+// Function ohrr-auction, which charges with Square) with the staff member's own
+// session token — Postgres checks their permission, the server only does the
+// charging. Everything else (table sales, pickup, shipping, cash, refunds,
+// blocking) is a Postgres function called straight from here.
+// ?auction=online is the same desk for the OHRR Online Auction (update 45): no
+// sessions; with "charge automatically" on, the database closes and charges
+// items itself and this desk is for the exceptions.
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card, ext } from '../../components/ui'
 import { toCsv, exportCsv } from '../../lib/exportFile'
 import {
-  AUCTION_EVENT,
   auctionApi,
   dollarsToCents,
   fmtWhen,
@@ -28,7 +30,8 @@ import {
   type Fulfil,
   type Sale,
 } from '../../lib/auctionClient'
-import { addressLine, cardLine, isMissingFunction, itemPath } from '../../lib/auctionSite'
+import { addressLine, cardLine, isMissingFunction } from '../../lib/auctionSite'
+import { AuctionEventProvider, BUNFEST_AUCTION, ONLINE_AUCTION, useAuctionEvent, useAuctionPaths } from '../../lib/auctionEvent'
 
 interface DeskItem extends AuctionItem {
   is_published: boolean
@@ -79,7 +82,6 @@ const payTone = (s: Sale['payment_status']) =>
 function chargeLine(r: ChargeResult): { tone: 'green' | 'orange' | 'red'; text: string } {
   const who = `${r.sale.item?.title ?? 'Item'} — ${r.sale.buyer.name ?? 'buyer'}${r.sale.buyer.bidder_no != null ? ` (#${r.sale.buyer.bidder_no})` : ''} ${money(r.sale.total_cents)}`
   if (r.ok) return { tone: 'green', text: `Paid: ${who}` }
-  if (r.requires_action) return { tone: 'orange', text: `Needs the bidder’s bank check: ${who}. They can finish it from “Your bids” on the website (Pay now).` }
   return { tone: 'red', text: `Declined: ${who} — ${r.error}` }
 }
 
@@ -173,7 +175,22 @@ function TableSaleForm({ item, onDone, onCancel }: { item: DeskItem; onDone: () 
 /* One item on the desk                                                */
 /* ------------------------------------------------------------------ */
 
-function ItemRow({ item, busy, run, charge }: { item: DeskItem; busy: boolean; run: (fn: () => Promise<void>) => Promise<void>; charge: (body: { sale_id: string } | { offer_next_sale_id: string }) => Promise<void> }) {
+function ItemRow({
+  item,
+  busy,
+  sandbox,
+  run,
+  charge,
+}: {
+  item: DeskItem
+  busy: boolean
+  /** Square is in sandbox mode: no real money moved. */
+  sandbox: boolean
+  run: (fn: () => Promise<void>) => Promise<void>
+  charge: (body: { sale_id: string } | { offer_next_sale_id: string }) => Promise<void>
+}) {
+  const ev = useAuctionEvent()
+  const { item: itemPath } = useAuctionPaths()
   const [selling, setSelling] = useState(false)
   const [tracking, setTracking] = useState('')
   const sale = item.sale
@@ -196,7 +213,7 @@ function ItemRow({ item, busy, run, charge }: { item: DeskItem; busy: boolean; r
             </Link>
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-slate-700">
-            <Badge tone="slate">{sessionLabel(item.session)}</Badge>
+            <Badge tone="slate">{ev.online ? 'Online' : sessionLabel(item.session)}</Badge>
             {!item.is_published && <Badge tone="slate">Hidden</Badge>}
             {item.status === 'won' ? <Badge tone="orange">Sold</Badge> : item.is_open ? <Badge tone="green">Open</Badge> : <Badge tone="slate">{item.closes_at ? 'Closed' : 'Not open'}</Badge>}
             {item.closes_at && <span>Closes {fmtWhen(item.closes_at)}</span>}
@@ -303,13 +320,23 @@ function ItemRow({ item, busy, run, charge }: { item: DeskItem; busy: boolean; r
             )}
             {sale.payment_status === 'paid' && sale.stripe_payment_intent_id && (
               <>
-                <a href={`https://dashboard.stripe.com/payments/${sale.stripe_payment_intent_id}`} {...ext} className={btn.outline}>
-                  Refund in Stripe
-                </a>
+                {sale.receipt_url && (
+                  <a href={sale.receipt_url} {...ext} className={btn.outline}>
+                    Receipt
+                  </a>
+                )}
+                {/* Square ids live in the old stripe_* columns. Refunds are made in Square Dashboard → Transactions. */}
+                {sandbox ? (
+                  <span className="text-sm text-slate-600">Sandbox sale: refund it in the sandbox seller dashboard (Square Developer Console).</span>
+                ) : (
+                  <a href="https://app.squareup.com/dashboard/sales/transactions" {...ext} className={btn.outline}>
+                    Refund in Square
+                  </a>
+                )}
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => window.confirm('Mark this sale refunded? Do the refund itself in Stripe first — this only records it.') && void updateSale({ p_payment_status: 'refunded' })}
+                  onClick={() => window.confirm('Mark this sale refunded? Do the refund itself in Square first — this only records it.') && void updateSale({ p_payment_status: 'refunded' })}
                   className={btn.outline}
                 >
                   Mark refunded
@@ -320,7 +347,7 @@ function ItemRow({ item, busy, run, charge }: { item: DeskItem; busy: boolean; r
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => window.confirm(`Cancel this sale of “${item.title}”? The item goes back up for sale. ${sale.payment_status === 'paid' ? 'It does NOT refund the card — do that in Stripe.' : ''}`) && void updateSale({ p_payment_status: 'void' })}
+                onClick={() => window.confirm(`Cancel this sale of “${item.title}”? The item goes back up for sale. ${sale.payment_status === 'paid' ? 'It does NOT refund the card — do that in Square.' : ''}`) && void updateSale({ p_payment_status: 'void' })}
                 className={dangerBtn}
               >
                 Cancel sale
@@ -355,6 +382,17 @@ function ItemRow({ item, busy, run, charge }: { item: DeskItem; busy: boolean; r
 /* ------------------------------------------------------------------ */
 
 export default function AuctionDesk() {
+  const [params] = useSearchParams()
+  const ev = params.get('auction') === 'online' ? ONLINE_AUCTION : BUNFEST_AUCTION
+  return (
+    <AuctionEventProvider value={ev}>
+      <Desk key={ev.slug} />
+    </AuctionEventProvider>
+  )
+}
+
+function Desk() {
+  const ev = useAuctionEvent()
   const { membership, can } = useStaff()
   const orgId = membership?.orgId ?? ''
   const allowed = can('events.bunfest.manage')
@@ -369,7 +407,7 @@ export default function AuctionDesk() {
 
   const load = useCallback(async () => {
     if (!orgId || !allowed) return
-    const { data, error } = await supabase.rpc('auction_desk', { p_org: orgId, p_event: AUCTION_EVENT })
+    const { data, error } = await supabase.rpc('auction_desk', { p_org: orgId, p_event: ev.slug })
     if (error) {
       if (isMissingFunction(error)) setNotReady(true)
       else setError(errMessage(error))
@@ -379,7 +417,7 @@ export default function AuctionDesk() {
     setNotReady(false)
     setError(null)
     setDesk(data as Desk)
-  }, [orgId, allowed])
+  }, [orgId, allowed, ev.slug])
   useEffect(() => {
     void load()
     const t = setInterval(() => void load(), 20000)
@@ -412,7 +450,7 @@ export default function AuctionDesk() {
 
   const closeAndCharge = () => {
     setConfirmClose(false)
-    void charge({ org_id: orgId, event: AUCTION_EVENT })
+    void charge({ org_id: orgId, event: ev.slug })
   }
 
   const setBlocked = (b: DeskBidder, blocked: boolean) =>
@@ -462,17 +500,33 @@ export default function AuctionDesk() {
 
   const readyToClose = desk?.items.filter((i) => i.status === 'available' && !i.sale && i.high_bidder && i.closes_at && new Date(i.closes_at) <= new Date(desk.now)).length ?? 0
   const t = desk?.totals
+  const sandbox = Boolean(desk?.settings?.square_application_id?.startsWith('sandbox-'))
+  const setupLink = ev.online ? '/staff/auction?auction=online' : '/staff/auction'
 
   return (
     <div>
+      <div className="mb-4 grid max-w-md grid-cols-2 gap-1 rounded-full bg-slate-100 p-1" role="tablist" aria-label="Which auction">
+        {[BUNFEST_AUCTION, ONLINE_AUCTION].map((a) => (
+          <Link
+            key={a.slug}
+            to={a.online ? '/staff/auction/desk?auction=online' : '/staff/auction/desk'}
+            replace
+            role="tab"
+            aria-selected={a.slug === ev.slug}
+            className={`flex min-h-[40px] items-center justify-center rounded-full px-3 text-sm font-bold ${a.slug === ev.slug ? 'bg-white text-brand-blue shadow-sm' : 'text-slate-500'}`}
+          >
+            {a.online ? 'Online Auction' : 'BunFest'}
+          </Link>
+        ))}
+      </div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-black text-ink">Auction desk</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Who is high on every item, who has won, who has paid, and what still has to be handed over or shipped. Prices and the bidding switch
             are under{' '}
-            <Link to="/staff/auction" className="font-bold text-brand-blue">
-              Silent auction
+            <Link to={setupLink} className="font-bold text-brand-blue">
+              {ev.online ? 'Online Auction' : 'Silent auction'}
             </Link>
             .
           </p>
@@ -519,8 +573,9 @@ export default function AuctionDesk() {
               <div>
                 <p className="font-display text-lg font-extrabold text-ink">Close &amp; charge</p>
                 <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
-                  Charges the high bidder of every item whose time has passed, on the card they saved. Run it after each session closes; it is
-                  safe to run again — items already sold are skipped.
+                  Charges the high bidder of every item whose time has passed, on the card they saved.{' '}
+                  {ev.online ? 'Run it after the auction closes' : 'Run it after each session closes'}; it is safe to run again — items already sold are
+                  skipped.
                   {readyToClose > 0 && (
                     <>
                       {' '}
@@ -546,6 +601,11 @@ export default function AuctionDesk() {
                 </button>
               )}
             </div>
+            {desk.settings?.auto_charge && (
+              <p className="text-sm leading-relaxed text-slate-600">
+                Winners are charged automatically within about 5 minutes of an item closing. Use Close &amp; charge only if you don’t want to wait.
+              </p>
+            )}
             {results && (
               <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm">
                 {results.message && <p className="text-slate-700">{results.message}</p>}
@@ -585,7 +645,7 @@ export default function AuctionDesk() {
             <div className="mt-4 space-y-3">
               {desk.items.length === 0 && <p className="text-sm text-slate-500">{notReady ? '' : 'No items in the auction yet — add them under Silent auction.'}</p>}
               {desk.items.filter(matches).map((i) => (
-                <ItemRow key={i.id} item={i} busy={busy} run={run} charge={charge} />
+                <ItemRow key={i.id} item={i} busy={busy} sandbox={sandbox} run={run} charge={charge} />
               ))}
               {desk.items.length > 0 && desk.items.filter(matches).length === 0 && <p className="text-sm text-slate-500">Nothing matches.</p>}
             </div>
