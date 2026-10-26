@@ -67,6 +67,8 @@ import { giftTotals, withScheme, type GiftTotals } from '../../lib/companies'
 import { CompanyForm, CompanySummary, CompanyThumb, useVendorRecordsReady } from './CompanyForm'
 import { PackEditor, packRowsFrom, packRowsToInput, type PackRow } from './PackEditor'
 import { NewTypeForm, TypesPanel } from './TypesPanel'
+import { NewSupplierForm } from './NewSupplierForm'
+import { clearNewItemDraft, readNewItemDraft, writeNewItemDraft } from '../../lib/newItemDraft'
 import { itemPhotos } from '../../lib/items'
 import { todayStamp, type SheetColumn, type SheetSpec } from '../../lib/inventoryExport'
 import ExportButtons from './ExportButtons'
@@ -243,7 +245,7 @@ export default function HopShop() {
           suppliers={suppliers ?? []}
           types={types}
           perms={{ canCreate, canEdit, canDelete, canInventory }}
-          onAddSupplier={() => setTab('suppliers')}
+          onSuppliersChanged={reloadSuppliers}
           onTypesChanged={reloadTypes}
         />
       )}
@@ -271,7 +273,7 @@ function Items({
   suppliers,
   types,
   perms,
-  onAddSupplier,
+  onSuppliersChanged,
   onTypesChanged,
 }: {
   orgId: string
@@ -279,7 +281,7 @@ function Items({
   suppliers: Supplier[]
   types: ProductType[]
   perms: Perms
-  onAddSupplier: () => void
+  onSuppliersChanged: () => Promise<void>
   onTypesChanged: () => Promise<void>
 }) {
   const [rows, setRows] = useState<StockCard[] | null>(null)
@@ -292,7 +294,11 @@ function Items({
   const [params, setParams] = useSearchParams()
   const wantsAdd = params.get('add') === '1'
   const codeParam = params.get('code')
-  const [creating, setCreating] = useState(() => wantsAdd && perms.canCreate)
+  // A new item left half-entered in this browser opens again where it was.
+  const [creating, setCreating] = useState(() => perms.canCreate && (wantsAdd || readNewItemDraft(orgId) !== null))
+  useEffect(() => {
+    if (perms.canCreate && readNewItemDraft(orgId) !== null) setCreating(true)
+  }, [orgId, perms.canCreate])
   const [newCode, setNewCode] = useState(() => (wantsAdd && codeParam ? normalizeCode(codeParam) : ''))
   const [openCode, setOpenCode] = useState<string | null>(null)
   const [spot, setSpot] = useState<string | null>(null)
@@ -435,7 +441,7 @@ function Items({
             suppliers={suppliers}
             types={types}
             canCount={perms.canInventory || perms.canCreate}
-            onAddSupplier={onAddSupplier}
+            onSuppliersChanged={onSuppliersChanged}
             onTypesChanged={onTypesChanged}
             onSaved={async (card) => {
               setCreating(false)
@@ -486,7 +492,7 @@ function Items({
               suppliers={suppliers}
               types={types}
               perms={perms}
-              onAddSupplier={onAddSupplier}
+              onSuppliersChanged={onSuppliersChanged}
               onTypesChanged={onTypesChanged}
               onChanged={load}
               openNow={spot === p.id}
@@ -505,7 +511,7 @@ function ProductCard({
   suppliers,
   types,
   perms,
-  onAddSupplier,
+  onSuppliersChanged,
   onTypesChanged,
   onChanged,
   openNow = false,
@@ -516,7 +522,7 @@ function ProductCard({
   suppliers: Supplier[]
   types: ProductType[]
   perms: Perms
-  onAddSupplier: () => void
+  onSuppliersChanged: () => Promise<void>
   onTypesChanged: () => Promise<void>
   onChanged: () => Promise<void>
   /** Opened from a scan: start in the edit form (for people who may edit). */
@@ -552,7 +558,7 @@ function ProductCard({
           suppliers={suppliers}
           types={types}
           canCount={perms.canInventory}
-          onAddSupplier={onAddSupplier}
+          onSuppliersChanged={onSuppliersChanged}
           onTypesChanged={onTypesChanged}
           onSaved={async () => {
             setEditing(false)
@@ -770,7 +776,7 @@ function ProductForm({
   suppliers,
   types,
   canCount,
-  onAddSupplier,
+  onSuppliersChanged,
   onTypesChanged,
   onSaved,
   onCancel,
@@ -782,26 +788,46 @@ function ProductForm({
   suppliers: Supplier[]
   types: ProductType[]
   canCount: boolean
-  onAddSupplier: () => void
+  onSuppliersChanged: () => Promise<void>
   onTypesChanged: () => Promise<void>
   onSaved: (card?: StockCard) => Promise<void>
   onCancel: () => void
 }) {
   // Only a retail barcode fills the packet's barcode; an OHRR number never does.
   const preset = initial || !isRetailBarcode(presetCode) ? '' : presetCode
-  const [d, setD] = useState<Draft>(() => ({ ...draftFrom(initial), ...(preset ? { barcode: preset } : {}) }))
+  // A new item picks up where it was left in this browser (newItemDraft.ts).
+  const [kept, setKept] = useState(() => (initial ? null : readNewItemDraft<{ d: Draft; packs: PackRow[] }>(orgId)))
+  const [d, setD] = useState<Draft>(() => {
+    const base = kept ? { ...draftFrom(null), ...kept.d } : draftFrom(initial)
+    return { ...base, ...(preset && !base.barcode ? { barcode: preset } : {}) }
+  })
   const [newSku, setNewSku] = useState(false)
   const [addingType, setAddingType] = useState(false)
+  const [addingSupplier, setAddingSupplier] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [reading, setReading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
-  const [preview, setPreview] = useState<string | null>(initial?.photo_url ?? null)
+  const [preview, setPreview] = useState<string | null>(initial?.photo_url ?? kept?.d.photo_url ?? null)
   const [error, setError] = useState<string | null>(null)
   const packsOn = usePacksReady()
-  const [packs, setPacks] = useState<PackRow[]>(() => packRowsFrom(initial?.packs))
+  const [packs, setPacks] = useState<PackRow[]>(() => (kept?.packs?.length ? kept.packs : packRowsFrom(initial?.packs)))
   // Once a new item is saved, a second Save (after a pack-size error) updates it instead of adding another.
   const [savedId, setSavedId] = useState<string | null>(initial?.id ?? null)
+  // Keep the new item in this browser as it's typed — until it's saved or cancelled.
+  useEffect(() => {
+    if (initial || savedId) return
+    const blank = JSON.stringify(draftFrom(null))
+    if (JSON.stringify(d) === blank && packs.length === 0) clearNewItemDraft(orgId)
+    else writeNewItemDraft(orgId, { d, packs })
+  }, [d, packs, initial, savedId, orgId])
+  const startOver = () => {
+    clearNewItemDraft(orgId)
+    setKept(null)
+    setD(draftFrom(null))
+    setPacks([])
+    setPreview(null)
+  }
   // "Take a photo" is for phones and tablets; a laptop chooses a file (or drops one).
   const [touch] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches)
   const set = (k: keyof Draft) => (e: { target: { value: string } }) => setD((x) => ({ ...x, [k]: e.target.value }))
@@ -899,6 +925,7 @@ function ProductForm({
       }
       const card = await saveProduct(orgId, input)
       setSavedId(card.id)
+      if (!initial) clearNewItemDraft(orgId)
       if (packInput) {
         try {
           const url = withScheme(d.order_url)
@@ -923,6 +950,14 @@ function ProductForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
+      {kept && !savedId && (
+        <p className="flex flex-wrap items-center gap-x-3 rounded-xl bg-brand-blue-50 px-3 py-1 text-sm text-slate-700">
+          <span className="py-1.5">Picked up where you left off — this item is kept in this browser until you add it.</span>
+          <button type="button" onClick={startOver} className="min-h-11 font-bold text-brand-blue">
+            Start over
+          </button>
+        </p>
+      )}
       {/* Photo: choose one from the computer, drop one here, or (phones) take one */}
       <PhotoDrop
         onFiles={(files, n) => {
@@ -1110,9 +1145,22 @@ function ProductForm({
             ))}
           </select>
         </label>
-        {supplierList.length === 0 && (
-          <button type="button" onClick={onAddSupplier} className="text-sm font-bold text-brand-blue">
-            Add a supplier first →
+        {addingSupplier ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <NewSupplierForm
+              orgId={orgId}
+              suppliers={suppliers}
+              onAdded={async (s) => {
+                await onSuppliersChanged()
+                setD((x) => ({ ...x, supplier_id: s.id }))
+                setAddingSupplier(false)
+              }}
+              onCancel={() => setAddingSupplier(false)}
+            />
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAddingSupplier(true)} className="-mt-1 min-h-11 text-sm font-bold text-brand-blue">
+            + New supplier
           </button>
         )}
         <div className="grid grid-cols-2 gap-3">
@@ -1173,7 +1221,15 @@ function ProductForm({
         <button type="submit" disabled={busy || photoBusy || !d.name.trim()} className={`${btn.orange} flex-1 disabled:opacity-60`}>
           {busy ? 'Saving…' : initial ? 'Save changes' : 'Add item'}
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="rounded-full border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-50">
+        <button
+          type="button"
+          onClick={() => {
+            if (!initial) clearNewItemDraft(orgId)
+            onCancel()
+          }}
+          disabled={busy}
+          className="rounded-full border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-50"
+        >
           Cancel
         </button>
       </div>
