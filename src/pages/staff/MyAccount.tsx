@@ -11,6 +11,7 @@ import { errMessage, supabase } from '../../lib/supabase'
 import { uploadSiteImage } from '../../lib/images'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { setEmailWith, useEmailWith, type EmailWith } from '../../lib/emailWith'
 
 interface Profile {
   display_name: string
@@ -70,6 +71,10 @@ export default function MyAccount() {
           <PasswordForm />
         </Part>
 
+        <Part title="Sending email" blurb="On a computer, the email buttons can open a new Gmail message in this browser, all filled in — nothing to set up on the computer.">
+          <SendingEmail />
+        </Part>
+
         <Part title="Your level and access">
           <p className="text-base font-bold text-ink">
             {level ? level.label : membership.role[0].toUpperCase() + membership.role.slice(1)}
@@ -101,6 +106,38 @@ export default function MyAccount() {
         </button>
       </div>
     </div>
+  )
+}
+
+const EMAIL_WITH: { value: EmailWith; label: string }[] = [
+  { value: 'ask', label: 'Ask each time' },
+  { value: 'gmail', label: 'Gmail' },
+  { value: 'app', label: 'Email program' },
+]
+
+// Where an "Email it" goes on this computer (lib/emailWith.ts). Phones always
+// open their own mail app.
+function SendingEmail() {
+  const current = useEmailWith()
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2">
+        {EMAIL_WITH.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => setEmailWith(o.value)}
+            aria-pressed={current === o.value}
+            className={`min-h-11 rounded-2xl border px-2 text-sm font-bold transition ${
+              current === o.value ? 'border-brand-blue bg-brand-blue text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-sm text-slate-500">Stays set in this browser. Phones and tablets always use their own mail app.</p>
+    </>
   )
 }
 
