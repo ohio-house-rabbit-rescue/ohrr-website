@@ -1,16 +1,18 @@
-// Silent auction, website side: the hooks the public pages share. Everything
+// The auctions, website side: the hooks the public pages share — BunFest's
+// Silent Auction and the OHRR Online Auction (update 45), picked by the page's
+// AuctionEventProvider (auctionEvent.tsx). Everything
 // that talks to the database or the payment server is in auctionClient.ts
 // (the contract); this file only wires it to React and handles the day before
 // update 35 has been run (the catalog RPC is missing, so the page falls back
 // to the plain raffle_items read and shows a preview with no bidding).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, errMessage, isConfigured } from './supabase'
-import { confirmPaymentAction } from '../components/CardSetup'
-import { SILENT_AUCTION_FLAG, useFeature, useStaffHere, type FeatureState } from './settings'
+import { useFeature, useStaffHere, type FeatureState } from './settings'
+import { useAuctionEvent } from './auctionEvent'
 import { itemPhotos } from './items'
 import {
   AUCTION_EVENT,
-  auctionApi,
+  cardPaymentsReady,
   fetchCatalog,
   fetchMyPage,
   forgetBidder,
@@ -24,6 +26,7 @@ import {
   type Sale,
 } from './auctionClient'
 
+// BunFest's paths; a page in either auction uses useAuctionPaths() instead.
 export const CATALOG_PATH = '/bunfest/silent-auction'
 export const REGISTER_PATH = `${CATALOG_PATH}/register`
 export const MY_BIDS_PATH = `${CATALOG_PATH}/me`
@@ -38,13 +41,14 @@ export function isAuctionLink(url: string | null | undefined): boolean {
 }
 
 /**
- * The Silent Auction switch (Staff → Features) for one of its pages. After
+ * The auction's switch (Staff → Features: Silent Auction, or Online Auction
+ * which is off until switched on) for one of its pages. After
  * update 38 the catalog says too (`enabled`; missing = on). Switched off,
  * visitors get the "isn't open" page; signed-in staff see the page under the
  * "Hidden from the public" note.
  */
 export function useAuctionGate(catalog?: Catalog | null): FeatureState {
-  const f = useFeature(SILENT_AUCTION_FLAG)
+  const f = useFeature(useAuctionEvent().flag)
   const staff = useStaffHere()
   const on = f.on && catalog?.enabled !== false
   return { on, show: on || staff.staff, preview: !on && staff.staff, loading: f.loading || (!on && !staff.known) }
@@ -177,9 +181,9 @@ export async function loadCatalog(event = AUCTION_EVENT): Promise<{ catalog: Cat
   }
 }
 
-/** Can anyone bid online right now (switched on, with Stripe's key in place)? */
+/** Can anyone bid online right now (switched on, with Square's ids in place)? */
 export function biddingOffered(c: Catalog | null): boolean {
-  return Boolean(c?.settings?.bidding_enabled && c.settings.stripe_publishable_key)
+  return Boolean(c?.settings?.bidding_enabled && cardPaymentsReady(c.settings))
 }
 
 /**
@@ -187,6 +191,7 @@ export function biddingOffered(c: Catalog | null): boolean {
  * bids move) — a single read otherwise.
  */
 export function useCatalog(everyMs = 15000): { catalog: Catalog | null; source: CatalogSource; error: string | null; reload: () => Promise<void> } {
+  const event = useAuctionEvent().slug
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [source, setSource] = useState<CatalogSource>('preview')
   const [error, setError] = useState<string | null>(null)
@@ -194,7 +199,7 @@ export function useCatalog(everyMs = 15000): { catalog: Catalog | null; source: 
 
   const reload = useCallback(async () => {
     try {
-      const r = await loadCatalog()
+      const r = await loadCatalog(event)
       if (!live.current) return
       setCatalog(r.catalog)
       setSource(r.source)
@@ -202,7 +207,7 @@ export function useCatalog(everyMs = 15000): { catalog: Catalog | null; source: 
     } catch (e) {
       if (live.current) setError(errMessage(e))
     }
-  }, [])
+  }, [event])
 
   useEffect(() => {
     live.current = true
@@ -254,7 +259,8 @@ export function useMyPage(tokenOverride?: string, everyMs = 15000): {
   reload: () => Promise<void>
   forget: () => void
 } {
-  const [remembered, setRemembered] = useState<RememberedBidder | null>(() => recallBidder())
+  const event = useAuctionEvent().slug
+  const [remembered, setRemembered] = useState<RememberedBidder | null>(() => recallBidder(event))
   const token = tokenOverride || remembered?.access_token || ''
   const [page, setPage] = useState<MyPage | null | undefined>(token ? undefined : null)
   const [error, setError] = useState<string | null>(null)
@@ -270,7 +276,7 @@ export function useMyPage(tokenOverride?: string, everyMs = 15000): {
       if (!live.current) return
       if (!p) {
         // The link doesn't match any registration: stop remembering it.
-        if (!tokenOverride) forgetBidder()
+        if (!tokenOverride) forgetBidder(event)
         setRemembered(null)
       }
       setPage(p)
@@ -281,7 +287,7 @@ export function useMyPage(tokenOverride?: string, everyMs = 15000): {
       setPage(null)
       setError(isMissingFunction(e) ? null : errMessage(e))
     }
-  }, [token, tokenOverride])
+  }, [token, tokenOverride, event])
 
   useEffect(() => {
     live.current = true
@@ -298,10 +304,10 @@ export function useMyPage(tokenOverride?: string, everyMs = 15000): {
   }, [token, everyMs, reload])
 
   const forget = useCallback(() => {
-    forgetBidder()
+    forgetBidder(event)
     setRemembered(null)
     setPage(null)
-  }, [])
+  }, [event])
 
   return { remembered, token, page, error, reload, forget }
 }
@@ -321,20 +327,13 @@ export function useDocTitle(title: string | null | undefined): void {
 export type Settled = { ok: true; sale: Sale; message: string } | { ok: false; sale: Sale | null; message: string }
 
 /**
- * Finish a charge the payment server started: paid outright, or the bank
- * wants its extra check (3-D Secure) first, or it was declined. Returns the
- * plain words to show.
+ * What a charge from the payment server came to, in plain words: paid (Square
+ * charges the saved card in one step; the receipt link is on the sale) or not.
  */
-export async function settleCharge(result: ChargeResult, token: string, publishableKey: string | null | undefined): Promise<Settled> {
-  if (result.ok) return { ok: true, sale: result.sale, message: 'Paid. Stripe has emailed your receipt.' }
-  if (result.requires_action) {
-    if (!publishableKey) return { ok: false, sale: result.sale, message: 'Your bank wants an extra check, but the card form is not set up. Please see the auction desk.' }
-    const check = await confirmPaymentAction(publishableKey, result.client_secret)
-    if (!check.ok) return { ok: false, sale: result.sale, message: check.error ?? 'The bank did not approve the payment.' }
-    const done = await auctionApi.complete(token, result.sale.sale_id)
-    if (done.sale.payment_status === 'paid') return { ok: true, sale: done.sale, message: 'Paid. Stripe has emailed your receipt.' }
-    if (done.sale.payment_status === 'pending') return { ok: true, sale: done.sale, message: 'Your bank is still confirming the payment. Check back in a minute.' }
-    return { ok: false, sale: done.sale, message: done.sale.failure_message ?? 'The payment was not completed.' }
+export function settleCharge(result: ChargeResult): Settled {
+  if (result.ok) {
+    if (result.sale.payment_status === 'pending') return { ok: true, sale: result.sale, message: 'Square is still confirming the payment. Check back in a minute.' }
+    return { ok: true, sale: result.sale, message: 'Paid on your card.' }
   }
   return { ok: false, sale: result.sale, message: result.error }
 }
@@ -352,7 +351,7 @@ export function shipLine(item: Pick<AuctionItem, 'ship_fee_cents'>): string {
   return item.ship_fee_cents === 0 ? 'Ships free' : `Ships +$${(item.ship_fee_cents / 100).toFixed(2).replace(/\.00$/, '')}`
 }
 
-/** The card as Stripe describes it: "Visa ending 4242". */
+/** The card as Square describes it: "Visa ending 4242". */
 export function cardLine(b: { card_brand: string | null; card_last4: string | null; card_ready: boolean }): string {
   if (!b.card_ready) return 'No card on file yet'
   const brand = b.card_brand ? b.card_brand.charAt(0).toUpperCase() + b.card_brand.slice(1) : 'Card'

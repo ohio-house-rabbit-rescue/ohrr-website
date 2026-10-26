@@ -55,10 +55,14 @@ export interface AuctionSettings {
   bidding_opens_at?: string | null
   extend_minutes?: number
   default_increment_cents?: number
-  stripe_publishable_key?: string | null
   bidding_note?: string | null
   pickup_note?: string | null
   shipping_note?: string | null
+  // The Online Auction and Square (update 45) — undefined until it has been run.
+  title?: string | null
+  auto_charge?: boolean
+  square_application_id?: string | null
+  square_location_id?: string | null
 }
 
 /** The bidding columns (update 35) on a raffle_items row, for the editor. */

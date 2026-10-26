@@ -21,6 +21,7 @@ import { OhrrPhoto } from '../components/PhotoStrip'
 import { LOLA_PHOTO } from '../data/ohrrPhotos'
 import WishListItems from '../components/WishListItems'
 import { useWishListItems, type WishListItem } from '../lib/wishList'
+import { ONLINE_AUCTION_FLAG, useFeature } from '../lib/settings'
 
 interface Way {
   h: string
@@ -190,6 +191,8 @@ export default function Give() {
   const more = WAYS.filter((w) => !TOP.includes(w.h) && !SHOP.includes(w.h))
   const donate = top[0]
   const wishList = useWishListItems()
+  // The Online Auction (update 45) shows here only while it's switched on.
+  const auction = useFeature(ONLINE_AUCTION_FLAG)
 
   return (
     <>
@@ -220,6 +223,19 @@ export default function Give() {
 
         {/* Rows like the Donate row, so different amounts of words never leave half-empty boxes */}
         <div className="mt-4 space-y-4">
+          {auction.on && (
+            <Card className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="font-display text-lg font-extrabold text-ink">Online Auction</h2>
+                <p className="mt-1 text-base text-slate-700">Bid on donated items — every winning bid helps the rabbits.</p>
+              </div>
+              <div className="shrink-0">
+                <Link to="/auction" className={btn.blue}>
+                  See the auction
+                </Link>
+              </div>
+            </Card>
+          )}
           {top.slice(1).map((w) => (
             <Card key={w.h} className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="max-w-2xl">

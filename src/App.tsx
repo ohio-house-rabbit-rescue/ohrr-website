@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { RABBIT_READY } from './lib/constants'
@@ -20,6 +20,7 @@ import SilentAuction from './pages/SilentAuction'
 import SilentAuctionItem from './pages/SilentAuctionItem'
 import SilentAuctionRegister from './pages/SilentAuctionRegister'
 import SilentAuctionMe from './pages/SilentAuctionMe'
+import { AuctionEventProvider, ONLINE_AUCTION } from './lib/auctionEvent'
 import MobileVet from './pages/MobileVet'
 import Bonding from './pages/Bonding'
 import VolunteerApply from './pages/VolunteerApply'
@@ -106,6 +107,11 @@ const ScanItem = lazy(() => import('./pages/staff/ScanItem'))
 // the text reader load only when an invoice is read).
 const ReceiveDelivery = lazy(() => import('./pages/staff/ReceiveDelivery'))
 const Deliveries = lazy(() => import('./pages/staff/Deliveries'))
+
+// The auction pages, told they are the Online Auction's (their switch gates them).
+function OnlineAuction({ page }: { page: ReactNode }) {
+  return <AuctionEventProvider value={ONLINE_AUCTION}>{page}</AuctionEventProvider>
+}
 
 export default function App() {
   return (
@@ -249,6 +255,13 @@ export default function App() {
         <Route path="/bunfest/silent-auction/me" element={<SilentAuctionMe />} />
         <Route path="/bunfest/silent-auction/me/:token" element={<SilentAuctionMe />} />
         <Route path="/bunfest/silent-auction/:id" element={<SilentAuctionItem />} />
+        {/* The OHRR Online Auction (update 45): the same pages for its own event,
+            each behind the online_auction_enabled switch (Staff → Features) */}
+        <Route path="/auction" element={<OnlineAuction page={<SilentAuction />} />} />
+        <Route path="/auction/register" element={<OnlineAuction page={<SilentAuctionRegister />} />} />
+        <Route path="/auction/me" element={<OnlineAuction page={<SilentAuctionMe />} />} />
+        <Route path="/auction/me/:token" element={<OnlineAuction page={<SilentAuctionMe />} />} />
+        <Route path="/auction/:id" element={<OnlineAuction page={<SilentAuctionItem />} />} />
         <Route path="/mobile-vet" element={<MobileVet />} />
         <Route path="/bunfest/schedule" element={<BunFestSchedule />} />
         <Route path="/bunfest/vendors" element={<BunFestVendors />} />

@@ -1,4 +1,5 @@
-// /bunfest/silent-auction — the Midwest BunFest silent auction catalog, now
+// /bunfest/silent-auction and /auction (the OHRR Online Auction, update 45:
+// one closing time, no sessions, no raffle prizes) — the auction catalog, now
 // with online bidding (update 35): each card shows the running bid and links
 // to its own page, where people bid or Buy Now. Until update 35 has been run
 // on the database the page falls back to the plain raffle_items read and is a
@@ -13,8 +14,9 @@ import type { RafflePrize } from '../lib/types'
 import { PageHero, Section, btn, Card, Callout, PrintButton } from '../components/ui'
 import PresentedBy from '../components/PresentedBy'
 import { formatPrice } from '../lib/format'
-import { bidLine, closesIn, money, recallBidder, type AuctionItem } from '../lib/auctionClient'
-import { itemPath, shipLine, useAuctionGate, useCatalog, useDocTitle, useServerNow } from '../lib/auctionSite'
+import { bidLine, closesIn, fmtWhen, money, recallBidder, type AuctionItem } from '../lib/auctionClient'
+import { shipLine, useAuctionGate, useCatalog, useDocTitle, useServerNow } from '../lib/auctionSite'
+import { useAuctionEvent, useAuctionPaths } from '../lib/auctionEvent'
 import { AuctionGate, BidderBar, Chip, ItemPhoto, SessionChip, SoldChip } from '../components/AuctionBits'
 
 const EVENT_SLUG = 'midwest-bunfest-2026'
@@ -27,17 +29,19 @@ const chip = (active: boolean) =>
   }`
 
 function ItemCard({ item, now, preview }: { item: AuctionItem; now: string; preview: boolean }) {
+  const ev = useAuctionEvent()
+  const paths = useAuctionPaths()
   const won = item.status === 'won'
   return (
     <Link
-      to={itemPath(item.id)}
+      to={paths.item(item.id)}
       className={`block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md ${won ? 'opacity-80' : ''}`}
     >
       <ItemPhoto item={item} />
       <div className="p-4">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-display text-lg font-extrabold text-ink">{item.title}</h3>
-          <SessionChip session={item.session} />
+          {!ev.online && <SessionChip session={item.session} />}
           <SoldChip item={item} />
         </div>
         {item.donated_by && <p className="mt-0.5 text-base font-semibold text-slate-600">Donated by {item.donated_by}</p>}
@@ -103,20 +107,24 @@ function RafflePrizes() {
 }
 
 export default function SilentAuction() {
-  useDocTitle('Silent Auction')
+  const ev = useAuctionEvent()
   const { catalog, source } = useCatalog()
+  const title = catalog?.settings?.title || ev.name
+  useDocTitle(title)
   const gate = useAuctionGate(catalog)
   const now = useServerNow(catalog?.now)
   const [session, setSession] = useState<SessionFilter>('all')
   const [availableOnly, setAvailableOnly] = useState(false)
-  const remembered = recallBidder()
+  const remembered = recallBidder(ev.slug)
+  // The online auction closes all at once: say when.
+  const closes = ev.online ? catalog?.settings?.afternoon_closes_at ?? null : null
 
   const items = catalog?.items ?? null
   const intro = catalog?.settings?.intro_text?.trim() || null
   const note = catalog?.settings?.bidding_enabled ? catalog.settings.bidding_note?.trim() || null : null
 
   const list = (items ?? [])
-    .filter((i) => session === 'all' || i.session === session || i.session === 'all-day')
+    .filter((i) => ev.online || session === 'all' || i.session === session || i.session === 'all-day')
     .filter((i) => !availableOnly || i.status !== 'won')
   // Available items first, then sold — keeping the staff's sort order within each group.
   const ordered = [...list.filter((i) => i.status !== 'won'), ...list.filter((i) => i.status === 'won')]
@@ -125,16 +133,25 @@ export default function SilentAuction() {
   return (
     <AuctionGate gate={gate}>
       <PageHero
-        title="Silent Auction"
-        parent={{ to: '/bunfest', label: 'Midwest BunFest' }}
+        title={title}
+        parent={ev.home}
         subtitle={
-          bidding
-            ? 'Bid online on the items up for silent auction at Midwest BunFest 2026, or Buy Now where a price is shown.'
-            : 'A preview of the items that will be up for silent auction at Midwest BunFest 2026.'
+          ev.online
+            ? bidding
+              ? 'Bid online on items donated to Ohio House Rabbit Rescue, or Buy Now where a price is shown. Every winning bid helps the rabbits.'
+              : 'A preview of the items in the OHRR Online Auction.'
+            : bidding
+              ? 'Bid online on the items up for silent auction at Midwest BunFest 2026, or Buy Now where a price is shown.'
+              : 'A preview of the items that will be up for silent auction at Midwest BunFest 2026.'
         }
       />
-      <PresentedBy surface="silent-auction" />
+      {!ev.online && <PresentedBy surface="silent-auction" />}
       <Section>
+        {closes && catalog && (
+          <p className="mb-4 text-lg font-bold text-ink">
+            {new Date(catalog.now) < new Date(closes) ? `${closesIn(closes, catalog.now)} · ${fmtWhen(closes)} Eastern` : `Closed ${fmtWhen(closes)} Eastern`}
+          </p>
+        )}
         <div className="no-print mb-6">
           <BidderBar catalog={catalog} remembered={remembered} />
         </div>
@@ -150,20 +167,23 @@ export default function SilentAuction() {
           <p className="text-base text-slate-600">Loading…</p>
         ) : items.length === 0 ? (
           <Card className="text-center">
-            <p className="font-display text-lg font-extrabold text-brand-blue">Auction items will be posted here as BunFest gets closer.</p>
-            <Link to="/bunfest" className={`${btn.blue} mt-4`}>
-              About Midwest BunFest
+            <p className="font-display text-lg font-extrabold text-brand-blue">
+              {ev.online ? 'Auction items will be posted here soon.' : 'Auction items will be posted here as BunFest gets closer.'}
+            </p>
+            <Link to={ev.home.to} className={`${btn.blue} mt-4`}>
+              {ev.online ? ev.home.label : 'About Midwest BunFest'}
             </Link>
           </Card>
         ) : (
           <>
             <div className="no-print flex flex-wrap items-center gap-2">
-              {(
-                [
-                  ['all', 'All'],
-                  ['morning', 'Morning'],
-                  ['afternoon', 'Afternoon'],
-                ] as [SessionFilter, string][]
+              {(ev.online
+                ? []
+                : ([
+                    ['all', 'All'],
+                    ['morning', 'Morning'],
+                    ['afternoon', 'Afternoon'],
+                  ] as [SessionFilter, string][])
               ).map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setSession(key)} className={chip(session === key)} aria-pressed={session === key}>
                   {label}
@@ -185,11 +205,11 @@ export default function SilentAuction() {
           </>
         )}
 
-        <RafflePrizes />
+        {!ev.online && <RafflePrizes />}
 
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <Link to="/bunfest" className="text-base font-bold text-brand-blue hover:text-brand-blue-dark">
-            ← Midwest BunFest
+          <Link to={ev.home.to} className="text-base font-bold text-brand-blue hover:text-brand-blue-dark">
+            ← {ev.home.label}
           </Link>
           <PrintButton label="Print the list" />
         </div>

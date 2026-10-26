@@ -9,19 +9,22 @@ import HiddenFromPublic from './HiddenFromPublic'
 import { Spinner } from '../lib/staff'
 import type { FeatureState } from '../lib/settings'
 import { money, sessionLabel, type AuctionItem, type Catalog, type RememberedBidder } from '../lib/auctionClient'
-import { MY_BIDS_PATH, REGISTER_PATH, biddingOffered } from '../lib/auctionSite'
+import { biddingOffered } from '../lib/auctionSite'
+import { useAuctionEvent, useAuctionPaths } from '../lib/auctionEvent'
 
-/** What a visitor sees on any silent-auction page while it is switched off (Staff → Features). */
+/** What a visitor sees on any auction page while it is switched off (Staff → Features). */
 export function AuctionClosed() {
+  const ev = useAuctionEvent()
   return (
     <>
-      <PageHero title="Silent Auction" parent={{ to: '/bunfest', label: 'Midwest BunFest' }} />
+      <PageHero title={ev.name} parent={ev.home} />
       <Section>
         <Card className="max-w-xl space-y-4">
-          <p className="font-display text-xl font-extrabold text-ink">The silent auction isn’t open right now.</p>
+          <p className="font-display text-xl font-extrabold text-ink">The {ev.online ? 'online' : 'silent'} auction isn’t open right now.</p>
+          {ev.online && <p className="text-base text-slate-700">Its items and bidding appear here when OHRR opens the auction.</p>}
           <div className="flex flex-wrap gap-3">
-            <Link to="/bunfest" className={btn.blue}>
-              About Midwest BunFest
+            <Link to={ev.home.to} className={btn.blue}>
+              {ev.online ? ev.home.label : 'About Midwest BunFest'}
             </Link>
             <Link to="/" className={btn.outline}>
               OHRR home
@@ -130,12 +133,14 @@ export function ErrorText({ children }: { children?: ReactNode }) {
  * bidding not open yet.
  */
 export function BidderBar({ catalog, remembered, next }: { catalog: Catalog | null; remembered: RememberedBidder | null; next?: string }) {
+  const ev = useAuctionEvent()
+  const paths = useAuctionPaths()
   if (remembered) {
     return (
       <p className="text-base text-slate-700">
         You’re registered as <strong className="text-ink">Bidder #{remembered.bidder_no}</strong>
         {remembered.name ? ` (${remembered.name})` : ''}.{' '}
-        <Link to={MY_BIDS_PATH} className="font-bold text-brand-blue underline decoration-brand-blue/30 underline-offset-4">
+        <Link to={paths.me} className="font-bold text-brand-blue underline decoration-brand-blue/30 underline-offset-4">
           Your bids
         </Link>
       </p>
@@ -144,12 +149,18 @@ export function BidderBar({ catalog, remembered, next }: { catalog: Catalog | nu
   if (biddingOffered(catalog)) {
     return (
       <div className="flex flex-wrap items-center gap-3">
-        <Link to={next ? `${REGISTER_PATH}?next=${encodeURIComponent(next)}` : REGISTER_PATH} className={btn.orange}>
+        <Link to={next ? `${paths.register}?next=${encodeURIComponent(next)}` : paths.register} className={btn.orange}>
           Register to bid
         </Link>
-        <p className="text-base text-slate-700">Takes a minute: your name, email and a card that is only charged if you win.</p>
+        <p className="text-base text-slate-700">
+          Takes a minute: your name, email and a card that is only charged {catalog?.settings?.auto_charge ? 'automatically, if you win' : 'if you win'}.
+        </p>
       </div>
     )
   }
-  return <p className="text-base text-slate-600">Bidding opens online before BunFest; on the day, see the auction table.</p>
+  return (
+    <p className="text-base text-slate-600">
+      {ev.online ? 'Bidding hasn’t opened yet — the items are here to look at first.' : 'Bidding opens online before BunFest; on the day, see the auction table.'}
+    </p>
+  )
 }

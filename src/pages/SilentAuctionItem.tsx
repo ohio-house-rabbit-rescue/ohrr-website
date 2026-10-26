@@ -1,4 +1,4 @@
-// /bunfest/silent-auction/:id — one auction item: every photo (PhotoGallery,
+// /bunfest/silent-auction/:id and /auction/:id — one auction item: every photo (PhotoGallery,
 // cover first, in the order staff set) and the story, the running bid, and the
 // bid box. A registered bidder (this browser remembers them) bids here or uses
 // Buy Now; anyone else is sent to register first. The page reads the catalog
@@ -26,11 +26,8 @@ import {
   type Bidder,
   type Catalog,
 } from '../lib/auctionClient'
+import { useAuctionEvent, useAuctionPaths } from '../lib/auctionEvent'
 import {
-  CATALOG_PATH,
-  MY_BIDS_PATH,
-  REGISTER_PATH,
-  itemPath,
   settleCharge,
   shipLine,
   useAuctionGate,
@@ -63,13 +60,15 @@ function BidBox({
   preview: boolean
   onChanged: () => Promise<void>
 }) {
+  const ev = useAuctionEvent()
+  const paths = useAuctionPaths()
   const closed = whyClosed(item, catalog.settings, now)
   const [amount, setAmount] = useState(centsToInput(item.next_min_cents))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const [confirmBuy, setConfirmBuy] = useState(false)
-  const [bought, setBought] = useState<string | null>(null)
+  const [bought, setBought] = useState<{ message: string; receipt: string | null } | null>(null)
 
   // A new high bid moves the floor: follow it unless the person has typed more.
   useEffect(() => {
@@ -82,7 +81,6 @@ function BidBox({
   const step = item.increment_cents
   const quick = [1, 2, 5].map((n) => item.next_min_cents + n * step)
   const shipping = shippingFor(item, bidder)
-  const pk = catalog.settings?.stripe_publishable_key ?? null
 
   const submitBid = async (e: FormEvent) => {
     e.preventDefault()
@@ -111,8 +109,8 @@ function BidBox({
     setDone(null)
     try {
       const r = await auctionApi.buyNow(token, item.id)
-      const s = await settleCharge(r, token, pk)
-      if (s.ok) setBought(`It’s yours. ${s.message}`)
+      const s = settleCharge(r)
+      if (s.ok) setBought({ message: `It’s yours. ${s.message}`, receipt: s.sale.receipt_url ?? null })
       else setError(s.message)
       setConfirmBuy(false)
       await onChanged()
@@ -127,7 +125,7 @@ function BidBox({
     return (
       <Card className="space-y-2">
         {typeof item.value_cents === 'number' && <p className="font-display text-2xl font-black text-ink">Value {money(item.value_cents)}</p>}
-        <p className="text-base font-semibold text-slate-700">Online bidding is not open yet. On the day, see the auction table.</p>
+        <p className="text-base font-semibold text-slate-700">{ev.online ? 'Online bidding is not open yet.' : 'Online bidding is not open yet. On the day, see the auction table.'}</p>
       </Card>
     )
   }
@@ -160,14 +158,22 @@ function BidBox({
         <p className="mt-1 text-base text-slate-700">
           {shipLine(item)}
           {bidder?.fulfil === 'ship' && item.ship_fee_cents != null && ' — you chose shipping, so that is added if you win.'}
-          {bidder?.fulfil === 'ship' && item.ship_fee_cents == null && ' — this item can only be picked up at BunFest.'}
+          {bidder?.fulfil === 'ship' && item.ship_fee_cents == null && (ev.online ? ' — this item can only be picked up from OHRR.' : ' — this item can only be picked up at BunFest.')}
         </p>
       </div>
 
       {bought && (
         <div role="status" aria-live="polite" className="rounded-xl bg-emerald-50 p-4 text-base font-semibold text-emerald-800">
-          {bought}{' '}
-          <Link to={MY_BIDS_PATH} className="font-bold text-brand-blue underline underline-offset-4">
+          {bought.message}{' '}
+          {bought.receipt && (
+            <>
+              <a href={bought.receipt} target="_blank" rel="noopener noreferrer" className="font-bold text-brand-blue underline underline-offset-4">
+                Your receipt
+              </a>{' '}
+              ·{' '}
+            </>
+          )}
+          <Link to={paths.me} className="font-bold text-brand-blue underline underline-offset-4">
             See your wins
           </Link>
         </div>
@@ -177,17 +183,17 @@ function BidBox({
         !bought && <p className="text-base font-semibold text-slate-700">{closed}</p>
       ) : !bidder ? (
         <div className="no-print space-y-2">
-          <Link to={`${REGISTER_PATH}?next=${encodeURIComponent(itemPath(item.id))}`} className={btn.orange}>
+          <Link to={`${paths.register}?next=${encodeURIComponent(paths.item(item.id))}`} className={btn.orange}>
             Register to bid
           </Link>
           <p className="text-base text-slate-600">Your name, email and a card that is only charged if you win. Then you come straight back here.</p>
         </div>
       ) : bidder.is_blocked ? (
-        <p className="text-base font-semibold text-slate-700">Bidding is not available for this registration. Please see the auction desk.</p>
+        <p className="text-base font-semibold text-slate-700">Bidding is not available for this registration. {ev.online ? 'Please email OHRR.' : 'Please see the auction desk.'}</p>
       ) : !bidder.card_ready ? (
         <p className="text-base font-semibold text-slate-700">
           Please{' '}
-          <Link to={MY_BIDS_PATH} className="font-bold text-brand-blue underline underline-offset-4">
+          <Link to={paths.me} className="font-bold text-brand-blue underline underline-offset-4">
             add a card
           </Link>{' '}
           before bidding.
@@ -290,6 +296,8 @@ function History({ bids, myNo }: { bids: BidRow[] | null; myNo: number | null })
 }
 
 export default function SilentAuctionItem() {
+  const ev = useAuctionEvent()
+  const paths = useAuctionPaths()
   const { id = '' } = useParams()
   const { catalog, source, reload } = useCatalog()
   const gate = useAuctionGate(catalog)
@@ -300,7 +308,7 @@ export default function SilentAuctionItem() {
   const item = catalog?.items.find((i) => i.id === id) ?? null
   // Every photo, in the order staff set; the first is the cover.
   const photos = useAuctionItemPhotos(item)
-  useDocTitle(item?.title ?? 'Silent Auction')
+  useDocTitle(item?.title ?? ev.name)
 
   // Only for an item the catalog has, and only while the page may be shown.
   const known = Boolean(item)
@@ -338,12 +346,12 @@ export default function SilentAuctionItem() {
   if (!item) {
     return (
       <AuctionGate gate={gate}>
-        <PageHero title="Silent Auction" parent={{ to: '/bunfest', label: 'Midwest BunFest' }} />
+        <PageHero title={ev.name} parent={ev.home} />
         <Section>
           <Card className="max-w-xl space-y-3">
             <p className="font-display text-lg font-extrabold text-ink">We can’t find that item.</p>
             <p className="text-base text-slate-700">It may have been taken out of the auction.</p>
-            <Link to={CATALOG_PATH} className={btn.blue}>
+            <Link to={paths.catalog} className={btn.blue}>
               All auction items
             </Link>
           </Card>
@@ -355,10 +363,10 @@ export default function SilentAuctionItem() {
   const bidder = page?.bidder ?? null
   return (
     <AuctionGate gate={gate}>
-      <PageHero title={item.title} parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} />
+      <PageHero title={item.title} parent={{ to: paths.catalog, label: ev.name }} />
       <Section>
         <div className="no-print mb-6">
-          <BidderBar catalog={catalog} remembered={remembered} next={itemPath(item.id)} />
+          <BidderBar catalog={catalog} remembered={remembered} next={paths.item(item.id)} />
         </div>
         <div className="grid gap-8 lg:grid-cols-5">
           <div className="lg:col-span-3">
@@ -368,7 +376,7 @@ export default function SilentAuctionItem() {
               <ItemPhoto item={item} className="aspect-[4/3] rounded-2xl ring-1 ring-black/5" />
             )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <SessionChip session={item.session} />
+              {!ev.online && <SessionChip session={item.session} />}
               <SoldChip item={item} />
               {item.status !== 'won' && item.buy_now_cents != null && <Chip tone="orange">Buy now {money(item.buy_now_cents)}</Chip>}
             </div>
@@ -382,7 +390,7 @@ export default function SilentAuctionItem() {
           </div>
         </div>
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <Link to={CATALOG_PATH} className="text-base font-bold text-brand-blue hover:text-brand-blue-dark">
+          <Link to={paths.catalog} className="text-base font-bold text-brand-blue hover:text-brand-blue-dark">
             ← All auction items
           </Link>
           <PrintButton />

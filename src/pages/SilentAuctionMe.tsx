@@ -1,6 +1,6 @@
-// /bunfest/silent-auction/me and /bunfest/silent-auction/me/:token — a
-// bidder's own page: who they are, the card on file, their bids (high or
-// outbid) and their wins with what they owe and how they get the item. The
+// /bunfest/silent-auction/me and /auction/me (and …/me/:token) — a bidder's
+// own page: who they are, the card on file, their bids (high or outbid) and
+// their wins with what they owe, the receipt, and how they get the item. The
 // :token form is their private link — open it on any device and that device
 // remembers them too. Reads every 15 s while open so an outbid shows up.
 import { useEffect, useState, type FormEvent } from 'react'
@@ -12,6 +12,7 @@ import CardSetup from '../components/CardSetup'
 import {
   auctionApi,
   bidLine,
+  cardPaymentsReady,
   closesIn,
   fmtWhen,
   money,
@@ -24,23 +25,14 @@ import {
   type MyPage,
   type Sale,
 } from '../lib/auctionClient'
-import {
-  CATALOG_PATH,
-  MY_BIDS_PATH,
-  REGISTER_PATH,
-  addressLine,
-  cardLine,
-  itemPath,
-  settleCharge,
-  useDocTitle,
-  useMyPage,
-  useServerNow,
-} from '../lib/auctionSite'
+import { addressLine, cardLine, settleCharge, useDocTitle, useMyPage, useServerNow } from '../lib/auctionSite'
+import { useAuctionEvent, useAuctionPaths } from '../lib/auctionEvent'
 import { Chip, ErrorText, Field, ItemPhoto, TextInput } from '../components/AuctionBits'
 
 const US_STATES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ')
 
 function DetailsForm({ page, token, onSaved, onCancel }: { page: MyPage; token: string; onSaved: () => Promise<void>; onCancel: () => void }) {
+  const ev = useAuctionEvent()
   const b = page.bidder
   const [name, setName] = useState(b.name)
   const [phone, setPhone] = useState(b.phone ?? '')
@@ -79,7 +71,7 @@ function DetailsForm({ page, token, onSaved, onCancel }: { page: MyPage; token: 
         <div className="mt-2 space-y-2">
           {(
             [
-              ['pickup', 'I’ll pick it up at BunFest'],
+              ['pickup', ev.online ? 'I’ll pick it up from OHRR' : 'I’ll pick it up at BunFest'],
               ['ship', 'Ship it to me (items marked “Ships”)'],
             ] as [Fulfil, string][]
           ).map(([v, label]) => (
@@ -131,11 +123,12 @@ function DetailsForm({ page, token, onSaved, onCancel }: { page: MyPage; token: 
 }
 
 function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; token: string; onChanged: () => Promise<void> }) {
+  const ev = useAuctionEvent()
+  const { item: itemPath } = useAuctionPaths()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const item = sale.item
-  const pk = page.settings?.stripe_publishable_key ?? null
   const tone = sale.payment_status === 'paid' || sale.payment_status === 'cash' ? 'green' : sale.payment_status === 'failed' ? 'red' : sale.payment_status === 'pending' ? 'orange' : 'slate'
 
   const payNow = async () => {
@@ -144,7 +137,7 @@ function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; t
     setMsg(null)
     try {
       const r = await auctionApi.pay(token, sale.sale_id)
-      const s = await settleCharge(r, token, pk)
+      const s = settleCharge(r)
       if (s.ok) setMsg(s.message)
       else setError(s.message)
       await onChanged()
@@ -177,12 +170,28 @@ function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; t
           {sale.kind === 'buy_now' ? 'Buy Now' : 'Winning bid'} {money(sale.amount_cents)}
           {sale.ship_fee_cents > 0 && <> + shipping {money(sale.ship_fee_cents)}</>} = <strong className="text-ink">{money(sale.total_cents)}</strong>
         </p>
-        {sale.payment_status === 'paid' && <p className="text-base text-slate-700">Paid {fmtWhen(sale.paid_at)}. Stripe emailed your receipt.</p>}
-        {sale.payment_status === 'cash' && <p className="text-base text-slate-700">Paid at the auction desk.</p>}
+        {sale.payment_status === 'paid' && (
+          <p className="text-base text-slate-700">
+            Paid {fmtWhen(sale.paid_at)}.
+            {sale.receipt_url && (
+              <>
+                {' '}
+                <a href={sale.receipt_url} target="_blank" rel="noopener noreferrer" className="font-bold text-brand-blue underline decoration-brand-blue/30 underline-offset-4">
+                  Your receipt
+                </a>
+              </>
+            )}
+          </p>
+        )}
+        {sale.payment_status === 'cash' && <p className="text-base text-slate-700">{ev.online ? 'Paid to OHRR.' : 'Paid at the auction desk.'}</p>}
         {sale.payment_status === 'failed' && (
           <p className="text-base font-semibold text-red-700">{sale.failure_message ?? 'Your card was declined.'} Add a new card below or pay again.</p>
         )}
-        {sale.payment_status === 'pending' && <p className="text-base text-slate-700">Not charged yet.</p>}
+        {sale.payment_status === 'pending' && (
+          <p className="text-base text-slate-700">
+            {page.settings?.auto_charge ? 'Not charged yet — your card is charged automatically within a few minutes of the close.' : 'Not charged yet.'}
+          </p>
+        )}
         {(sale.payment_status === 'failed' || sale.payment_status === 'pending') && page.bidder.card_ready && (
           <button type="button" disabled={busy} onClick={() => void payNow()} className={`${btn.orange} no-print disabled:opacity-60`}>
             {busy ? 'Charging…' : `Pay ${money(sale.total_cents)} now`}
@@ -199,7 +208,7 @@ function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; t
               </>
             ) : (
               <>
-                Pickup at BunFest: {FULFIL_LABEL[sale.fulfil_status]}
+                {ev.online ? 'Pickup from OHRR' : 'Pickup at BunFest'}: {FULFIL_LABEL[sale.fulfil_status]}
                 {page.settings?.pickup_note && <span className="block whitespace-pre-line">{page.settings.pickup_note}</span>}
               </>
             )}
@@ -216,23 +225,28 @@ function WinCard({ sale, page, token, onChanged }: { sale: Sale; page: MyPage; t
   )
 }
 
-// A bidder's own page stays open while the Silent Auction is switched off
-// (Staff → Features): it shows only that person's bids and wins, and after
-// BunFest winners still need to see what they owe.
+// A bidder's own page stays open while the auction is switched off (Staff →
+// Features): it shows only that person's bids and wins, and after the auction
+// winners still need to see what they owe.
 export default function SilentAuctionMe() {
   useDocTitle('Your bids')
   return <MyBidsPage />
 }
 
 function MyBidsPage() {
+  const ev = useAuctionEvent()
+  const paths = useAuctionPaths()
+  const CATALOG_PATH = paths.catalog
+  const MY_BIDS_PATH = paths.me
+  const REGISTER_PATH = paths.register
+  const itemPath = paths.item
+  const parent = { to: CATALOG_PATH, label: ev.name }
   const { token: param } = useParams()
   const navigate = useNavigate()
   const { remembered, token, page, error, reload, forget } = useMyPage(param)
   const now = useServerNow(page?.now)
   const [editing, setEditing] = useState(false)
-  const [cardSecret, setCardSecret] = useState<string | null>(null)
-  const [cardBusy, setCardBusy] = useState(false)
-  const [cardError, setCardError] = useState<string | null>(null)
+  const [cardOpen, setCardOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Opened from the private link: remember it here, then keep the address clean.
@@ -241,7 +255,7 @@ function MyBidsPage() {
       rememberBidder(page.bidder)
       navigate(MY_BIDS_PATH, { replace: true })
     }
-  }, [param, page, navigate])
+  }, [param, page, navigate, MY_BIDS_PATH])
 
   if (page === undefined) {
     return (
@@ -254,7 +268,7 @@ function MyBidsPage() {
   if (!page) {
     return (
       <>
-        <PageHero title="Your bids" parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} />
+        <PageHero title="Your bids" parent={parent} />
         <Section>
           <Card className="max-w-xl space-y-3">
             <p className="font-display text-lg font-extrabold text-ink">{token ? 'We can’t find that registration.' : 'You haven’t registered on this device.'}</p>
@@ -279,25 +293,14 @@ function MyBidsPage() {
   }
 
   const b = page.bidder
-  const pk = page.settings?.stripe_publishable_key ?? null
+  const settings = page.settings
+  const ready = cardPaymentsReady(settings)
   const privateLink = `${window.location.origin}${MY_BIDS_PATH}/${b.access_token}`
 
-  const changeCard = async () => {
-    setCardBusy(true)
-    setCardError(null)
-    try {
-      const r = await auctionApi.newCard(token)
-      setCardSecret(r.client_secret)
-    } catch (e) {
-      setCardError(errMessage(e))
-    } finally {
-      setCardBusy(false)
-    }
-  }
-  const cardSaved = async (setupIntentId: string) => {
-    const { bidder } = await auctionApi.cardSaved(token, setupIntentId)
+  const cardSaved = async (cardToken: string) => {
+    const { bidder } = await auctionApi.newCard(token, cardToken)
     rememberBidder(bidder)
-    setCardSecret(null)
+    setCardOpen(false)
     await reload()
   }
   const copyLink = async () => {
@@ -319,7 +322,7 @@ function MyBidsPage() {
 
   return (
     <>
-      <PageHero title="Your bids" parent={{ to: CATALOG_PATH, label: 'Silent Auction' }} subtitle={`Bidder #${b.bidder_no} · ${b.name}`} />
+      <PageHero title="Your bids" parent={parent} subtitle={`Bidder #${b.bidder_no} · ${b.name}`} />
       <Section>
         <div className="grid gap-8 lg:grid-cols-5">
           <div className="space-y-8 lg:col-span-3">
@@ -401,7 +404,7 @@ function MyBidsPage() {
                     )}
                   </p>
                   <p className="text-base text-slate-700">
-                    {b.fulfil === 'ship' ? <>Ship to {addressLine(b.address) || 'your address'}</> : 'Pick up at BunFest'}
+                    {b.fulfil === 'ship' ? <>Ship to {addressLine(b.address) || 'your address'}</> : ev.online ? 'Pick up from OHRR' : 'Pick up at BunFest'}
                     {b.fulfil === 'pickup' && page.settings?.pickup_note && <span className="block whitespace-pre-line text-slate-600">{page.settings.pickup_note}</span>}
                     {b.fulfil === 'ship' && page.settings?.shipping_note && <span className="block whitespace-pre-line text-slate-600">{page.settings.shipping_note}</span>}
                   </p>
@@ -414,21 +417,28 @@ function MyBidsPage() {
 
             <Card className="space-y-3">
               <h2 className="font-display text-xl font-extrabold text-ink">Card on file</h2>
-              <p className="text-base text-slate-700">{cardLine(b)}. Charged only if you win or use Buy Now.</p>
-              {cardSecret && pk ? (
+              <p className="text-base text-slate-700">{cardLine(b)}. Held by Square. Charged only if you win or use Buy Now.</p>
+              {cardOpen && ready ? (
                 <div className="space-y-2">
-                  <CardSetup publishableKey={pk} clientSecret={cardSecret} onSaved={cardSaved} buttonClassName={`${btn.orange} w-full disabled:opacity-60`} label="Save this card" />
-                  <button type="button" onClick={() => setCardSecret(null)} className={btn.outline}>
+                  <CardSetup
+                    applicationId={settings!.square_application_id!}
+                    locationId={settings!.square_location_id!}
+                    holder={() => ({ name: b.name, email: b.email, phone: b.phone ?? undefined, address: b.address })}
+                    onToken={cardSaved}
+                    buttonClassName={`${btn.orange} w-full disabled:opacity-60`}
+                    label="Save this card"
+                    busyLabel="Saving your card…"
+                  />
+                  <button type="button" onClick={() => setCardOpen(false)} className={btn.outline}>
                     Keep the old card
                   </button>
                 </div>
               ) : (
-                <button type="button" disabled={cardBusy || !pk} onClick={() => void changeCard()} className={`${btn.outline} no-print disabled:opacity-60`}>
-                  {cardBusy ? 'One moment…' : b.card_ready ? 'Change card' : 'Add a card'}
+                <button type="button" disabled={!ready} onClick={() => setCardOpen(true)} className={`${btn.outline} no-print disabled:opacity-60`}>
+                  {b.card_ready ? 'Change card' : 'Add a card'}
                 </button>
               )}
-              {!pk && <p className="text-base text-slate-600">Cards can be changed once online bidding is open.</p>}
-              <ErrorText>{cardError}</ErrorText>
+              {!ready && <p className="text-base text-slate-600">Cards can be changed once online bidding is open.</p>}
             </Card>
 
             <Card className="no-print space-y-3">
