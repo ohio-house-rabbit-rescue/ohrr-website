@@ -152,7 +152,7 @@ export const fmtRange = (a: string, b: string) => `${fmtTime(a)} – ${fmtTime(b
 export const dayKey = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: OHRR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
 export const durationLabel = (min: number) => (min % 60 === 0 ? `${min / 60} hour${min === 60 ? '' : 's'}` : min > 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} minutes`)
 export const statusLabel = (s: BookingStatus) =>
-  ({ requested: 'Waiting for OHRR to confirm', confirmed: 'Confirmed', cancelled: 'Cancelled', checked_in: 'Checked in', no_show: 'No show' })[s]
+  ({ requested: 'Waiting for OHRR to confirm', confirmed: 'Confirmed', cancelled: 'Canceled', checked_in: 'Checked in', no_show: 'No show' })[s]
 
 export async function getBookingType(slug: string): Promise<BookingType | null> {
   const { data, error } = await supabase.from('booking_types').select('*').eq('slug', slug).maybeSingle()

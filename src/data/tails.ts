@@ -1,11 +1,11 @@
-// Happy Tails, bundled: the status pill colours and the one EXAMPLE story the
-// site shows — labelled "Example" — until OHRR publishes the first real one;
+// Happy Tails, bundled: the status pill colors and the one EXAMPLE story the
+// site shows — labeled "Example" — until OHRR publishes the first real one;
 // then the live list replaces it automatically. The same example the app shows
 // (ohrr-app/src/data/tails.ts), with OHRR's own photo.
 import type { Tail, TailStatus } from '../lib/tails'
 import { ADOPTION_PHOTO } from './ohrrPhotos'
 
-// Status pill colours (the app's TAIL_STATUS.cls); the labels live in lib/tails.ts.
+// Status pill colors (the app's TAIL_STATUS.cls); the labels live in lib/tails.ts.
 export const TAIL_STATUS_CLASS: Record<TailStatus, string> = {
   looking: 'bg-brand-blue-50 text-brand-blue',
   'just-adopted': 'bg-brand-orange-50 text-brand-orange-dark',

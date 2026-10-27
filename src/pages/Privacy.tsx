@@ -220,7 +220,7 @@ export default function Privacy() {
             <li>your email choices: what, if anything, you'd like OHRR to email you about.</li>
           </UL>
           <P>
-            Only you can see what your account keeps. OHRR staff can't see your favourites, saved sessions or My
+            Only you can see what your account keeps. OHRR staff can't see your favorites, saved sessions or My
             Bunny; the only part they can see is the email list. To delete your account and everything it keeps, go
             to <strong>My account → Delete account</strong> in the app. That also takes you off the email list and
             deletes the My Bunny photos kept in your account.

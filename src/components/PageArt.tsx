@@ -7,7 +7,7 @@ import { useLocation } from 'react-router-dom'
 // same line weight. The drawings are
 // public/art/*.svg, the same files as the app's (ohrr-app/src/components/
 // PageArt.tsx). Each is a small SVG used as a CSS mask, so it takes the band's
-// colour (soft blue here, white in the app) and costs one ~0.3 KB file per
+// color (soft blue here, white in the app) and costs one ~0.3 KB file per
 // page. Decorative: hidden from screen readers, and never makes a band taller.
 
 export type ArtName =
@@ -47,7 +47,7 @@ export function usePageArt(): ArtName | null {
   return artForPath(useLocation().pathname)
 }
 
-/** Position it with `className` (absolute; the colour is `currentColor`). */
+/** Position it with `className` (absolute; the color is `currentColor`). */
 export function PageArt({
   name,
   className = '',

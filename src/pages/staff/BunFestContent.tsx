@@ -1,12 +1,12 @@
 // Staff → BunFest (website mirror of the app's): the festival's own content —
 // the education schedule, the vendor booths and the rescue directory. Typing a
-// programme in is easier on a keyboard, so this is the twin of the phone screen,
+// program in is easier on a keyboard, so this is the twin of the phone screen,
 // not a lesser version.
 //
 // Until now the education schedule, the vendor list, the rescue directory and
 // every activity page were bundled data — publishing this year's meant a code
 // change. The tabs here replace that, all keyed by year: Schedule (the
-// programme, including which track a talk is in), Pages (the Bunny Spa,
+// program, including which track a talk is in), Pages (the Bunny Spa,
 // Glamour Shots, the raffle, the host hotel — their prices, times and copy),
 // Vendors (the BunFest side of a company in the Hop Shop supplier list) and
 // Rescues. "Start next year" copies a whole year forward in one go.
@@ -135,7 +135,7 @@ export default function StaffBunfest() {
       <div className="pt-1">
         <h1 className="font-display text-2xl font-black text-ink">Midwest BunFest</h1>
         <p className="mt-1 text-sm text-slate-600">
-          The programme and speakers, the activity pages, the vendors and rescues, and the floor plan —
+          The program and speakers, the activity pages, the vendors and rescues, and the floor plan —
           what visitors see in the app and on the website.
         </p>
       </div>
@@ -262,7 +262,7 @@ function SessionsList({ orgId }: { orgId: string }) {
       {rows === null && !error && <Spinner />}
       {rows && rows.length === 0 && (
         <Card className="text-sm text-slate-600">
-          No sessions for {year} yet. Until one is published, visitors see the 2025 programme with a note that this
+          No sessions for {year} yet. Until one is published, visitors see the 2025 program with a note that this
           year’s is coming.
         </Card>
       )}
@@ -954,7 +954,7 @@ function PagesTab({ orgId }: { orgId: string }) {
 
 /**
  * Setting a new year up used to mean retyping everything. This copies the
- * programme, the festival cards, every activity page and both rosters into the
+ * program, the festival cards, every activity page and both rosters into the
  * new year, leaving anything already entered there untouched.
  */
 function StartNextYearCard({ orgId, onDone }: { orgId: string; onDone: () => Promise<void> }) {
@@ -996,7 +996,7 @@ function StartNextYearCard({ orgId, onDone }: { orgId: string; onDone: () => Pro
       <div>
         <h2 className="font-display text-[15px] font-extrabold text-ink">Start next year</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
-          Copies the programme, the festival cards, every page and both rosters into a new year, so
+          Copies the program, the festival cards, every page and both rosters into a new year, so
           you edit last year’s instead of starting from a blank screen. Nothing already in the new
           year is touched.
         </p>

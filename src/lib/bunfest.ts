@@ -1,5 +1,5 @@
 // Staff writes for the Midwest BunFest content (website mirror of the app's
-// src/features/bunfest/api.ts): the education programme, the
+// src/features/bunfest/api.ts): the education program, the
 // rescue directory, and the BunFest side of a company already in the supplier /
 // vendor list. See supabase/migrations/20260922120000_bunfest_content.sql.
 import { supabase } from './supabase'
@@ -91,7 +91,7 @@ export async function deleteSession(id: string): Promise<void> {
   if (error) throw error
 }
 
-/** Copy a year's programme into another year, as a starting point. */
+/** Copy a year's program into another year, as a starting point. */
 export async function copySessions(orgId: string, from: number, to: number): Promise<number> {
   const rows = await listSessions(orgId, from)
   if (rows.length === 0) return 0
@@ -281,7 +281,7 @@ export interface YearCopy {
 }
 
 /**
- * Copy a whole year of BunFest content into a new one — the programme, the
+ * Copy a whole year of BunFest content into a new one — the program, the
  * festival cards, every activity page and both rosters. Anything already in
  * the target year is left alone.
  */

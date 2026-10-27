@@ -949,7 +949,7 @@ function MemberCard({
       ) : showToggles ? (
         <div className="mt-2 space-y-2">
           {/* Update 30: you can only share tasks you have yourself. */}
-          {someNotMine && <p className="text-xs text-slate-500">Greyed out: {SHARE_HINT.toLowerCase()}</p>}
+          {someNotMine && <p className="text-xs text-slate-500">Grayed out: {SHARE_HINT.toLowerCase()}</p>}
           {AREAS.map(({ area, caps }) => (
             <div key={area}>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{area}</p>

@@ -1,5 +1,5 @@
 // Midwest BunFest Silent Auction — shared types, formatters and the photo
-// upload for the staff catalogue editor. The website's copy of the app's
+// upload for the staff catalog editor. The website's copy of the app's
 // src/features/raffle/types.ts and photoUpload.ts (keep them in sync). Rows
 // come straight from the `raffle_items` / `auction_settings` tables; the table
 // keeps its `raffle_items` name so both the app and this site read it.
@@ -259,7 +259,7 @@ const JPEG_QUALITY = 0.85
 type Drawable = ImageBitmap | HTMLImageElement
 
 async function loadDrawable(file: Blob): Promise<Drawable> {
-  // createImageBitmap honours the camera's EXIF orientation, so portrait shots
+  // createImageBitmap honors the camera's EXIF orientation, so portrait shots
   // come out upright. Older browsers fall back to an <img>.
   if (typeof createImageBitmap === 'function') {
     try {

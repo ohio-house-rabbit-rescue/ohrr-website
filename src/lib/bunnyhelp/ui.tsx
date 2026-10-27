@@ -152,7 +152,7 @@ export function NotReviewedLine({ topic }: { topic: CareTopic }) {
 const WARNING_SIGNS = [
   'Not eating, or no poops, for around 12 hours',
   'Lethargy, or hiding more than usual',
-  'Laboured or open-mouth breathing',
+  'Labored or open-mouth breathing',
   'Head tilt',
   'Bleeding',
   'Unable to move',

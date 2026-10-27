@@ -28,7 +28,7 @@ function Credits() {
   return (
     <details className="mt-12 text-xs text-slate-600">
       <summary className="cursor-pointer font-bold text-slate-600">Photo credits &amp; sources</summary>
-      <p className="mt-2">Breed facts follow each breed’s Wikipedia article and the ARBA recognised-breeds list (checked 2026-09-21). Photos are freely licensed Wikimedia Commons images:</p>
+      <p className="mt-2">Breed facts follow each breed’s Wikipedia article and the ARBA recognized-breeds list (checked 2026-09-21). Photos are freely licensed Wikimedia Commons images:</p>
       <ul className="mt-2 space-y-1">
         {BREED_PHOTO_CREDITS.map((c) => (
           <li key={c.slug}>
@@ -100,7 +100,7 @@ export function BreedGuide() {
           )}
         </div>
         {matches.length === 0 ? (
-          <p className="mt-4 text-slate-600">No recognised breed matches all three answers — which usually means a mix. Try “Not sure” on one of them.</p>
+          <p className="mt-4 text-slate-600">No recognized breed matches all three answers — which usually means a mix. Try “Not sure” on one of them.</p>
         ) : (
           <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
             {matches.map((b) => (
@@ -170,7 +170,7 @@ export function BreedDetail() {
             </div>
             {b.colours && (
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Colours</p>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Colors</p>
                 <p className="mt-1 text-base text-slate-700">{b.colours}</p>
               </div>
             )}

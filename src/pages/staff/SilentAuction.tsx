@@ -1,4 +1,4 @@
-// Staff → Silent Auction: the Midwest BunFest Silent Auction catalogue —
+// Staff → Silent Auction: the Midwest BunFest Silent Auction catalog —
 // desktop mirror of the app's StaffRaffle (gated on events.bunfest.manage; the
 // DB enforces it too). Same `raffle_items` and `auction_settings` tables and
 // the same `raffle-photos` bucket, so an item added here is on a phone at once.
@@ -9,7 +9,7 @@
 // staff have entered them; the ticket form itself is a feature switched on in
 // Staff → Features). The public catalog shows the intro line only, never the
 // times. Scanned items (Staff → Items) lists the same auction items by tag;
-// this page is the full catalogue editor.
+// this page is the full catalog editor.
 //
 // Update 45: the same page runs the OHRR Online Auction (?auction=online) —
 // its own items, one closing time, no raffle tickets or sessions. Cards are
@@ -1356,7 +1356,7 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
     await load()
   }
 
-  // Swap with the neighbour, then renumber every row whose position changed so
+  // Swap with the neighbor, then renumber every row whose position changed so
   // items that shared a sort_order (e.g. all 0) actually move.
   const move = async (id: string, dir: -1 | 1) => {
     const idx = items.findIndex((i) => i.id === id)
