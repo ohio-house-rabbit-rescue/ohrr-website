@@ -453,7 +453,8 @@ export async function labelsPdf(items: LabelItem[], size: LabelSize): Promise<Bl
     const key = JSON.stringify(items[i])
     const png = painted.get(key) ?? (await labelDataUrl(items[i], size, 203))
     painted.set(key, png)
-    doc.addImage(png, 'PNG', 0, 0, size.wIn, size.hIn)
+    // 'FAST' compresses the picture: a 4 × 6 label is ~3 MB a page without it.
+    doc.addImage(png, 'PNG', 0, 0, size.wIn, size.hIn, undefined, 'FAST')
   }
   return doc.output('blob')
 }

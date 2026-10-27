@@ -14,12 +14,9 @@ import { Icon } from '../../components/icons'
 import Scanner from '../../components/Scanner'
 import { boxName, isBoxCode, normalizeCode } from '../../lib/codes'
 import { KIND_META, listItems, type TaggedItem } from '../../lib/items'
-import { LABEL_SIZES, labelDataUrl, labelsPdf, type LabelItem } from '../../lib/labels'
+import { labelDataUrl, labelsPdf } from '../../lib/labels'
 import { PAGE_SIZE, filterRows, groupByDay, type ListRow } from '../../lib/labelList'
-import { boxByCode, deleteBox, markBoxesPrinted, packingListPdf, putInBox, saveBox, takeOutOfBox, type Box, type BoxPutResult } from '../../lib/boxes'
-
-/** Box labels are 4 × 6 in (OHRR, 2026-10-27). */
-const BOX_SIZE = LABEL_SIZES.find((s) => s.key === '4x6') ?? { key: '4x6', label: '4 × 6 in', wIn: 4, hIn: 6 }
+import { BOX_SIZE, boxByCode, boxLabel, deleteBox, markBoxesPrinted, packingListPdf, putInBox, saveBox, takeOutOfBox, type Box, type BoxPutResult } from '../../lib/boxes'
 
 interface LogLine {
   ok: boolean
@@ -32,10 +29,6 @@ interface PickRow extends ListRow {
 }
 
 const select = `${staffInput} !py-3 text-base`
-
-function boxLabel(box: Box): LabelItem {
-  return { code: box.code, title: boxName(box.code), box: { items: box.items.map((i) => ({ code: i.code, title: i.title })), location: box.location } }
-}
 
 /** What happened to one scanned or ticked item, in a sentence. */
 function resultLines(res: BoxPutResult, codes: string[]): LogLine[] {

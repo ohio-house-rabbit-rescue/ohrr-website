@@ -10,6 +10,8 @@
 //
 // Copy of ohrr-app src/features/scan/boxes.ts — keep in sync.
 import { supabase } from './supabase'
+import { boxName } from './codes'
+import { LABEL_SIZES, type LabelItem } from './labels'
 import type { ItemKind } from './items'
 
 export interface BoxItem {
@@ -40,6 +42,43 @@ export interface BoxPutResult {
   moved: { code: string; title: string; from: string }[]
   /** Codes that aren't any item. */
   not_found: string[]
+}
+
+/** Box labels are 4 × 6 in (OHRR, 2026-10-27). */
+export const BOX_SIZE = LABEL_SIZES.find((s) => s.key === '4x6') ?? { key: '4x6', label: '4 × 6 in', wIn: 4, hIn: 6 }
+
+export function boxLabel(box: Box): LabelItem {
+  return { code: box.code, title: boxName(box.code), box: { items: box.items.map((i) => ({ code: i.code, title: i.title })), location: box.location } }
+}
+
+/**
+ * The box being filled in "Receive into boxes" (Add a donation): every item
+ * added goes in it until "Box is full". Kept in this browser, across days, so
+ * a box half filled today carries on tomorrow.
+ */
+export interface PackingBox {
+  code: string
+  box_no: number
+}
+
+const PACKING_KEY = 'ohrr.catalog.box'
+
+export function loadPackingBox(): PackingBox | null {
+  try {
+    const b = JSON.parse(localStorage.getItem(PACKING_KEY) ?? 'null') as PackingBox | null
+    return b && typeof b.code === 'string' && typeof b.box_no === 'number' ? b : null
+  } catch {
+    return null
+  }
+}
+
+export function savePackingBox(b: PackingBox | null): void {
+  try {
+    if (b) localStorage.setItem(PACKING_KEY, JSON.stringify(b))
+    else localStorage.removeItem(PACKING_KEY)
+  } catch {
+    /* private mode */
+  }
 }
 
 export const NEEDS_46 = 'Boxes need database update 46 — it is in RUN-THIS-IN-SUPABASE.sql.'

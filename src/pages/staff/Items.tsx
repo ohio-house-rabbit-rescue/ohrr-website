@@ -21,6 +21,14 @@
 // DON-00042 label found with nothing on it keeps its number), and
 // /staff/items?code=X opens that item's edit panel. Photos can be dropped onto
 // Add a donation and the photo editor, as well as chosen.
+//
+// Receive into boxes (2026-10-27, /staff/items?add=1&box=1): for the backlog
+// of unrecorded donations. Start a box (the next number; write it on the box),
+// then every item added goes in it, its label printed as it's added. Box is
+// full, then the next box. Box labels wait on Boxes, to print all at once when
+// the 4 × 6 roll is in, and go over the number written on each box. The box
+// being filled is kept in this browser (boxes.ts), the app's Catalog does the
+// same with ?box=1.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
@@ -75,6 +83,7 @@ import {
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
 import { boxName, isDonationCode, normalizeCode } from '../../lib/codes'
+import { boxByCode, loadPackingBox, newBox, putInBox, savePackingBox, type PackingBox } from '../../lib/boxes'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { todayStamp, type SheetColumn, type SheetRow, type SheetSpec } from '../../lib/inventoryExport'
 import ExportButtons from './ExportButtons'
@@ -208,6 +217,9 @@ export default function Items() {
   const [params, setParams] = useSearchParams()
   const wantsAdd = params.get('add') === '1'
   const codeParam = params.get('code')
+  // ?add=1&box=1 (Receive into boxes): the same form, explaining boxes first.
+  const wantsBox = params.get('box') === '1'
+  const [boxMode, setBoxMode] = useState(false)
   const [focusAdd, setFocusAdd] = useState(0)
   const [addCode, setAddCode] = useState<string | null>(null)
   const [openCode, setOpenCode] = useState<string | null>(null)
@@ -239,6 +251,7 @@ export default function Items() {
     const code = codeParam ? normalizeCode(codeParam) : ''
     if (wantsAdd) {
       setAddCode(code || null)
+      setBoxMode(wantsBox)
       setFocusAdd((n) => n + 1)
     } else if (code) {
       setOpenCode(code)
@@ -248,11 +261,12 @@ export default function Items() {
         const next = new URLSearchParams(p)
         next.delete('add')
         next.delete('code')
+        next.delete('box')
         return next
       },
       { replace: true },
     )
-  }, [wantsAdd, codeParam, setParams])
+  }, [wantsAdd, wantsBox, codeParam, setParams])
 
   // ?code=X: once the list is in, open that item (or say nothing has the code).
   useEffect(() => {
@@ -444,6 +458,7 @@ export default function Items() {
           stockLink={canAddStock}
           focusRequest={focusAdd}
           presetCode={addCode}
+          wantsBoxes={boxMode}
           onCodeDone={() => setAddCode(null)}
           onAdded={(it) => {
             setItems((list) => [it, ...(list ?? [])])
@@ -1150,6 +1165,7 @@ function AddDonation({
   stockLink,
   focusRequest,
   presetCode,
+  wantsBoxes,
   onCodeDone,
   onAdded,
 }: {
@@ -1165,6 +1181,8 @@ function AddDonation({
    * to Hop Shop inventory — a donation gets the next DON number.
    */
   presetCode: string | null
+  /** Came from Receive into boxes (?box=1): explain boxes before one is started. */
+  wantsBoxes: boolean
   /** The preset is used, or not wanted: back to the next number each time. */
   onCodeDone: () => void
   onAdded: (it: TaggedItem) => void
@@ -1196,6 +1214,14 @@ function AddDonation({
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [last, setLast] = useState<TaggedItem | null>(null)
+  // Receive into boxes: the box being filled (kept in this browser), how many
+  // are in it, the one just said to be full, and where the last item went.
+  const [box, setBoxState] = useState<PackingBox | null>(() => loadPackingBox())
+  const [boxCount, setBoxCount] = useState<number | null>(null)
+  const [boxBusy, setBoxBusy] = useState(false)
+  const [boxError, setBoxError] = useState<string | null>(null)
+  const [fullBox, setFullBox] = useState<{ box: PackingBox; count: number | null } | null>(null)
+  const [lastBox, setLastBox] = useState<{ ok: boolean; text: string } | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const donorRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -1243,6 +1269,64 @@ function AddDonation({
       donorRef.current?.focus()
     }
   }, [current])
+
+  const setBox = (b: PackingBox | null) => {
+    setBoxState(b)
+    savePackingBox(b)
+  }
+
+  // The box this browser was filling: how many are in it, or let it go if it's gone.
+  useEffect(() => {
+    if (!orgId || !box) return
+    let alive = true
+    boxByCode(orgId, box.code)
+      .then((b) => {
+        if (!alive) return
+        if (b) setBoxCount(b.items.length)
+        else {
+          setBoxState(null)
+          savePackingBox(null)
+        }
+      })
+      .catch((e) => alive && setBoxError(errMessage(e)))
+    return () => {
+      alive = false
+    }
+  }, [orgId, box])
+
+  const startBox = async () => {
+    if (boxBusy) return
+    setBoxBusy(true)
+    setBoxError(null)
+    try {
+      const b = await newBox(orgId)
+      setBox({ code: b.code, box_no: b.box_no })
+      setBoxCount(0)
+      setFullBox(null)
+      setLastBox(null)
+      titleRef.current?.focus()
+    } catch (e) {
+      setBoxError(errMessage(e))
+    } finally {
+      setBoxBusy(false)
+    }
+  }
+
+  const boxIsFull = () => {
+    if (!box) return
+    setFullBox({ box, count: boxCount })
+    setBox(null)
+    setBoxCount(null)
+    setLastBox(null)
+  }
+
+  const reopenBox = () => {
+    if (!fullBox) return
+    setBox(fullBox.box)
+    setBoxCount(fullBox.count)
+    setFullBox(null)
+    titleRef.current?.focus()
+  }
 
   const rememberDonor = (name: string | null | undefined) => {
     const d = (name ?? '').trim()
@@ -1317,6 +1401,8 @@ function AddDonation({
     e.preventDefault()
     if (!title.trim() || busy) return
     setError(null)
+    // The box it goes in is the one being filled when Add was pressed.
+    const packing = box
     try {
       // A name or email typed but not started: start the drop-off now, so the
       // thank-you letter has this item on it.
@@ -1357,8 +1443,22 @@ function AddDonation({
       const skipped = { details_skipped: it.details_skipped, plan_skipped: it.plan_skipped }
       if (urls.length > 1) it = await setItemPhotos(orgId, it.code, urls)
       it = { ...it, ...skipped }
+      let into: { ok: boolean; text: string } | null = null
+      if (packing) {
+        setBusy(`Putting it in Box ${packing.box_no}…`)
+        try {
+          const r = await putInBox(orgId, packing.code, [it.code])
+          const n = r.box?.items.length ?? (boxCount ?? 0) + 1
+          setBoxCount(n)
+          it = { ...it, box: { code: packing.code, box_no: packing.box_no, location: r.box?.location ?? null } }
+          into = { ok: true, text: `In Box ${packing.box_no} · ${n} item${n === 1 ? '' : 's'} in it.` }
+        } catch (err) {
+          into = { ok: false, text: `It’s saved, but it didn’t go in Box ${packing.box_no}: ${errMessage(err)} Put it in from the box’s page.` }
+        }
+      }
       onAdded(it)
       setLast(it)
+      setLastBox(into)
       if (donationCode) onCodeDone()
       if (!d) rememberDonor(donor)
       // Who it's from, where it's headed and where it's kept stay: the next
@@ -1385,9 +1485,13 @@ function AddDonation({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="add-donation-heading" className="font-display text-lg font-extrabold text-ink">
-            Add a donation
+            {box || fullBox || wantsBoxes ? 'Receive into boxes' : 'Add a donation'}
           </h2>
-          <p className="mt-0.5 text-sm text-slate-600">Something given to OHRR. Name it and it gets the next DON number. Sort it later, or tick where it’s headed.</p>
+          <p className="mt-0.5 text-sm text-slate-600">
+            {box || fullBox || wantsBoxes
+              ? 'Add each item, print its label, and put it in the numbered box. It gets the next DON number.'
+              : 'Something given to OHRR. Name it and it gets the next DON number. Sort it later, or tick where it’s headed.'}
+          </p>
         </div>
         <Link to="/staff/dropoffs" className={`inline-flex min-h-11 items-center ${linkClass} text-sm`}>
           Drop-offs and thank-you letters
@@ -1414,6 +1518,79 @@ function AddDonation({
           </button>
         </p>
       )}
+
+      {/* Receive into boxes: the box being filled, one just full, or how it works */}
+      {box ? (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border-2 border-brand-orange bg-brand-orange-50 px-4 py-3">
+          <span className="inline-flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-white text-brand-orange-ink">
+            <span className="text-[11px] font-extrabold uppercase leading-none">Box</span>
+            <span className="font-display text-xl font-black leading-tight">{box.box_no}</span>
+          </span>
+          <span className="min-w-0 flex-1 text-base text-slate-800">
+            <span className="block font-display text-lg font-extrabold text-ink">Filling Box {box.box_no}</span>
+            Write {box.box_no} on the box.
+            {boxCount != null && ` ${boxCount} item${boxCount === 1 ? '' : 's'} in it.`}{' '}
+            <Link to={`/staff/boxes/${box.code}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
+              See what’s in it
+            </Link>
+          </span>
+          <button type="button" onClick={boxIsFull} disabled={!!busy} className={`${btn.outline} disabled:opacity-60`}>
+            <Icon name="box" size={16} /> Box is full
+          </button>
+        </div>
+      ) : fullBox ? (
+        <div className="mt-3 rounded-xl border-2 border-brand-orange bg-brand-orange-50 px-4 py-3" role="status">
+          <p className="font-display text-lg font-extrabold text-ink">
+            Box {fullBox.box.box_no} is full
+            {fullBox.count != null && (
+              <span className="font-sans text-base font-semibold text-slate-700">
+                {' '}
+                · {fullBox.count} item{fullBox.count === 1 ? '' : 's'} in it
+              </span>
+            )}
+          </p>
+          <p className="mt-1 text-base text-slate-700">
+            Its label waits on{' '}
+            <Link to="/staff/boxes" className={linkClass}>
+              Boxes
+            </Link>{' '}
+            until the sorting is done. Then put the 4 × 6 roll in the printer, print all the waiting box labels at once, and stick each one over the number
+            written on its box.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => void startBox()} disabled={boxBusy} className={`${btn.orange} disabled:opacity-60`}>
+              <Icon name="box" size={16} /> {boxBusy ? 'Starting the box…' : 'Start the next box'}
+            </button>
+            <Link to="/staff/boxes" className={btn.outline}>
+              I’m done for now
+            </Link>
+            <button type="button" onClick={reopenBox} className="min-h-11 px-2 font-bold text-brand-blue">
+              Not full yet
+            </button>
+          </div>
+        </div>
+      ) : wantsBoxes ? (
+        <div className="mt-3 rounded-xl border-2 border-brand-orange bg-brand-orange-50 px-4 py-3">
+          <p className="text-base font-bold text-ink">How it works</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5 text-base text-slate-800">
+            <li>Start a box — it gets the next number. Write the number on the box.</li>
+            <li>For each item: name it, Add, print its label, put it in the box.</li>
+            <li>Press Box is full, and start the next box.</li>
+            <li>When the sorting is done, put the 4 × 6 roll in the printer and print all the box labels from Boxes. Stick each one over the number.</li>
+          </ol>
+          <button type="button" onClick={() => void startBox()} disabled={boxBusy} className={`${btn.orange} mt-3 disabled:opacity-60`}>
+            <Icon name="box" size={16} /> {boxBusy ? 'Starting…' : 'Start a box'}
+          </button>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-slate-600">
+          Packing them into boxes as you go?{' '}
+          <button type="button" onClick={() => void startBox()} disabled={boxBusy} className="min-h-11 px-1 font-bold text-brand-blue">
+            {boxBusy ? 'Starting…' : 'Start a box'}
+          </button>
+        </p>
+      )}
+      {boxError && <p className="mt-2 text-base font-semibold text-red-600">{boxError}</p>}
 
       {/* Who is it from (a drop-off) */}
       <fieldset className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -1592,20 +1769,38 @@ function AddDonation({
         <button type="submit" disabled={!!busy || !title.trim()} className={`${btn.orange} min-w-32 disabled:opacity-60`}>
           {busy ?? 'Add'}
         </button>
+        {box && <span className="text-sm font-semibold text-slate-700">It goes in Box {box.box_no}.</span>}
         {current && <span className="text-sm text-slate-600">It goes on {dropoffName(current)}.</span>}
       </div>
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
         <div className="mt-3 space-y-2" role="status">
           <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
-            Added <strong>{last.title}</strong> as <span className="font-mono font-bold tracking-widest">{last.code}</span>.{' '}
-            <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
-              Print its label →
-            </Link>
+            Added <strong>{last.title}</strong> as <span className="font-mono font-bold tracking-widest">{last.code}</span>.
+            {last.donated_by && ` Gift of ${last.donated_by}.`}{' '}
+            {lastBox ? (
+              <span className={`block font-semibold ${lastBox.ok ? 'text-ink' : 'text-amber-900'}`}>{lastBox.text}</span>
+            ) : (
+              <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
+                Print its label →
+              </Link>
+            )}
             {extrasSummary(last) && <span className="block text-sm text-slate-700">{extrasSummary(last)}</span>}
           </p>
           {last.details_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_39_ADD_NOTE}</p>}
           {last.plan_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_40_ADD_NOTE}</p>}
+          {lastBox && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className={btn.blue}>
+                <Icon name="printer" size={16} /> Print this label
+              </Link>
+              {box && (
+                <button type="button" onClick={boxIsFull} className={btn.outline}>
+                  <Icon name="box" size={16} /> Box is full
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </form>
