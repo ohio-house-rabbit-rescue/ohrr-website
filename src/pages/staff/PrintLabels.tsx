@@ -79,7 +79,7 @@ function itemRow(i: TaggedItem): Row {
     key: i.tag_id,
     code: i.code,
     title: i.title,
-    sub: `${i.donated_by ? `From ${i.donated_by} · ` : ''}${KIND_META[i.kind].label}`,
+    sub: `${i.donated_by ? `Gift of ${i.donated_by} · ` : ''}${KIND_META[i.kind].label}`,
     spoken: `${i.title}${i.donated_by ? `, from ${i.donated_by}` : ''}`,
     photo_url: i.photo_url,
     icon: KIND_META[i.kind].icon,

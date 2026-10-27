@@ -74,7 +74,7 @@ import {
   type TaggedItem,
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
-import { isDonationCode, normalizeCode } from '../../lib/codes'
+import { boxName, isDonationCode, normalizeCode } from '../../lib/codes'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { todayStamp, type SheetColumn, type SheetRow, type SheetSpec } from '../../lib/inventoryExport'
 import ExportButtons from './ExportButtons'
@@ -421,6 +421,9 @@ export default function Items() {
           <Link to="/staff/items/labels" className={btn.blue}>
             <Icon name="printer" size={16} /> Print labels
           </Link>
+          <Link to="/staff/boxes" className={btn.outline}>
+            <Icon name="box" size={16} /> Boxes
+          </Link>
           {canDonations && (
             <>
               <Link to="/staff/dropoffs" className={btn.outline}>
@@ -613,6 +616,7 @@ export default function Items() {
                     {it.kind !== 'stock' && it.donated_by ? ` · from ${it.donated_by}` : ''}
                     {!donation && it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
                     {donation && it.received_on ? ` · received ${shortDate(it.received_on)}` : ''}
+                    {it.box ? ` · in ${boxName(it.box.code)}${it.box.location ? ` (${it.box.location})` : ''}` : ''}
                   </p>
                   {extras && <p className="text-sm font-semibold text-slate-700">{extras}</p>}
                   {!donation && it.contents && it.contents.length > 0 && <BasketContents item={it} />}

@@ -19,14 +19,14 @@
 // its own (React.lazy in App.tsx), and ZXing only when the camera or a photo
 // needs it, so the site's main bundle doesn't grow.
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
 import { useStaff } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
 import Scanner from '../../components/Scanner'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
-import { isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
+import { boxName, isBoxCode, isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
 import { KIND_META, extrasSummary, findByCode, itemPhotos, money, statusLabel, type TaggedItem } from '../../lib/items'
 import { PhotoUnreadable, readCodeFromImage } from '../../lib/readCode'
 
@@ -65,6 +65,7 @@ export default function ScanItem() {
   // Only the newest look-up may show (a scanner can be quicker than the network).
   const ticket = useRef(0)
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const backToBox = () => {
     const el = inputRef.current
@@ -84,6 +85,12 @@ export default function ScanItem() {
         setResult(null)
         setError('That isn’t an OHRR number or a barcode. Check it and try again — a donation’s number looks like DON-00042, a Hop Shop SKU like HAY-101-001.')
         setSaid('That isn’t an OHRR number or a barcode.')
+        return
+      }
+      // A box label opens the box (update 46).
+      if (isBoxCode(code)) {
+        ticket.current++
+        navigate(`/staff/boxes/${code}`)
         return
       }
       const mine = ++ticket.current
@@ -110,7 +117,7 @@ export default function ScanItem() {
         }
       }
     },
-    [orgId],
+    [orgId, navigate],
   )
 
   // /staff/scan?code=DON-00042 looks it up straight away (then the code leaves the address).
@@ -309,7 +316,7 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
   const cover = itemPhotos(item)[0]
   const extras = extrasSummary(item)
   const worth = item.kind === 'stock' ? (item.price_cents != null ? `${money(item.price_cents)} each` : '') : item.value_cents != null && item.kind !== 'donation' ? `Worth ${money(item.value_cents)}` : ''
-  const fromLine = [item.donated_by ? `From ${item.donated_by}` : '', worth].filter(Boolean).join(' · ')
+  const fromLine = [item.donated_by ? `Gift of ${item.donated_by}` : '', worth].filter(Boolean).join(' · ')
   const where = item.kind === 'stock' ? 'Hop Shop inventory' : 'Items'
   return (
     <section aria-labelledby="found-h" className="mt-5 rounded-2xl border-2 border-brand-blue/30 bg-white p-4 shadow-sm">
@@ -334,6 +341,15 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
           </p>
           {fromLine && <p className="text-base text-slate-600">{fromLine}</p>}
           {extras && <p className="text-base font-semibold text-slate-700">{extras}</p>}
+          {item.box && (
+            <p className="text-base font-semibold text-slate-700">
+              In{' '}
+              <Link to={`/staff/boxes/${item.box.code}`} className={linkClass}>
+                {boxName(item.box.code)}
+              </Link>
+              {item.box.location ? ` · ${item.box.location}` : ''}
+            </p>
+          )}
           <p className="font-mono text-base font-bold tracking-widest text-slate-500">{item.code}</p>
         </div>
       </div>

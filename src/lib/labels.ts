@@ -8,11 +8,16 @@
 // laptop (any label printer driver) or as a PDF with one label per page. Tall
 // labels (3 in and up) get the photo too.
 //
+// A box of items prints a box label instead (update 46): the same QR and
+// barcode, "BOX 12" in big type, where it's kept, and the names of the items
+// inside, one per line — "+ 6 more — scan for the full list" when they don't
+// all fit.
+//
 // Website differences: the tiny canvas helpers (loadImage, ensureFonts) are
 // inlined here; the QR opens the APP's /t/CODE page (lib/codes.ts tagUrl).
 import QRCode from 'qrcode'
 import JsBarcode from 'jsbarcode'
-import { tagUrl } from './codes'
+import { boxName, tagUrl } from './codes'
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -123,6 +128,15 @@ export interface LabelItem {
   shop?: boolean
   /** Printed on a shop label when given (leave out for a label without a price). */
   price_cents?: number | null
+  /** A box label (update 46): the code is the box's BOX-00012. */
+  box?: BoxLabel | null
+}
+
+export interface BoxLabel {
+  /** The items inside, in the order they went in: each line is "DON-00001  Stuffed bunny". */
+  items: { code: string; title: string }[]
+  /** Where the box is kept. */
+  location?: string | null
 }
 
 export const priceText = (cents: number) => `$${(cents / 100).toFixed(2)}`
@@ -204,6 +218,7 @@ function barcodeImage(code: string, heightPx: number): HTMLCanvasElement {
 export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, size: LabelSize, dpi = LABEL_DPI): Promise<void> {
   const W = Math.round(size.wIn * dpi)
   const H = Math.round(size.hIn * dpi)
+  if (item.box) return renderBoxLabel(canvas, item, item.box, size, dpi)
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
@@ -273,7 +288,7 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
     y += Math.round(pricePx * 1.1)
   }
 
-  const meta = (item.shop ? [] : [item.donated_by ? `From ${item.donated_by}` : null, item.kindLabel ?? null]).filter(Boolean) as string[]
+  const meta = (item.shop ? [] : [item.donated_by ? `Gift of ${item.donated_by}` : null, item.kindLabel ?? null]).filter(Boolean) as string[]
   const metaPx = Math.min(smallSize, Math.round(title.px * 0.82))
   ctx.fillStyle = '#334155'
   ctx.font = `600 ${metaPx}px "Open Sans"`
@@ -299,6 +314,125 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
   ctx.textAlign = 'center'
   ctx.fillText(item.code, W / 2, bandTop + barH + Math.round(codeSize * 0.15))
   ctx.textAlign = 'left'
+}
+
+/**
+ * The box label: QR on the left; the rescue, BOX and the number, where it's
+ * kept and how many items to its right; the barcode and code across the
+ * label; then the items inside, one per line — the item's code, then its name
+ * ("DON-00001  Stuffed bunny"; OHRR's pick 2026-10-27). The lines shrink to
+ * fit, then go in two columns, and only then end in "+ N more".
+ */
+async function renderBoxLabel(canvas: HTMLCanvasElement, item: LabelItem, box: BoxLabel, size: LabelSize, dpi: number): Promise<void> {
+  const W = Math.round(size.wIn * dpi)
+  const H = Math.round(size.hIn * dpi)
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, W, H)
+  await ensureFonts(['800 40px "Nunito"', '900 80px "Nunito"', '600 40px "Open Sans"', '700 40px "Open Sans"'])
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'left'
+
+  const m = Math.round(0.08 * dpi)
+  const short = Math.min(W, H)
+  let top = m
+
+  // Top: QR, and the box's name beside it.
+  const qrSide = Math.round(Math.min(short * 0.36, H * 0.3, 1.6 * dpi))
+  const qr = await QRCode.toDataURL(tagUrl(item.code), { errorCorrectionLevel: 'M', margin: 0, width: 600 }).then(loadImage)
+  if (qr) ctx.drawImage(qr, m, top, qrSide, qrSide)
+  const tx = m + qrSide + m
+  const tw = W - tx - m
+  let y = top
+  ctx.fillStyle = '#0f172a'
+  const brand = fitBlock(ctx, 'OHIO HOUSE RABBIT RESCUE', tw, 1, Math.round(Math.max(0.08 * dpi, qrSide * 0.09)), (px) => `800 ${px}px "Nunito"`)
+  ctx.fillText(brand.lines[0], tx, y)
+  y += Math.round(brand.px * 1.3)
+  const name = boxName(item.code).toUpperCase()
+  let namePx = Math.round(qrSide * 0.42)
+  ctx.font = `900 ${namePx}px "Nunito"`
+  while (namePx > 14 && ctx.measureText(name).width > tw) {
+    namePx -= 2
+    ctx.font = `900 ${namePx}px "Nunito"`
+  }
+  ctx.fillText(name, tx, y)
+  y += Math.round(namePx * 1.05)
+  const infoPx = Math.round(Math.max(0.08 * dpi, qrSide * 0.1))
+  ctx.font = `600 ${infoPx}px "Open Sans"`
+  const count = `${box.items.length} item${box.items.length === 1 ? '' : 's'}`
+  for (const line of [box.location ? box.location : null, count].filter(Boolean) as string[]) {
+    if (y + infoPx > top + qrSide) break
+    ctx.fillText(ellipsize(ctx, line, tw), tx, y)
+    y += Math.round(infoPx * 1.3)
+  }
+  top += qrSide + m
+
+  // The barcode across the label, the code under it.
+  const barH = Math.round(Math.min(Math.max(0.3 * dpi, H * 0.07), 0.6 * dpi))
+  const bar = barcodeImage(item.code, barH)
+  const barW = Math.min(W - 2 * m, Math.round(bar.width * (barH / bar.height)))
+  ctx.drawImage(bar, Math.round((W - barW) / 2), top, barW, barH)
+  top += barH + Math.round(m / 3)
+  const codePx = Math.round(Math.max(0.09 * dpi, infoPx))
+  ctx.font = `900 ${codePx}px "Courier New", monospace`
+  ctx.textAlign = 'center'
+  ctx.fillText(item.code, W / 2, top)
+  ctx.textAlign = 'left'
+  top += Math.round(codePx * 1.2) + Math.round(m / 2)
+
+  // A rule, then the items: code, then name.
+  ctx.fillRect(m, top, W - 2 * m, Math.max(2, Math.round(dpi / 100)))
+  top += m
+  const bottom = H - m
+  const room = bottom - top
+  if (room < 0.12 * dpi) return
+  const rows = box.items.map((it) => ({ code: it.code, title: it.title.trim() || 'Untitled' }))
+  const maxPx = Math.round(Math.min(0.2 * dpi, short * 0.06))
+  const minPx = Math.round(0.085 * dpi)
+  if (rows.length === 0) {
+    ctx.font = `600 ${maxPx}px "Open Sans"`
+    ctx.fillStyle = '#0f172a'
+    ctx.fillText(ellipsize(ctx, '(empty — scan items into this box)', W - 2 * m), m, top)
+    return
+  }
+  const fits = (px: number, cols: number) => Math.floor(room / Math.round(px * 1.25)) * cols >= rows.length
+  let px = maxPx
+  let cols = 1
+  while (px > minPx && !fits(px, 1)) px -= 1
+  if (!fits(px, 1) && W >= 2.5 * dpi) {
+    cols = 2
+    px = maxPx
+    while (px > minPx && !fits(px, 2)) px -= 1
+  }
+  const lineH = Math.round(px * 1.25)
+  const perCol = Math.max(1, Math.floor(room / lineH))
+  const capacity = perCol * cols
+  const shown = rows.length > capacity ? rows.slice(0, capacity - 1) : rows
+  const more = rows.length - shown.length
+  const gap = m
+  const colW = Math.floor((W - 2 * m - gap * (cols - 1)) / cols)
+  ctx.fillStyle = '#0f172a'
+  // The names line up after the widest code.
+  const codeFont = `900 ${px}px "Courier New", monospace`
+  ctx.font = codeFont
+  const codeW = Math.min(Math.round(colW * 0.6), Math.max(...shown.map((r) => ctx.measureText(r.code).width)))
+  const nameX = Math.round(codeW + px * 0.6)
+  shown.forEach((r, i) => {
+    const x = m + Math.floor(i / perCol) * (colW + gap)
+    const ly = top + (i % perCol) * lineH
+    ctx.font = codeFont
+    ctx.fillText(ellipsize(ctx, r.code, codeW), x, ly)
+    ctx.font = `600 ${px}px "Open Sans"`
+    ctx.fillText(ellipsize(ctx, r.title, colW - nameX), x + nameX, ly)
+  })
+  if (more > 0) {
+    const i = shown.length
+    ctx.font = `800 ${px}px "Nunito"`
+    const line = cols === 1 ? `+ ${more} more — scan for the full list` : `+ ${more} more (scan the box)`
+    ctx.fillText(ellipsize(ctx, line, colW), m + Math.floor(i / perCol) * (colW + gap), top + (i % perCol) * lineH)
+  }
 }
 
 /** One label as a PNG data URL (for previews and the print page). */
