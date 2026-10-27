@@ -110,6 +110,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
     { to: '/staff/dropoffs', title: 'Drop-offs and thank-yous', hint: 'Who gave what, the letter', icon: 'mail', group: 'items', show: canItems },
     { to: '/staff/donations/report', title: 'Monthly donations report', hint: 'Totals, by donor, a spreadsheet', icon: 'file', group: 'items', show: canItems },
     { to: '/staff/items/labels', title: 'Print labels', hint: 'Codes for items, any label size', icon: 'printer', group: 'items', show: canItems },
+    { to: '/staff/boxes', title: 'Boxes', hint: 'Pack items in a numbered box, its label and list', icon: 'box', group: 'items', show: canItems },
     { to: '/staff/scan', title: 'Scan an item', hint: 'See, change or sort a labeled item', icon: 'scan', group: 'items', today: true, show: canItems },
 
     // Rabbits and care

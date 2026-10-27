@@ -83,6 +83,8 @@ export interface TaggedItem {
   contents?: { code: string | null; title: string; quantity: number; size: string | null; donated_by: string | null; value_total_cents: number | null }[] | null
   /** Client only: headed for / size / use-by / drop-off couldn't be saved yet (update 40 not run). */
   plan_skipped?: boolean
+  /** The box it's packed in (update 46; missing before it). */
+  box?: { code: string; box_no: number; location: string | null } | null
   created_at: string
   updated_at?: string
 }
