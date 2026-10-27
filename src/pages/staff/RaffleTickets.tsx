@@ -7,6 +7,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { formatPrice } from '../../lib/format'
+import { StaffTitle } from '../../components/StaffTitle'
 
 const EVENT_SLUG = 'midwest-bunfest-2026'
 
@@ -160,10 +161,11 @@ export default function RaffleTicketsDesk() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Raffle tickets</h1>
-      <p className="mt-1 max-w-2xl text-sm text-slate-600">
-        Numbered tickets reserved in the app and paid at the raffle table; tickets sold at the table; the draw. Prices come from the app’s Silent Auction → Auction setup; prizes from Scan an item.
-      </p>
+      <StaffTitle title="Raffle tickets" flow={['Reserved', 'Paid at the table', 'Draw']}>
+        <p className="max-w-2xl">
+          Numbered tickets reserved in the app and paid at the raffle table; tickets sold at the table; the draw. Prices come from the app’s Silent Auction → Auction setup; prizes from Scan an item.
+        </p>
+      </StaffTitle>
       {summary && (
         <div className="mt-5 grid max-w-xl grid-cols-4 gap-3 text-center">
           {[

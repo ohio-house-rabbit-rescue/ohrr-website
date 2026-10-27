@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { isMissingFunction, isMissingTable } from '../../lib/emailList'
 
 interface RabbitRow {
@@ -386,11 +387,12 @@ export default function ManageRabbits() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Adoptable rabbits</h1>
-        {canCreate && !creating && <button onClick={() => setCreating(true)} className={btn.orange}>Add a rabbit</button>}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">These show on the website's Adopt page and the app.</p>
+      <StaffTitle
+        title="Adoptable rabbits"
+        actions={canCreate && !creating && <button onClick={() => setCreating(true)} className={btn.orange}>Add a rabbit</button>}
+      >
+        <p>These show on the website's Adopt page and the app.</p>
+      </StaffTitle>
       {orgId && <RescueGroupsCheck orgId={orgId} canRequest={canCreate || canEdit} onChecked={load} />}
 
       {creating && (

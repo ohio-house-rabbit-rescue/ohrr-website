@@ -23,6 +23,7 @@ import { useStaff, staffInput, Spinner, canSwitchFeatures } from '../../lib/staf
 import { useFeature } from '../../lib/settings'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import {
   AUCTION_PRICE_COLUMNS,
   AUCTION_SESSIONS,
@@ -1180,10 +1181,12 @@ function BiddingPanel({ orgId, settings, onSaved }: { orgId: string; settings: A
                 <input className={staffInput} type="number" inputMode="decimal" min="0.01" step="0.01" value={step} onChange={(e) => setStep(e.target.value)} />
               </label>
             </div>
-            <p className="text-xs leading-relaxed text-slate-500">
-              A bid in the last few minutes pushes that item’s close out by the same number of minutes (0 switches this off). Items close at
-              {ev.online ? ' the auction’s closing time' : ' their session’s time'}, set in Auction setup.
-            </p>
+            <Explain label="About going once">
+              <p>
+                A bid in the last few minutes pushes that item’s close out by the same number of minutes (0 switches this off). Items close at
+                {ev.online ? ' the auction’s closing time' : ' their session’s time'}, set in Auction setup.
+              </p>
+            </Explain>
             <label className="flex items-start gap-3 text-base font-semibold text-slate-700">
               <input type="checkbox" className="mt-0.5 h-6 w-6 rounded border-slate-300 accent-brand-blue" checked={autoCharge} onChange={(e) => setAutoCharge(e.target.checked)} />
               <span>
@@ -1402,14 +1405,13 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
         ))}
       </div>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">{ev.online ? settings?.title || ev.name : 'Silent Auction'}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
+        <StaffTitle title={ev.online ? settings?.title || ev.name : 'Silent Auction'}>
+          <p className="max-w-2xl">
             {ev.online
               ? 'Items appear at /auction in the app and on this website while they’re published and the Online Auction is switched on.'
               : 'Items appear in the BunFest app and on this website’s Silent Auction page while they’re published. Mark items won as the day goes.'}
           </p>
-        </div>
+        </StaffTitle>
         {!creating && (
           <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
             <Icon name="award" size={16} className="mr-1.5" /> Add an item

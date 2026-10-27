@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, Spinner, parseLevel, levelLabel, shortDate } from '../../lib/staff'
 import { Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import type { Json } from '../../lib/settings'
 
 interface Entry {
@@ -113,10 +114,9 @@ export default function Activity() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-display text-2xl font-black text-ink">Activity</h1>
-        <p className="mt-1 text-sm text-slate-600">A record of staff and permission changes — who did what, and when. The latest 100 entries.</p>
-      </div>
+      <StaffTitle title="Activity">
+        <p>A record of staff and permission changes — who did what, and when. The latest 100 entries.</p>
+      </StaffTitle>
 
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
 

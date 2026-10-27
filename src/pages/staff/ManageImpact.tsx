@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { IMPACT_FIELDS, type ImpactYear } from '../Impact'
 
 type Draft = { fields: Record<string, string>; highlights: string; note: string; is_published: boolean }
@@ -77,8 +78,9 @@ export default function ManageImpact() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Impact numbers</h1>
-      <p className="mt-1 text-sm text-slate-600">The year in numbers, for donors, sponsors and volunteers. Shown at /impact on the website and the app once published.</p>
+      <StaffTitle title="Impact numbers">
+        <p>The year in numbers, for donors, sponsors and volunteers. Shown at /impact on the website and the app once published.</p>
+      </StaffTitle>
       <div className="mt-5 flex flex-wrap gap-2">
         {years.map((y) => {
           const has = rows?.find((r) => r.year === y)

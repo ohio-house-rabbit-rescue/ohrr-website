@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import type { OrgProfile } from '../../lib/orgProfile'
 
 const BLANK: OrgProfile = {
@@ -90,13 +91,12 @@ export default function OrgDetails() {
 
   return (
     <form onSubmit={save} className="max-w-3xl space-y-5">
-      <div>
-        <h1 className="font-display text-2xl font-black text-ink">OHRR details</h1>
-        <p className="mt-1 text-sm text-slate-600">
+      <StaffTitle title="OHRR details">
+        <p>
           Shown wherever the app, this website or the BunFest site mentions the rescue. A change shows the next time a page is
           opened. Anything left blank uses the details built into the site.
         </p>
-      </div>
+      </StaffTitle>
 
       <Card className="space-y-3">
         <label className={label}>

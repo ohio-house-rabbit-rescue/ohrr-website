@@ -9,6 +9,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { labelDataUrl, labelsPdf } from '../../lib/labels'
 import { BOX_SIZE, boxLabel, listBoxes, markBoxesPrinted, newBox, type Box } from '../../lib/boxes'
 
@@ -84,11 +85,12 @@ export default function Boxes() {
         <Link to="/staff/items" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
           <Icon name="arrowLeft" size={16} /> Items
         </Link>
-        <h1 className="mt-1 font-display text-2xl font-black text-ink">Boxes</h1>
-        <p className="mt-1 text-base text-slate-600">
-          Numbered boxes and what’s in them. Receive into boxes adds new items straight into a box; an empty box is for items that already have labels — scan
-          them in. Scanning a box label opens the full list.
-        </p>
+        <StaffTitle title="Boxes">
+          <p>
+            Numbered boxes and what’s in them. Receive into boxes adds new items straight into a box; an empty box is for items that already have labels — scan
+            them in. Scanning a box label opens the full list.
+          </p>
+        </StaffTitle>
 
         {waiting.length > 0 && <WaitingLabels orgId={orgId} boxes={waiting} setPrintImgs={setPrintImgs} onPrinted={() => setReload((n) => n + 1)} />}
 

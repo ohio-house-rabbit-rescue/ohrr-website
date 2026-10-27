@@ -19,6 +19,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner, shortDate } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { isOhrrCode, isRetailBarcode, normalizeCode, skuParts } from '../../lib/codes'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { copyText } from '../../lib/share/share'
@@ -220,13 +221,11 @@ export default function HopShop() {
 
   return (
     <Screen className="space-y-4">
-      <div className="pt-1">
-        <h1 className="font-display text-2xl font-black text-ink">Hop Shop inventory</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {readOnly
-            ? 'View-only — ask an owner or admin for edit access.'
-            : 'Stock, prices and photos go live on the shelf as you save. Set a reorder point and the Reorder tab tells you what to buy.'}
-        </p>
+      <div>
+        <StaffTitle title="Hop Shop inventory">
+          {!readOnly && <p>Stock, prices and photos go live on the shelf as you save. Set a reorder point and the Reorder tab tells you what to buy.</p>}
+        </StaffTitle>
+        {readOnly && <p className="mt-1 text-sm text-slate-600">View-only — ask an owner or admin for edit access.</p>}
       </div>
       <div className="flex gap-2">
         {TABS.map(([t, label]) => (
@@ -1652,11 +1651,13 @@ function Suppliers({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
-        One list for every company OHRR deals with. Tick <strong>We buy from them</strong> for anyone we buy from and{' '}
-        <strong>Sells at our events</strong> for anyone with a table at BunFest or another event — some are both. Everything on a company’s
-        card is for the team only.
-      </p>
+      <Explain label="About companies">
+        <p>
+          One list for every company OHRR deals with. Tick <strong>We buy from them</strong> for anyone we buy from and{' '}
+          <strong>Sells at our events</strong> for anyone with a table at BunFest or another event — some are both. Everything on a company’s
+          card is for the team only.
+        </p>
+      </Explain>
       <div className="flex gap-2">
         {(
           [

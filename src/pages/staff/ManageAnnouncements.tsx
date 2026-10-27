@@ -4,6 +4,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { isMissingImageColumn } from '../../lib/data'
 import { uploadSiteImage } from '../../lib/images'
 import { btn } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 
 interface Ann {
   id: string
@@ -232,13 +233,16 @@ export default function ManageAnnouncements() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Announcements</h1>
-        {!creating && (
-          <button onClick={() => setCreating(true)} className={btn.orange}>New announcement</button>
-        )}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">These show on the website home and the app. Add a photo — people look at images first.</p>
+      <StaffTitle
+        title="Announcements"
+        actions={
+          !creating && (
+            <button onClick={() => setCreating(true)} className={btn.orange}>New announcement</button>
+          )
+        }
+      >
+        <p>These show on the website home and the app. Add a photo — people look at images first.</p>
+      </StaffTitle>
       {!imagesSupported && <p className="mt-2 text-sm font-semibold text-amber-600">{IMAGE_COLUMN_NOTE}</p>}
 
       {creating && (

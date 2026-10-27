@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { guessSortName, sortGuardians, type Guardian } from '../../lib/guardians'
 
 export default function Guardians() {
@@ -139,15 +140,18 @@ export default function Guardians() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Rescue Rabbit Guardians</h1>
-      <p className="mt-1 max-w-3xl text-sm text-slate-600">
-        The Legacy Fund thank-you list: people who have made a planned gift or given $1,000 or more in a calendar year. The
-        newest year is shown by name on{' '}
-        <Link to="/info/legacy-fund#guardians" className="font-semibold text-brand-blue underline underline-offset-2">
-          the Legacy Fund page
-        </Link>
-        , earlier years underneath. Write each name the way the family wants it. Leave off anyone who asked not to be listed.
-      </p>
+      <StaffTitle title="Rescue Rabbit Guardians">
+        <p className="max-w-3xl">
+          The Legacy Fund thank-you list: people who have made a planned gift or given $1,000 or more in a calendar year. The
+          newest year is shown by name on{' '}
+          <Link to="/info/legacy-fund#guardians" className="font-semibold text-brand-blue underline underline-offset-2">
+            the Legacy Fund page
+          </Link>
+          , earlier years underneath.
+        </p>
+      </StaffTitle>
+      {/* Kept in view, not folded: it is a privacy rule to follow while typing names. */}
+      <p className="mt-2 max-w-3xl text-sm text-slate-600">Write each name the way the family wants it. Leave off anyone who asked not to be listed.</p>
 
       {missing && (
         <Card className="mt-5 border-amber-200 bg-amber-50">

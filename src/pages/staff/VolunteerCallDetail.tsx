@@ -16,6 +16,7 @@ import { useStaff, Spinner, staffInput } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { renderCard, canvasToBlob } from '../../lib/share/render'
 import { copyText, savePng } from '../../lib/share/share'
 import { printPng, renderFlyer } from '../../lib/share/flyerCanvas'
@@ -93,8 +94,9 @@ export default function VolunteerCallDetail() {
           <Link to="/staff/calls" className="inline-flex items-center gap-1 text-sm font-bold text-brand-blue">
             <Icon name="arrowLeft" size={15} /> All calls
           </Link>
-          <h1 className="mt-1 font-display text-3xl font-black text-ink">{id === 'new' ? 'A new volunteer call' : 'Edit the call'}</h1>
-          <p className="mt-1 text-sm text-slate-600">Say what you need once — the shifts, the posts, the emails and the letters all come from it.</p>
+          <StaffTitle title={id === 'new' ? 'A new volunteer call' : 'Edit the call'}>
+            <p>Say what you need once — the shifts, the posts, the emails and the letters all come from it.</p>
+          </StaffTitle>
         </div>
         <VolunteerCallEditor
           orgId={orgId}
@@ -366,9 +368,9 @@ function ShareTab({ call, org }: { call: Call; org: OrgBits }) {
   return (
     <div className="space-y-3">
       <Card className="grid gap-3 sm:grid-cols-[1.4fr_1fr] sm:items-end">
-        <p className="text-sm leading-relaxed text-slate-600">
-          Each one has its own link, so “Sign-ups” shows which worked. Posts and texts open the app; emails, letters and flyers open the website.
-        </p>
+        <Explain label="About the links">
+          <p>Each one has its own link, so “Sign-ups” shows which worked. Posts and texts open the app; emails, letters and flyers open the website.</p>
+        </Explain>
         <label className="block text-sm font-semibold text-slate-700">
           Sending an email or letter? Who to (optional)
           <input className={staffInput} value={to} onChange={(e) => setTo(e.target.value)} placeholder="Upper Arlington Scout Troop 12" />
@@ -494,9 +496,11 @@ function DayTab({ call, roster, reload }: { call: Call; roster: RosterLine[]; re
 
   return (
     <div className="space-y-3">
-      <p className="text-sm leading-relaxed text-slate-600">
-        Click <strong>Here</strong> as people arrive. Being here for a shift counts the whole shift — no clocking in or out. Anyone who turns up without signing up can be added to their shift.
-      </p>
+      <Explain label="How check-in works">
+        <p>
+          Click <strong>Here</strong> as people arrive. Being here for a shift counts the whole shift — no clocking in or out. Anyone who turns up without signing up can be added to their shift.
+        </p>
+      </Explain>
       <FormError>{error}</FormError>
       <div className="grid gap-3 lg:grid-cols-2">
         {(call.shifts ?? []).map((s) => {
@@ -629,9 +633,9 @@ function ThanksTab({ call, org, orgId }: { call: Call; org: OrgBits; orgId: stri
         <p className="font-display text-lg font-extrabold text-ink">
           {thanked} of {people.length} thanked
         </p>
-        <p className="text-sm leading-relaxed text-slate-600">
-          Each thank-you gives their hours here, this year and in all, and links to their own hours page. Send it by email or text, then tick it off.
-        </p>
+        <Explain label="About the thank-yous" className="mt-1">
+          <p>Each thank-you gives their hours here, this year and in all, and links to their own hours page. Send it by email or text, then tick it off.</p>
+        </Explain>
       </div>
       <FormError>{error}</FormError>
       <div className="grid gap-3 lg:grid-cols-2">

@@ -3,6 +3,7 @@ import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { slideVisual } from '../../data/heroSlides'
 
 // Home-page hero slides + featured cards (shared `hero_slides` table — the app's home
@@ -307,13 +308,12 @@ export default function ManageHero() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Homepage features</h1>
-      </div>
-      <p className="mt-1 text-sm text-slate-600">
-        The picture cards under “What’s happening at OHRR” on the website’s home page, and the big and featured cards on the app’s
-        home screen. Until you add any, each shows the built-in defaults.
-      </p>
+      <StaffTitle title="Homepage features">
+        <p>
+          The picture cards under “What’s happening at OHRR” on the website’s home page, and the big and featured cards on the app’s
+          home screen. Until you add any, each shows the built-in defaults.
+        </p>
+      </StaffTitle>
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
 

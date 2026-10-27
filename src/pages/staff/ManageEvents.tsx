@@ -9,6 +9,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { uploadSiteImage } from '../../lib/images'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { sampleEvents } from '../../data/events'
 
@@ -509,18 +510,21 @@ export default function ManageEvents() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Events</h1>
-        {!creating && (
-          <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
-            New event
-          </button>
-        )}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">
-        Shown on the website's Events page and the app's Events screen. The BunFest pages read their date, venue and
-        theme from the <code>midwest-bunfest-2026</code> record.
-      </p>
+      <StaffTitle
+        title="Events"
+        actions={
+          !creating && (
+            <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
+              New event
+            </button>
+          )
+        }
+      >
+        <p>
+          Shown on the website's Events page and the app's Events screen. The BunFest pages read their date, venue and
+          theme from the <code>midwest-bunfest-2026</code> record.
+        </p>
+      </StaffTitle>
 
       {creating && (
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

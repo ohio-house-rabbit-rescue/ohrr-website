@@ -10,6 +10,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { listSuppliers, money, type Supplier } from '../../lib/hopshop'
 import { dayText, deliveryDetail, deliveryLabelsLink, invoiceFileUrl, listDeliveries, undoDelivery, type Delivery } from '../../lib/deliveries'
 
@@ -61,15 +62,16 @@ function DeliveryList() {
         <Link to="/staff/hopshop/reorder" className="inline-flex min-h-11 items-center gap-1 text-base font-bold text-brand-blue">
           <Icon name="arrowLeft" size={20} /> Hop Shop inventory
         </Link>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="font-display text-2xl font-black text-ink">Deliveries</h1>
-            <p className="mt-1 text-base text-slate-600">Every invoice added to stock, with what it cost and what the shipping was.</p>
-          </div>
-          <Link to={`/staff/hopshop/deliveries/new${supplier ? `?supplier=${supplier}` : ''}`} className={`${btn.orange} w-full sm:w-auto`}>
-            <Icon name="plus" size={18} /> Add a delivery
-          </Link>
-        </div>
+        <StaffTitle
+          title="Deliveries"
+          actions={
+            <Link to={`/staff/hopshop/deliveries/new${supplier ? `?supplier=${supplier}` : ''}`} className={btn.orange}>
+              <Icon name="plus" size={18} /> Add a delivery
+            </Link>
+          }
+        >
+          <p>Every invoice added to stock, with what it cost and what the shipping was.</p>
+        </StaffTitle>
       </div>
       <label className="block max-w-sm text-sm font-semibold text-slate-700">
         Supplier

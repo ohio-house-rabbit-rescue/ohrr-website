@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { Explain } from '../../components/StaffTitle'
 import { Spinner, staffInput } from '../../lib/staff'
 import { deletePresenter, listPresenters, savePresenter, type PresenterRow } from '../../lib/bunfest'
 
@@ -44,10 +45,12 @@ export default function StaffSpeakers({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-3">
-      <Card className="text-sm leading-relaxed text-slate-600">
-        Everyone who gives a talk. Pick them on each session so the schedule links to their bio; the
-        Speakers page lists whoever has a talk this year.
-      </Card>
+      <Explain label="About speakers">
+        <p>
+          Everyone who gives a talk. Pick them on each session so the schedule links to their bio; the
+          Speakers page lists whoever has a talk this year.
+        </p>
+      </Explain>
       <FormError>{error}</FormError>
       {rows === null && !error && <Spinner />}
 

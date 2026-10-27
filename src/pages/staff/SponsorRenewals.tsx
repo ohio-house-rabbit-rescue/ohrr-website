@@ -15,6 +15,7 @@ import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, SponsorLogo } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { SPONSOR_TIERS, TIER_LABEL } from '../../lib/constants'
 import type { SponsorTier } from '../../lib/types'
 
@@ -551,11 +552,15 @@ export default function SponsorRenewals() {
           ← Sponsors &amp; partners
         </Link>
       </p>
-      <h1 className="mt-1 font-display text-2xl font-black text-ink">Sponsor renewals</h1>
-      <p className="mt-1 max-w-3xl text-base text-slate-600">
-        Sponsorships end on their own on their end date. This is who to ask about continuing, soonest first — with
-        those that ended in the last {ENDED_DAYS} days, in case they'd still like to.
-      </p>
+      {/* The "How it works" button is left off the printout. */}
+      <div className="mt-1 print:[&_button]:hidden">
+        <StaffTitle title="Sponsor renewals">
+          <p className="max-w-3xl">
+            Sponsorships end on their own on their end date. This is who to ask about continuing, soonest first — with
+            those that ended in the last {ENDED_DAYS} days, in case they'd still like to.
+          </p>
+        </StaffTitle>
+      </div>
       <p className="print-only mt-1 text-sm">
         {windowLabel} · printed {fmt(todayIso(), 'long')}
       </p>

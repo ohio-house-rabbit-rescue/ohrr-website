@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 
 interface Article {
   id: string
@@ -197,11 +198,12 @@ export default function ManageCare() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Care guides &amp; pages</h1>
-        {!creating && <button onClick={() => setCreating(true)} className={btn.orange}>New guide</button>}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">The Rabbit Care articles in Learn, plus the Give / Adopt / About pages — on the website and the app.</p>
+      <StaffTitle
+        title="Care guides &amp; pages"
+        actions={!creating && <button onClick={() => setCreating(true)} className={btn.orange}>New guide</button>}
+      >
+        <p>The Rabbit Care articles in Learn, plus the Give / Adopt / About pages — on the website and the app.</p>
+      </StaffTitle>
 
       {creating && (
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

@@ -11,6 +11,7 @@ import { errMessage, supabase } from '../../lib/supabase'
 import { uploadSiteImage } from '../../lib/images'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { setEmailWith, useEmailWith, type EmailWith } from '../../lib/emailWith'
 
 interface Profile {
@@ -52,7 +53,7 @@ export default function MyAccount() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-display text-2xl font-black text-ink">My account</h1>
+      <StaffTitle title="My account" />
       <p className="mt-1 text-sm text-slate-600">
         Signed in as <strong>{user.email}</strong>.
       </p>
@@ -71,7 +72,7 @@ export default function MyAccount() {
           <PasswordForm />
         </Part>
 
-        <Part title="Sending email" blurb="On a computer, the email buttons can open a new Gmail message in this browser, all filled in — nothing to set up on the computer.">
+        <Part title="Sending email">
           <SendingEmail />
         </Part>
 
@@ -121,6 +122,9 @@ function SendingEmail() {
   const current = useEmailWith()
   return (
     <>
+      <Explain label="About sending email" className="mb-3">
+        <p>On a computer, the email buttons can open a new Gmail message in this browser, all filled in — nothing to set up on the computer.</p>
+      </Explain>
       <div className="grid grid-cols-3 gap-2">
         {EMAIL_WITH.map((o) => (
           <button

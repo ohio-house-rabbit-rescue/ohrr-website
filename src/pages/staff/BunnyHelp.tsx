@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { SEED_TOPICS } from '../../lib/bunnyhelp/seedTopics'
 import {
   CATEGORIES,
@@ -417,18 +418,21 @@ export default function BunnyHelp() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Bunny Help topics</h1>
-        {!creating && (
-          <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
-            New topic
-          </button>
-        )}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">
-        What the “My bunny is…” search answers with — on the website (/help) and in the app’s My Bunny. Health topics
-        should only say “call a rabbit-savvy vet”.
-      </p>
+      <StaffTitle
+        title="Bunny Help topics"
+        actions={
+          !creating && (
+            <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
+              New topic
+            </button>
+          )
+        }
+      >
+        <p>
+          What the “My bunny is…” search answers with — on the website (/help) and in the app’s My Bunny. Health topics
+          should only say “call a rabbit-savvy vet”.
+        </p>
+      </StaffTitle>
 
       {needsReview > 0 && (
         <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">

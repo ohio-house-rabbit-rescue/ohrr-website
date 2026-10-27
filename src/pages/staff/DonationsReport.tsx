@@ -8,6 +8,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { Explain } from '../../components/StaffTitle'
 import { exportCsv } from '../../lib/exportFile'
 import { NEEDS_40, donationsReceived, isNeeds40, money, usDate, type DonationLine } from '../../lib/items'
 import {
@@ -127,9 +128,11 @@ export default function DonationsReport() {
         <div>
           <h1 className="font-display text-2xl font-black text-ink">Donations report</h1>
           <p className="mt-1 text-lg font-bold text-slate-700">{label}</p>
-          <p className="no-print mt-1 max-w-2xl text-sm text-slate-600">
-            Everything received in the month: how much, from whom, and where it is now. A lot split later counts once in the totals.
-          </p>
+          <Explain label="About this report" className="no-print mt-1">
+            <p className="max-w-2xl">
+              Everything received in the month: how much, from whom, and where it is now. A lot split later counts once in the totals.
+            </p>
+          </Explain>
         </div>
         <div className="no-print flex flex-wrap gap-2">
           <button type="button" onClick={() => window.print()} disabled={!lines} className={`${btn.orange} disabled:opacity-60`}>

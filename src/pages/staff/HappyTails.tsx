@@ -9,6 +9,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { uploadItemPhoto } from '../../lib/hopshop'
 import { deleteTail, listTails, saveTail, TAIL_STATUS_LABEL, type TailRow, type TailStatus } from '../../lib/tails'
 import { exampleTail } from '../../data/tails'
@@ -47,13 +48,12 @@ export default function StaffTails() {
 
   return (
     <Screen className="space-y-4">
-      <div className="pt-1">
-        <h1 className="font-display text-2xl font-black text-ink">Happy Tails</h1>
-        <p className="mt-1 text-sm text-slate-600">
+      <StaffTitle title="Happy Tails">
+        <p>
           Adoption stories on the app and the website. Most come in through the Inbox — publish one there, then edit it
           here.
         </p>
-      </div>
+      </StaffTitle>
 
       <FormError>{error}</FormError>
       {rows === null && !error && <Spinner />}
@@ -145,14 +145,16 @@ function ExampleNote() {
           <span className="mt-1 inline-block text-sm font-bold text-brand-blue">See the example as visitors see it →</span>
         </span>
       </Link>
-      <p className="text-sm leading-relaxed text-slate-600">
-        A real story has the same parts: a photo, the bunny’s name, how they’re doing, a one-line summary for the card
-        and the story itself. Adopters send theirs from{' '}
-        <Link to="/tails/share" className="font-bold text-brand-blue">
-          Share your bunny’s story
-        </Link>{' '}
-        on the Happy Tails page; it arrives in the Inbox, where you publish it.
-      </p>
+      <Explain label="What a real story has">
+        <p>
+          A real story has the same parts: a photo, the bunny’s name, how they’re doing, a one-line summary for the card
+          and the story itself. Adopters send theirs from{' '}
+          <Link to="/tails/share" className="font-bold text-brand-blue">
+            Share your bunny’s story
+          </Link>{' '}
+          on the Happy Tails page; it arrives in the Inbox, where you publish it.
+        </p>
+      </Explain>
     </Card>
   )
 }

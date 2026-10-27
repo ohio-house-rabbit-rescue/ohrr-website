@@ -11,6 +11,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { Explain } from '../../components/StaffTitle'
 import Scanner from '../../components/Scanner'
 import { boxName, isBoxCode, normalizeCode } from '../../lib/codes'
 import { KIND_META, listItems, type TaggedItem } from '../../lib/items'
@@ -481,10 +482,12 @@ export default function BoxDetail() {
                   {note}
                 </p>
               )}
-              <p className="mt-3 text-sm text-slate-600">
-                {box.label_printed_at ? 'The label has been printed. ' : ''}
-                In the print dialog choose the label printer and a 4 × 6 in label; margins are zero. The label lists the names; scanning it opens this page with everything in the box.
-              </p>
+              {box.label_printed_at && <p className="mt-3 text-sm text-slate-600">The label has been printed.</p>}
+              <Explain label="Printing tips" className="mt-3">
+                <p>
+                  In the print dialog choose the label printer and a 4 × 6 in label; margins are zero. The label lists the names; scanning it opens this page with everything in the box.
+                </p>
+              </Explain>
             </div>
             <button type="button" onClick={() => void removeBox()} disabled={!!busy} className="min-h-11 text-sm font-bold text-red-700">
               Delete this box

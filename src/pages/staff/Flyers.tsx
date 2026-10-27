@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { btn, Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { OHRR } from '../../lib/constants'
 import { utm } from '../../lib/share/templates'
 
@@ -78,10 +79,11 @@ export default function Flyers() {
   return (
     <>
       <div className="print:hidden">
-        <h1 className="font-display text-2xl font-black text-ink">Flyers</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">
-          Letter-size posters with a QR code. Pick one, print it (or save as PDF), pin it where the audience is. Each flyer has its own link so the analytics show which ones work.
-        </p>
+        <StaffTitle title="Flyers" flow={['Pick one', 'Print it', 'Pin it up']}>
+          <p className="max-w-2xl">
+            Letter-size posters with a QR code. Pick one, print it (or save as PDF), pin it where the audience is. Each flyer has its own link so the analytics show which ones work.
+          </p>
+        </StaffTitle>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FLYERS.map((f) => (
             <button key={f.id} type="button" onClick={() => setPick(f)} className={`rounded-2xl border-2 p-4 text-left ${pick.id === f.id ? 'border-brand-orange bg-white shadow-md' : 'border-black/5 bg-white'}`}>

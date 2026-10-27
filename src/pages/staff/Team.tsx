@@ -46,6 +46,7 @@ import {
 } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 
 interface Member {
   id: string
@@ -163,9 +164,8 @@ const LEVEL_GROUPS: { title: string; levels: StaffLevel[] }[] = [
 function HowAccessWorks() {
   const blurbOf = (l: StaffLevel) => LEVELS.find((x) => x.value === l)?.blurb ?? ''
   return (
-    <details className="mt-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-      <summary className="cursor-pointer font-display text-base font-extrabold text-ink">How access works</summary>
-      <div className="mt-3 space-y-3 text-sm leading-relaxed text-slate-700">
+    <Explain label="How access works" className="mt-4">
+      <div className="space-y-3">
         <ul className="space-y-1.5">
           {LEVEL_GROUPS.map((g) => {
             // Admin 1–3 share one line; the volunteers each have their own.
@@ -204,7 +204,7 @@ function HowAccessWorks() {
           check-in, editing — need one.
         </p>
       </div>
-    </details>
+    </Explain>
   )
 }
 
@@ -1264,11 +1264,12 @@ export default function Team() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Team</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Invite staff and control what each person can do. Changes take effect immediately and are logged — across both the website and the app.
-        {levels ? ' You can change people below your own level (founders and developers can change anyone), but not yourself.' : ''}
-      </p>
+      <StaffTitle title="Team">
+        <p>
+          Invite staff and control what each person can do. Changes take effect immediately and are logged — across both the website and the app.
+          {levels ? ' You can change people below your own level (founders and developers can change anyone), but not yourself.' : ''}
+        </p>
+      </StaffTitle>
 
       <HowAccessWorks />
 

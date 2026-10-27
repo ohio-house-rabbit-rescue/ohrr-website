@@ -10,6 +10,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { copyText } from '../../lib/share/share'
 import { NEEDS_40, dropoffDetail, isNeeds40, listDropoffs, money, setDropoffThanked, updateDropoff, usDate, type DonationLine, type Dropoff } from '../../lib/items'
 import { LETTER_SUBJECT, letterMailto, letterText, lineCode, whereNow } from '../../lib/donations'
@@ -97,22 +98,24 @@ export default function Dropoffs() {
       <Link to="/staff/items" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
         <Icon name="arrowLeft" size={16} /> Items
       </Link>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Drop-offs</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Who gave what, and when. Open one to change the details, see where each thing is now, and send the thank-you letter.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/staff/items?add=1" className={btn.orange}>
-            <Icon name="plus" size={16} /> Receive items
-          </Link>
-          <Link to="/staff/donations/report" className={btn.outline}>
-            <Icon name="book" size={16} /> Donations report
-          </Link>
-        </div>
-      </div>
+      <StaffTitle
+        title="Drop-offs"
+        flow={['Receive', 'Open it', 'Send the letter', 'Mark thanked']}
+        actions={
+          <>
+            <Link to="/staff/items?add=1" className={btn.orange}>
+              <Icon name="plus" size={16} /> Receive items
+            </Link>
+            <Link to="/staff/donations/report" className={btn.outline}>
+              <Icon name="book" size={16} /> Donations report
+            </Link>
+          </>
+        }
+      >
+        <p className="max-w-2xl">
+          Who gave what, and when. Open one to change the details, see where each thing is now, and send the thank-you letter.
+        </p>
+      </StaffTitle>
 
       {missing ? (
         <Needs40 />

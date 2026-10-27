@@ -7,6 +7,7 @@ import { useStaff, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { fmtClock, fmtDay } from '../../lib/volunteers/calls'
 import { callRoster, listCalls, type CallRow } from '../../lib/volunteers/callsApi'
 import VolunteerCallDetail from './VolunteerCallDetail'
@@ -63,11 +64,12 @@ export default function VolunteerCalls() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="max-w-2xl">
-          <h1 className="font-display text-3xl font-black text-ink">Volunteer calls</h1>
-          <p className="mt-1 text-sm leading-relaxed text-slate-600">
-            Put out a need once — “5 people for 2-hour shifts at BunFest” — and it makes the shifts, writes the posts, texts, emails, letters and flyers, takes the sign-ups, and helps you thank
-            everyone afterwards.
-          </p>
+          <StaffTitle title="Volunteer calls" flow={['Put out a call', 'Share it', 'Sign-ups', 'Thank everyone']}>
+            <p className="leading-relaxed">
+              Put out a need once — “5 people for 2-hour shifts at BunFest” — and it makes the shifts, writes the posts, texts, emails, letters and flyers, takes the sign-ups, and helps you thank
+              everyone afterwards.
+            </p>
+          </StaffTitle>
         </div>
         <Link to="/staff/calls/new" className={btn.orange}>
           <Icon name="plus" size={16} className="mr-1.5" /> Put out a new call

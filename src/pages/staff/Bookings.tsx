@@ -7,6 +7,7 @@ import { errMessage } from '../../lib/supabase'
 import { bccMailto, exportCsv, toCsv } from '../../lib/exportFile'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import {
   dayKey,
   deleteSlot,
@@ -86,10 +87,9 @@ export default function StaffBookings() {
 
   return (
     <Screen className="space-y-4">
-      <div className="pt-1">
-        <h1 className="font-display text-2xl font-black text-ink">Bookings</h1>
-        <p className="mt-1 text-sm text-slate-600">Shifts and appointments people book on the website and in the app. Public pages: /book/&lt;slug&gt;.</p>
-      </div>
+      <StaffTitle title="Bookings">
+        <p>Shifts and appointments people book on the website and in the app. Public pages: /book/&lt;slug&gt;.</p>
+      </StaffTitle>
       <div className="flex max-w-lg gap-2">
         {(
           [

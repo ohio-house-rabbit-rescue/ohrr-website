@@ -14,6 +14,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card, ext } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { toCsv, exportCsv } from '../../lib/exportFile'
 import {
   auctionApi,
@@ -519,22 +520,23 @@ function Desk() {
           </Link>
         ))}
       </div>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Auction desk</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Who is high on every item, who has won, who has paid, and what still has to be handed over or shipped. Prices and the bidding switch
-            are under{' '}
-            <Link to={setupLink} className="font-bold text-brand-blue">
-              {ev.online ? 'Online Auction' : 'Silent auction'}
-            </Link>
-            .
-          </p>
-        </div>
-        <button type="button" onClick={download} disabled={!desk || desk.items.every((i) => !i.sale)} className={`${btn.outline} disabled:opacity-60`}>
-          Download sales (CSV)
-        </button>
-      </div>
+      <StaffTitle
+        title="Auction desk"
+        actions={
+          <button type="button" onClick={download} disabled={!desk || desk.items.every((i) => !i.sale)} className={`${btn.outline} disabled:opacity-60`}>
+            Download sales (CSV)
+          </button>
+        }
+      >
+        <p className="max-w-2xl">
+          Who is high on every item, who has won, who has paid, and what still has to be handed over or shipped. Prices and the bidding switch
+          are under{' '}
+          <Link to={setupLink} className="font-bold text-brand-blue">
+            {ev.online ? 'Online Auction' : 'Silent auction'}
+          </Link>
+          .
+        </p>
+      </StaffTitle>
 
       {notReady && (
         <Card className="mt-5 border-brand-orange/40 bg-brand-orange-50">

@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { Explain } from '../../components/StaffTitle'
 import { Spinner, staffInput } from '../../lib/staff'
 import { listSuppliers, type Supplier } from '../../lib/hopshop'
 import { listPartners, listTables, loadVenue, setTables, venueYears, type PartnerRow, type TableHolderRef, type TableRecord } from '../../lib/bunfest'
@@ -234,11 +235,13 @@ export default function StaffFloor({ orgId }: { orgId: string }) {
           <Card className="space-y-3">
             <div>
               <h2 className="font-display text-[15px] font-extrabold text-ink">Who sits where</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                Type a stand’s table numbers — <strong>7</strong>, or <strong>7, 8</strong>, or <strong>7-9</strong> —
-                and press Save. The map below fills in straight away. Tables side by side show as one
-                stand, with the name once.
-              </p>
+              <Explain label="How to give out tables" className="mt-1">
+                <p>
+                  Type a stand’s table numbers — <strong>7</strong>, or <strong>7, 8</strong>, or <strong>7-9</strong> —
+                  and press Save. The map below fills in straight away. Tables side by side show as one
+                  stand, with the name once.
+                </p>
+              </Explain>
             </div>
             <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
               <Icon name="search" size={16} className="shrink-0 text-slate-400" />

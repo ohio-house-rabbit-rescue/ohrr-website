@@ -8,6 +8,7 @@ import { publishHappyTail, TAIL_STATUS_LABEL, type TailStatus } from '../../lib/
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { kindLabel } from '../../lib/volunteers/approval'
 
 type Status = 'new' | 'in_progress' | 'done' | 'archived'
@@ -117,10 +118,9 @@ export default function Inbox() {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Inbox</h1>
-          <p className="mt-1 text-sm text-slate-600">Requests and sign-ups from the website and the app. Mailing-list joins can be exported as a CSV for your email service.</p>
-        </div>
+        <StaffTitle title="Inbox">
+          <p>Requests and sign-ups from the website and the app. Mailing-list joins can be exported as a CSV for your email service.</p>
+        </StaffTitle>
         <button type="button" onClick={exportCsv} disabled={shown.length === 0} className={`${btn.outline} disabled:opacity-50`}>
           Export what’s shown (CSV)
         </button>

@@ -12,6 +12,7 @@ import { errMessage } from '../../lib/supabase'
 import { useRabbits, useEvents } from '../../lib/data'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { EDUCATION_CARDS, HASHTAGS, customPost, educationPost, eventPost, rabbitPost, suggestedEducation, type CardFormat, type CardPost } from '../../lib/share/templates'
 import { canvasToBlob, renderCard } from '../../lib/share/render'
 import { canShareFiles, copyText, savePng, sharePng } from '../../lib/share/share'
@@ -86,12 +87,11 @@ export default function Posts() {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Posts</h1>
-          <p className="mt-1 text-sm text-slate-600">
+        <StaffTitle title="Posts" flow={['Write', 'Approve', 'Release']}>
+          <p>
             Build posts here and send them for approval. Someone other than the writer approves them, then {canPublish ? 'you release them' : 'the person with posting rights releases them'} — usually from the phone, where Instagram, Facebook and TikTok are.
           </p>
-        </div>
+        </StaffTitle>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -568,8 +568,10 @@ function Composer({ post, orgId, userId, onBack, onQueued }: { post: CardPost; o
           </button>
         </div>
         {msg && <p className="text-sm font-semibold text-slate-600">{msg}</p>}
-        <p className="text-xs text-slate-500">Either way it goes into the post queue. Someone other than you approves it before it’s posted.</p>
-        <p className="text-xs text-slate-500">The phone app has a one-tap Share button for these; from a computer, save the image and paste the caption into the platform.</p>
+        <Explain label="What happens next">
+          <p>Either way it goes into the post queue. Someone other than you approves it before it’s posted.</p>
+          <p>The phone app has a one-tap Share button for these; from a computer, save the image and paste the caption into the platform.</p>
+        </Explain>
       </div>
     </div>
   )

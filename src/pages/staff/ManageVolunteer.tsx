@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { LIMIT_KINDS, OPP_CATEGORIES, categoryLabel, remainingLabel } from '../../lib/volunteerOpps'
 
 interface Opp {
@@ -257,11 +258,12 @@ export default function ManageVolunteer() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Volunteer opportunities</h1>
-        {!creating && <button onClick={() => setCreating(true)} className={btn.orange}>New opportunity</button>}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">Socialization shifts, vet-transport runs, and event help — these show on the website Volunteer page and the app.</p>
+      <StaffTitle
+        title="Volunteer opportunities"
+        actions={!creating && <button onClick={() => setCreating(true)} className={btn.orange}>New opportunity</button>}
+      >
+        <p>Socialization shifts, vet-transport runs, and event help — these show on the website Volunteer page and the app.</p>
+      </StaffTitle>
 
       {creating && (
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

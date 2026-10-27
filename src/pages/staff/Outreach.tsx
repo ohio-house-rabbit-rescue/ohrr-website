@@ -6,6 +6,7 @@ import { useStaff, staffInput } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { OUTREACH, fillLetter, mailtoFor, type OutreachLetter } from '../../lib/share/outreach'
 import { copyText } from '../../lib/share/share'
+import { StaffTitle } from '../../components/StaffTitle'
 
 const SENDER_KEY = 'ohrr.outreach.sender'
 
@@ -41,10 +42,11 @@ export default function Outreach() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Outreach letters</h1>
-      <p className="mt-1 max-w-2xl text-sm text-slate-600">
-        Ready-to-send emails that put OHRR in front of the people it is missing. Pick who you are writing to, add your name, open it in your mail program. Pair the campus, vet and store letters with a printed flyer.
-      </p>
+      <StaffTitle title="Outreach letters" flow={['Pick who', 'Add your name', 'Open in Mail']}>
+        <p className="max-w-2xl">
+          Ready-to-send emails that put OHRR in front of the people it is missing. Pick who you are writing to, add your name, open it in your mail program. Pair the campus, vet and store letters with a printed flyer.
+        </p>
+      </StaffTitle>
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="space-y-2">
           {OUTREACH.map((l) => (

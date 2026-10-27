@@ -47,6 +47,7 @@ import { useStaff, staffInput, Spinner, shortDate, todayOhio } from '../../lib/s
 import { uploadItemPhoto } from '../../lib/hopshop'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain, FlowStrip } from '../../components/StaffTitle'
 import {
   CATEGORY_IDEAS,
   CONDITIONS,
@@ -221,6 +222,12 @@ const smallBtn =
   'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-brand-blue disabled:opacity-60'
 
 const linkClass = 'font-bold text-brand-blue underline-offset-2 hover:underline'
+
+// One line under the title: how an item moves through OHRR.
+const ITEMS_FLOW = ['Receive', 'Label', 'Put away', 'Sort by use', 'Sell, raffle or use']
+// The Receive items form, top to bottom (Part 1, Part 2, then the label after Add).
+const RECEIVE_FLOW = ['Receiving', 'Where it’s kept', 'What it’s for', 'Label']
+const RECEIVE_BOX_FLOW = ['Start a box', 'Add each item', 'Print its label', 'Box is full']
 
 export default function Items() {
   const { membership, can } = useStaff()
@@ -461,15 +468,14 @@ export default function Items() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Items</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <StaffTitle title="Items" flow={ITEMS_FLOW}>
+          <p className="max-w-2xl">
             Everything with an OHRR number: donations waiting to be sorted, auction lots and raffle prizes (DON-00042), and shop stock (a SKU like
             HAY-101-001). Receive items here or in the app — donated (DON-00042) or bought (PUR-00001) — then sort them, tidy details, mark items won or drawn,
             and count stock.
           </p>
-        </div>
+        </StaffTitle>
         <div className="flex flex-wrap gap-2">
           <Link to="/staff/items/labels" className={btn.blue}>
             <Icon name="printer" size={16} /> Print labels
@@ -1835,11 +1841,14 @@ function AddDonation({
           <h2 id="add-donation-heading" className="font-display text-lg font-extrabold text-ink">
             {wantsBoxes ? 'Receive into boxes' : 'Receive items'}
           </h2>
-          <p className="mt-0.5 text-sm text-slate-600">
-            {wantsBoxes
-              ? 'For sorting items nobody wrote down — no donor needed. Add each item, print its label, and put it in the numbered box. It gets the next DON number.'
-              : 'Donated to OHRR or bought by us. First receive it — what it is and where it’s kept — then say what it’s for. A donation gets the next DON number, something we bought the next PUR number.'}
-          </p>
+          <FlowStrip steps={wantsBoxes ? RECEIVE_BOX_FLOW : RECEIVE_FLOW} />
+          <Explain label="How this works" className="mt-2">
+            <p>
+              {wantsBoxes
+                ? 'For sorting items nobody wrote down — no donor needed. Add each item, print its label, and put it in the numbered box. It gets the next DON number.'
+                : 'Donated to OHRR or bought by us. First receive it — what it is and where it’s kept — then say what it’s for. A donation gets the next DON number, something we bought the next PUR number.'}
+            </p>
+          </Explain>
         </div>
         {!wantsBoxes && (
           <Link to="/staff/dropoffs" className={`inline-flex min-h-11 items-center ${linkClass} text-sm`}>
@@ -1925,13 +1934,14 @@ function AddDonation({
         </div>
       ) : wantsBoxes ? (
         <div className="mt-3 rounded-xl border-2 border-brand-orange bg-brand-orange-50 px-4 py-3">
-          <p className="text-base font-bold text-ink">How it works</p>
-          <ol className="mt-1 list-decimal space-y-1 pl-5 text-base text-slate-800">
-            <li>Start a box — it gets the next number. Write the number on the box.</li>
-            <li>For each item: name it, Add, print its label, put it in the box.</li>
-            <li>Press Box is full, and start the next box.</li>
-            <li>When the sorting is done, put the 4 × 6 roll in the printer and print all the box labels from Boxes. Stick each one over the number.</li>
-          </ol>
+          <Explain label="How it works">
+            <ol className="list-decimal space-y-1 pl-5 text-base text-slate-800">
+              <li>Start a box — it gets the next number. Write the number on the box.</li>
+              <li>For each item: name it, Add, print its label, put it in the box.</li>
+              <li>Press Box is full, and start the next box.</li>
+              <li>When the sorting is done, put the 4 × 6 roll in the printer and print all the box labels from Boxes. Stick each one over the number.</li>
+            </ol>
+          </Explain>
           <div className="mt-3">
             <PlaceField value={nextBoxPlace} set={setNextBoxPlace} suggestions={suggestions} label="Where will this box be kept?" />
           </div>
@@ -2260,10 +2270,12 @@ function MovePanel({
   return (
     <div className="mt-4 border-t border-slate-100 pt-4">
       <p className="text-base font-bold text-ink">Where does it go?</p>
-      <p className="text-sm text-slate-600">
-        It keeps its number, <span className="font-mono font-bold tracking-widest">{item.code}</span>, so a label already printed still works (in the Hop Shop it
-        also gets a SKU for its price label). Auction lots go in as all-day; change that on the Silent auction page.
-      </p>
+      <Explain label="About moving it" className="mt-1">
+        <p>
+          It keeps its number, <span className="font-mono font-bold tracking-widest">{item.code}</span>, so a label already printed still works (in the Hop Shop it
+          also gets a SKU for its price label). Auction lots go in as all-day; change that on the Silent auction page.
+        </p>
+      </Explain>
       {item.description && (
         <p className="mt-2 text-sm text-slate-700">
           <span className="font-semibold">Notes:</span> {item.description}
@@ -2343,9 +2355,9 @@ function SplitPanel({ item, orgId, onSplit }: { item: TaggedItem; orgId: string;
   return (
     <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-100 pt-4" aria-label={`Split ${item.title}`}>
       <p className="text-base font-bold text-ink">Split this lot</p>
-      <p className="text-sm text-slate-600">
-        Take some of the {total} off as their own item, with the next DON number and a label of its own. The rest stay here under {item.code}.
-      </p>
+      <Explain label="About splitting" className="-mt-1">
+        <p>Take some of the {total} off as their own item, with the next DON number and a label of its own. The rest stay here under {item.code}.</p>
+      </Explain>
       <label className={`${fieldLabel} max-w-xs`}>
         How many to take off? <span className="font-normal text-slate-600">(1 to {max})</span>
         <input className={staffInput} type="number" inputMode="numeric" min={1} max={max} step={1} value={n} onChange={(e) => setN(e.target.value)} />

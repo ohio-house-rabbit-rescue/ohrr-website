@@ -7,6 +7,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { VET_REGIONS } from '../../data/vets'
+import { StaffTitle } from '../../components/StaffTitle'
 
 interface VetRow {
   id: string
@@ -344,13 +345,12 @@ export default function ManageVets() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Vets</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
+        <StaffTitle title="Vets">
+          <p className="max-w-2xl">
             The rabbit-savvy vets on the website’s vet list and in the app’s Find a vet. Tick “Gives the RHDV2 vaccine” and
             the practice also appears on the BunFest rabbit rules.
           </p>
-        </div>
+        </StaffTitle>
         {!adding && (
           <button type="button" onClick={() => setAdding(true)} className={btn.orange}>
             Add a vet

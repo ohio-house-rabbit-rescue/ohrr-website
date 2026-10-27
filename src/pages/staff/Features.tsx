@@ -9,6 +9,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, Spinner, canSwitchFeatures } from '../../lib/staff'
 import { Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { APP_FEATURES, FEATURE_GROUPS, RAFFLE_TICKETS_FLAG, fetchSettings, setSetting, switchValue, type Json } from '../../lib/settings'
 
 function Switch({ on, disabled, label, onChange }: { on: boolean; disabled?: boolean; label: string; onChange: (next: boolean) => void }) {
@@ -91,15 +92,14 @@ export default function Features() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-black text-ink">Features</h1>
-        <p className="mt-1 max-w-2xl text-base text-slate-700">
+      <StaffTitle title="Features">
+        <p className="max-w-2xl">
           Switch parts of OHRR on and off for everyone. A switched-off feature disappears for visitors on the app, the website and the
           BunFest site, while signed-in staff still see it, marked “Hidden from the public”, so it can be got ready and checked first. A
           change takes effect the next time someone opens the page — no new version needed.
         </p>
-        <p className="mt-2 max-w-2xl text-sm text-slate-600">Only Founders and Developers see this page.</p>
-      </div>
+        <p className="max-w-2xl">Only Founders and Developers see this page.</p>
+      </StaffTitle>
 
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-base font-semibold text-red-700">

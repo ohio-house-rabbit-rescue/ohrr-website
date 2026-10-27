@@ -9,6 +9,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { toCsv, exportCsv } from '../../lib/exportFile'
+import { StaffTitle } from '../../components/StaffTitle'
 import { INTERESTS, cleanInterests, emailChoicesLink, interestLabel, isMissingTable, type Interest } from '../../lib/emailList'
 
 interface Row {
@@ -123,14 +124,15 @@ export default function Supporters() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Supporters</h1>
-      <p className="mt-1 max-w-3xl text-sm text-slate-600">
-        Everyone who asked for OHRR’s emails, on the website’s{' '}
-        <Link to="/mailing-list" className="font-semibold text-brand-blue underline underline-offset-2">
-          Get emails from OHRR
-        </Link>{' '}
-        form or in the app, and what they want to hear about.
-      </p>
+      <StaffTitle title="Supporters">
+        <p className="max-w-3xl">
+          Everyone who asked for OHRR’s emails, on the website’s{' '}
+          <Link to="/mailing-list" className="font-semibold text-brand-blue underline underline-offset-2">
+            Get emails from OHRR
+          </Link>{' '}
+          form or in the app, and what they want to hear about.
+        </p>
+      </StaffTitle>
 
       {missing && (
         <Card className="mt-5 border-amber-200 bg-amber-50">

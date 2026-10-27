@@ -21,6 +21,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { copyText } from '../../lib/share/share'
 import { bccMailto, exportCsv, toCsv } from '../../lib/exportFile'
 import {
@@ -154,11 +155,12 @@ export default function Volunteers() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-display text-2xl font-black text-ink">Volunteers</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">
-          Who volunteers, what they’re cleared for, and the hours they’ve given. Each person gets a private link to log
-          their own.
-        </p>
+        <StaffTitle title="Volunteers">
+          <p className="max-w-2xl">
+            Who volunteers, what they’re cleared for, and the hours they’ve given. Each person gets a private link to log
+            their own.
+          </p>
+        </StaffTitle>
         {approvals === false && (
           <p className="mt-1 text-sm text-slate-500">Volunteer applications and “approved for” arrive with database update 25.</p>
         )}
@@ -1127,10 +1129,12 @@ function Certificates({
     <div className="space-y-3">
       <div>
         <h2 className="font-display text-xl font-extrabold text-ink">Certificates to consider ({suggestions.length})</h2>
-        <p className="mt-0.5 max-w-2xl text-sm text-slate-600">
-          Someone appears here when they make an hours letter for themselves, or when their confirmed hours pass one of the marks
-          below. Volunteers can’t make their own certificates.
-        </p>
+        <Explain label="About certificates" className="mt-1">
+          <p className="max-w-2xl">
+            Someone appears here when they make an hours letter for themselves, or when their confirmed hours pass one of the marks
+            below. Volunteers can’t make their own certificates.
+          </p>
+        </Explain>
       </div>
       <FormError>{error}</FormError>
       {suggestions.length === 0 && <Card className="text-sm text-slate-600">Nothing to consider right now.</Card>}
@@ -1373,10 +1377,12 @@ function ToConfirm({
             <h2 id="self-reported-heading" className="font-display text-xl font-extrabold text-ink">
               Self-reported, already counted ({selfReported.length})
             </h2>
-            <p className="mt-0.5 max-w-2xl text-sm text-slate-600">
-              Hours volunteers logged for themselves in the last 30 days that already count — a trusted volunteer’s count straight away.
-              Un-confirm any that need another look and they’ll wait above for a confirm.
-            </p>
+            <Explain label="About these hours" className="mt-1">
+              <p className="max-w-2xl">
+                Hours volunteers logged for themselves in the last 30 days that already count — a trusted volunteer’s count straight away.
+                Un-confirm any that need another look and they’ll wait above for a confirm.
+              </p>
+            </Explain>
           </div>
           {selfReported.map((h) =>
             entry(

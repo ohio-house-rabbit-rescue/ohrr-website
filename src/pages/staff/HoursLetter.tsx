@@ -20,6 +20,7 @@ import { useStaff, Spinner, staffInput } from '../../lib/staff'
 import { supabase, errMessage } from '../../lib/supabase'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle } from '../../components/StaffTitle'
 import { canvasToBlob } from '../../lib/share/render'
 import { savePng } from '../../lib/share/share'
 import { fmtHours } from '../../lib/volunteers/calls'
@@ -188,10 +189,9 @@ export default function HoursLetter() {
             <Icon name="arrowLeft" size={15} /> Volunteer calls
           </Link>
         )}
-        <div>
-          <h1 className="font-display text-2xl font-black text-ink">Hours letter for {name}</h1>
-          <p className="text-sm text-slate-600">Written from the hours on record. Every letter thanks them.</p>
-        </div>
+        <StaffTitle title={`Hours letter for ${name}`}>
+          <p>Written from the hours on record. Every letter thanks them.</p>
+        </StaffTitle>
 
         <div>
           <p className="text-sm font-semibold text-slate-700">Who it’s for</p>

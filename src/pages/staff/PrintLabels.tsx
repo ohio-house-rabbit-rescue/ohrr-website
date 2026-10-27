@@ -18,6 +18,7 @@ import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { KIND_META, UPDATE_36_NOTE, isMissingFunction, listItems, markLabelsPrinted, type TaggedItem } from '../../lib/items'
 import { listProducts, money, type StockCard } from '../../lib/hopshop'
 import {
@@ -392,12 +393,13 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
         <Link to={shop ? '/staff/hopshop' : '/staff/items'} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
           <Icon name="arrowLeft" size={16} /> {shop ? 'Hop Shop inventory' : 'Items'}
         </Link>
-        <h1 className="mt-1 font-display text-2xl font-black text-ink">{shop ? 'Hop Shop labels' : 'Print labels'}</h1>
-        <p className="mt-1 max-w-2xl text-base text-slate-600">
-          {shop
-            ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at the till; the QR code opens the item. Any label printer works.'
-            : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at the till or the desk, and the DON number can be typed. Any label printer works — tick the items, choose the label size, then Print.'}
-        </p>
+        <StaffTitle title={shop ? 'Hop Shop labels' : 'Print labels'} flow={['Tick items', 'Choose size', 'Print']}>
+          <p className="max-w-2xl">
+            {shop
+              ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at the till; the QR code opens the item. Any label printer works.'
+              : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at the till or the desk, and the DON number can be typed. Any label printer works — tick the items, choose the label size, then Print.'}
+          </p>
+        </StaffTitle>
         <p className="mt-1 text-base">
           <Link to={shop ? '/staff/items/labels' : '/staff/hopshop/labels'} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
             {shop ? 'Donation labels →' : 'Hop Shop price labels →'}
@@ -648,9 +650,9 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
                 )}
               </p>
             )}
-            <p className="text-sm text-slate-600">
-              In the print dialog choose the label printer and its label size; margins are zero, one label per page. “Save as PDF” works there too.
-            </p>
+            <Explain label="About the print dialog">
+              <p>In the print dialog choose the label printer and its label size; margins are zero, one label per page. “Save as PDF” works there too.</p>
+            </Explain>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { errMessage } from '../../lib/supabase'
 import { staffInput } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { Explain } from '../../components/StaffTitle'
 import { deleteType, saveType, suggestTypeCode, type ProductType } from '../../lib/hopshop'
 
 const letters = (v: string) => v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
@@ -122,11 +123,13 @@ export function TypesPanel({
   const [editing, setEditing] = useState<string | null>(null)
   return (
     <div className="space-y-3">
-      <p className="text-base text-slate-600">
-        Every Hop Shop SKU starts with its type’s three letters, then the supplier’s vendor number, then the item number:{' '}
-        <span className="font-mono font-bold text-ink">HAY-101-001</span> is Hay from vendor 101. Vendor <span className="font-mono font-bold">000</span> means
-        no supplier — donated, or made by OHRR.
-      </p>
+      <Explain label="About SKUs">
+        <p>
+          Every Hop Shop SKU starts with its type’s three letters, then the supplier’s vendor number, then the item number:{' '}
+          <span className="font-mono font-bold text-ink">HAY-101-001</span> is Hay from vendor 101. Vendor <span className="font-mono font-bold">000</span> means
+          no supplier — donated, or made by OHRR.
+        </p>
+      </Explain>
       <ul className="grid gap-2 md:grid-cols-2">
         {types.map((t) =>
           editing === t.id ? (

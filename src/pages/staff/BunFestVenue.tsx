@@ -14,6 +14,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { Explain } from '../../components/StaffTitle'
 import { staffInput } from '../../lib/staff'
 import { saveVenue } from '../../lib/bunfest'
 import {
@@ -458,10 +459,12 @@ export default function StaffVenue({
                 >
                   <Icon name="plus" size={16} /> Add an area
                 </button>
-                <p className="text-xs leading-relaxed text-slate-500">
-                  An odd-shaped room? Draw it as a rectangle and add a “Not part of the room” area over the
-                  corner that isn’t there.
-                </p>
+                <Explain label="Odd-shaped room?">
+                  <p>
+                    An odd-shaped room? Draw it as a rectangle and add a “Not part of the room” area over the
+                    corner that isn’t there.
+                  </p>
+                </Explain>
               </div>
             )}
 

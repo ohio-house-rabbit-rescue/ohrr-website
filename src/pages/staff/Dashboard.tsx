@@ -10,6 +10,7 @@ import { useStaffTiles, groupLink } from '../../lib/staffTiles'
 import { Icon } from '../../components/icons'
 import { WaitingBadge } from '../../components/WaitingBadge'
 import { AccountLinks } from '../../components/StaffShell'
+import { Explain } from '../../components/StaffTitle'
 import { ExpiringSponsorsNotice } from './ManageSponsors'
 import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
 import { EasterCampaignNotice, PostsToApproveNotice } from './Posts'
@@ -104,10 +105,12 @@ export default function StaffDashboard() {
         </p>
       )}
 
-      <p className="mt-8 rounded-2xl bg-brand-blue-50 px-4 py-3 text-sm text-slate-600">
-        Anything you change here updates <strong>both this website and the OHRR app</strong> — they share the same live data.
-        {isAdminish ? (level ? ' You hold every task, so you have every tool.' : ' As an owner/admin you have every tool.') : ''}
-      </p>
+      <Explain label="Where changes show up" className="mt-8">
+        <p>
+          Anything you change here updates <strong>both this website and the OHRR app</strong> — they share the same live data.
+          {isAdminish ? (level ? ' You hold every task, so you have every tool.' : ' As an owner/admin you have every tool.') : ''}
+        </p>
+      </Explain>
 
       {/* Phone and tablet: the way back to the website, your account and signing out (a laptop has them up top) */}
       <div className="no-print mt-4 flex flex-wrap items-center gap-2 lg:hidden">

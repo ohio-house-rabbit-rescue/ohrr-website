@@ -21,6 +21,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import PhotoDrop from '../../components/PhotoDrop'
+import { StaffTitle } from '../../components/StaffTitle'
 import { fromCents, listProducts, listSuppliers, money, saveProduct, toCents, type StockCard, type Supplier } from '../../lib/hopshop'
 import { costEach, readInvoice, readLines, unitsFor, type InvoiceLine, type MatchHow, type RememberedMatch } from '../../lib/invoiceParse'
 import { readInvoiceFiles } from '../../lib/invoiceRead'
@@ -433,24 +434,28 @@ export default function ReceiveDelivery() {
         <Link to="/staff/hopshop/reorder" className="inline-flex min-h-11 items-center gap-1 text-base font-bold text-brand-blue">
           <Icon name="arrowLeft" size={20} /> Hop Shop inventory
         </Link>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h1 className="font-display text-2xl font-black text-ink">Add a delivery</h1>
-          {step !== 'start' && step !== 'done' && files.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {files.map((f, i) => (
-                <button key={`${f.name}-${i}`} type="button" onClick={() => openLocal(f)} className={btn.outline}>
-                  <Icon name="eye" size={16} /> {files.length > 1 ? `Invoice ${isPdf(f) ? f.name : `page ${i + 1}`}` : 'Look at the invoice'}
-                </button>
-              ))}
-            </div>
+        <StaffTitle
+          title="Add a delivery"
+          flow={['Choose the invoice', 'Read it', 'Check the lines', 'Add to stock']}
+          actions={
+            step !== 'start' && step !== 'done' && files.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {files.map((f, i) => (
+                  <button key={`${f.name}-${i}`} type="button" onClick={() => openLocal(f)} className={btn.outline}>
+                    <Icon name="eye" size={16} /> {files.length > 1 ? `Invoice ${isPdf(f) ? f.name : `page ${i + 1}`}` : 'Look at the invoice'}
+                  </button>
+                ))}
+              </div>
+            ) : undefined
+          }
+        >
+          {step === 'start' && (
+            <p className="max-w-3xl">
+              From the supplier’s invoice: the PDF from their email, or photos of a paper one. It’s read on this {touch ? 'device' : 'computer'}, then you
+              check the list before anything changes.
+            </p>
           )}
-        </div>
-        {step === 'start' && (
-          <p className="mt-1 max-w-3xl text-base text-slate-600">
-            From the supplier’s invoice: the PDF from their email, or photos of a paper one. It’s read on this {touch ? 'device' : 'computer'}, then you
-            check the list before anything changes.
-          </p>
-        )}
+        </StaffTitle>
       </div>
 
       {step === 'start' && (

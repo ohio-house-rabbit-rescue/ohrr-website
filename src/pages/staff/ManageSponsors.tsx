@@ -9,6 +9,7 @@ import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn, Card, SponsorLogo } from '../../components/ui'
 import { Icon } from '../../components/icons'
+import { StaffTitle, Explain } from '../../components/StaffTitle'
 import { SPONSOR_TIERS, TIER_LABEL } from '../../lib/constants'
 import type { SponsorTier, PlacementSurface } from '../../lib/types'
 
@@ -413,10 +414,12 @@ function SponsorForm({
               />
             </label>
           )}
-          <p className="text-sm text-slate-600">
-            Optional. After the term end date the partner is hidden from the public automatically — and the staff pages
-            warn you before that happens, so a renewal can be asked for in time.
-          </p>
+          <Explain label="What happens at the end date">
+            <p>
+              Optional. After the term end date the partner is hidden from the public automatically — and the staff pages
+              warn you before that happens, so a renewal can be asked for in time.
+            </p>
+          </Explain>
 
           <div className="flex items-end gap-4">
             <label className={`${label} w-32`}>
@@ -543,10 +546,12 @@ function PlacementsEditor({ sponsor, orgId }: { sponsor: SponsorRow; orgId: stri
   return (
     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
       <p className="text-sm font-extrabold uppercase tracking-wider text-slate-600">"Presented by" placements</p>
-      <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Each placement shows a small "Presented by {sponsor.name}" strip on that page — always, or only inside a date
-        window. The same placement shows on the website and in the app.
-      </p>
+      <Explain label="About placements" className="mt-1">
+        <p>
+          Each placement shows a small "Presented by {sponsor.name}" strip on that page — always, or only inside a date
+          window. The same placement shows on the website and in the app.
+        </p>
+      </Explain>
 
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
         <div>
@@ -920,18 +925,21 @@ export default function ManageSponsors() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-black text-ink">Sponsors &amp; partners</h1>
-        {!creating && (
-          <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
-            Add sponsor
-          </button>
-        )}
-      </div>
-      <p className="mt-1 text-sm text-slate-600">
-        The roster on the public Our Partners page, partner perks, and "Presented by" strips — on this website and in
-        the app.
-      </p>
+      <StaffTitle
+        title="Sponsors &amp; partners"
+        actions={
+          !creating && (
+            <button type="button" onClick={() => setCreating(true)} className={btn.orange}>
+              Add sponsor
+            </button>
+          )
+        }
+      >
+        <p>
+          The roster on the public Our Partners page, partner perks, and "Presented by" strips — on this website and in
+          the app.
+        </p>
+      </StaffTitle>
       <p className="mt-2 text-sm">
         <Link to="/staff/sponsors/renewals" className="font-semibold text-brand-blue">
           Renewals list — who to ask about continuing →

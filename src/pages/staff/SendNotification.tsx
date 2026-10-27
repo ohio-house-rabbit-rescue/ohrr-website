@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { isMissingFunction } from '../../lib/emailList'
 
 /** What people can ask to be notified about, in the app's words. */
@@ -142,11 +143,12 @@ export default function SendNotification() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Send a notification</h1>
-      <p className="mt-1 max-w-3xl text-sm text-slate-600">
-        A notification on the phones of people who asked for it in the OHRR app. New volunteer calls, events and rabbits send
-        a notification by themselves.
-      </p>
+      <StaffTitle title="Send a notification" flow={['Pick who', 'Write it', 'Send']}>
+        <p className="max-w-3xl">
+          A notification on the phones of people who asked for it in the OHRR app. New volunteer calls, events and rabbits send
+          a notification by themselves.
+        </p>
+      </StaffTitle>
 
       {missing && (
         <Card className="mt-5 border-amber-200 bg-amber-50">

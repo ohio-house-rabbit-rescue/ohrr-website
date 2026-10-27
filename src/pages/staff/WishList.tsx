@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, ext, Card } from '../../components/ui'
+import { StaffTitle } from '../../components/StaffTitle'
 import { AMAZON_WISH_LIST } from '../../lib/constants'
 import { isMissingTable } from '../../lib/emailList'
 import { WISH_LIST_COLUMNS, cleanAmazonUrl, isAmazonUrl, sortWishList, type WishListItem } from '../../lib/wishList'
@@ -221,19 +222,20 @@ export default function WishList() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-black text-ink">Wish list items</h1>
-      <p className="mt-1 max-w-3xl text-sm text-slate-600">
-        Items from{' '}
-        <a href={AMAZON_WISH_LIST} {...ext} className="font-semibold text-brand-blue underline underline-offset-2">
-          OHRR’s Amazon Wish List
-        </a>
-        , each with its own “Buy on Amazon” button. They show on{' '}
-        <Link to="/give#shop" className="font-semibold text-brand-blue underline underline-offset-2">
-          the Give page
-        </Link>{' '}
-        and the Hop Shop page (the first three there), and in the app, “Most needed” first. The button for the whole list
-        stays.
-      </p>
+      <StaffTitle title="Wish list items">
+        <p className="max-w-3xl">
+          Items from{' '}
+          <a href={AMAZON_WISH_LIST} {...ext} className="font-semibold text-brand-blue underline underline-offset-2">
+            OHRR’s Amazon Wish List
+          </a>
+          , each with its own “Buy on Amazon” button. They show on{' '}
+          <Link to="/give#shop" className="font-semibold text-brand-blue underline underline-offset-2">
+            the Give page
+          </Link>{' '}
+          and the Hop Shop page (the first three there), and in the app, “Most needed” first. The button for the whole list
+          stays.
+        </p>
+      </StaffTitle>
 
       {missing && (
         <Card className="mt-5 border-amber-200 bg-amber-50">

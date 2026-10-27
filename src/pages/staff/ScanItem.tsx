@@ -25,6 +25,7 @@ import { useStaff } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
 import Scanner from '../../components/Scanner'
+import { StaffTitle } from '../../components/StaffTitle'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { boxName, isBoxCode, isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
 import { KIND_META, extrasSummary, findByCode, itemPhotos, kindLabel, money, statusLabel, type TaggedItem } from '../../lib/items'
@@ -188,8 +189,9 @@ export default function ScanItem() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-display text-2xl font-black text-ink">Scan an item</h1>
-      <p className="mt-1 text-base text-slate-600">See, change or sort anything with an OHRR label or a packet barcode.</p>
+      <StaffTitle title="Scan an item">
+        <p>See, change or sort anything with an OHRR label or a packet barcode.</p>
+      </StaffTitle>
 
       {/* The box a USB scanner types into */}
       <form onSubmit={submit} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" role="search" aria-label="Find an item by its code">
