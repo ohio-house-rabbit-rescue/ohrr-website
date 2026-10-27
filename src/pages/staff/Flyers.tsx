@@ -94,7 +94,7 @@ export default function Flyers() {
           <button type="button" onClick={() => window.print()} className={btn.orange} disabled={!qr}>
             Print this flyer
           </button>
-          <span className="self-center text-xs text-slate-500">Prints on one US-Letter page. Colour or black-and-white both work.</span>
+          <span className="self-center text-xs text-slate-500">Prints on one US-Letter page. Color or black-and-white both work.</span>
         </div>
         <Card className="mt-6 max-w-xl">
           <FlyerSheet f={pick} qr={qr} accent={accent} preview />

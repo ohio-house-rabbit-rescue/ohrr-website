@@ -1,6 +1,6 @@
 // /tails — Happy Tails: where OHRR bunnies are now (website mirror of the
 // app's Tails page). Stories are published by staff from the Inbox; until the
-// first one, one story labelled "Example" shows (data/tails.ts).
+// first one, one story labeled "Example" shows (data/tails.ts).
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHero, Section, Card, Callout, H2, LiveNote, btn } from '../components/ui'
@@ -18,7 +18,7 @@ const pill = (active: boolean) =>
 export default function Tails() {
   const [filter, setFilter] = useState<Filter>('All')
   const { items, source, loading } = useHappyTails()
-  // Nothing published yet: the page shows the one labelled example instead.
+  // Nothing published yet: the page shows the one labeled example instead.
   const example = source === 'sample'
 
   const list = useMemo(() => {

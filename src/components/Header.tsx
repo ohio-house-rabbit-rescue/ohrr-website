@@ -17,7 +17,7 @@ const HELP_PILL =
 // The wish list opens Amazon itself.
 //
 // The web rules from the design brief still hold: every menu item is visible
-// on a laptop (nothing opens on hover), the phone menu is a labelled button,
+// on a laptop (nothing opens on hover), the phone menu is a labeled button,
 // and targets are 44px.
 
 // Everything else OHRR does — the footer's list, repeated in the phone menu,
@@ -143,7 +143,7 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Phone and tablet: a labelled Menu button */}
+        {/* Phone and tablet: a labeled Menu button */}
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}

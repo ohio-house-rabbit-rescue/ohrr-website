@@ -19,7 +19,7 @@ const HOURS_FOR = [
   { value: '', label: 'No — just to help' },
   { value: 'school', label: 'School or college' },
   { value: 'military', label: 'Military volunteer service' },
-  { value: 'workplace', label: 'A workplace programme' },
+  { value: 'workplace', label: 'A workplace program' },
   { value: 'community', label: 'Community service' },
   { value: 'other', label: 'Something else' },
 ]

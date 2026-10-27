@@ -503,7 +503,7 @@ Our housing requirement is a minimum 4 ft x 4 ft of indoor space in a location w
 
 ## Domestic or wild?
 
-The first thing to do is figure out if the rabbit is wild or domestic. Ohio's wild rabbits are cottontails — brown/grey with a white tail; if the rabbit doesn't look like that, it is domestic. If you're still unsure, Small Pet Select has a helpful article on wild bunnies vs. pet bunnies. If you need help with a wild rabbit that may be injured or in danger, contact the Ohio Wildlife Center.
+The first thing to do is figure out if the rabbit is wild or domestic. Ohio's wild rabbits are cottontails — brown/gray with a white tail; if the rabbit doesn't look like that, it is domestic. If you're still unsure, Small Pet Select has a helpful article on wild bunnies vs. pet bunnies. If you need help with a wild rabbit that may be injured or in danger, contact the Ohio Wildlife Center.
 
 If it is a domestic rabbit, it needs to be rescued — it does not have the means to survive in the wild. Occasionally a domestic rabbit escapes an outdoor enclosure, but in most cases they were intentionally "set free" by their previous owner.
 

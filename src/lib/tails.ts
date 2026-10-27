@@ -89,7 +89,7 @@ export async function publishHappyTail(i: PublishInput): Promise<string> {
 /* ---------------------------------------------------------------- public */
 // The public Happy Tails pages and the home-page teaser. Same query and order
 // as the app's useHappyTails (features/tails/api.ts): published rows, staff
-// order first, newest next; the one labelled example until OHRR publishes one.
+// order first, newest next; the one labeled example until OHRR publishes one.
 
 export interface TimelineEntry {
   date: string
@@ -107,7 +107,7 @@ export interface Tail {
   summary: string
   bonded?: boolean
   timeline: TimelineEntry[]
-  /** The built-in example (data/tails.ts) — never a real adoption; labelled "Example" wherever it shows. */
+  /** The built-in example (data/tails.ts) — never a real adoption; labeled "Example" wherever it shows. */
   example?: boolean
 }
 
@@ -140,7 +140,7 @@ export interface TailsResult {
   loading: boolean
 }
 
-/** Published stories; with none published, the one labelled example (source 'sample'). */
+/** Published stories; with none published, the one labeled example (source 'sample'). */
 export function useHappyTails(): TailsResult {
   const [state, setState] = useState<TailsResult>(() =>
     isConfigured ? { items: [], source: 'sample', loading: true } : { items: [exampleTail], source: 'sample', loading: false },

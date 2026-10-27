@@ -20,7 +20,7 @@ export const foundContacts = {
 }
 
 // After-hours exotics emergency contact (the app's EMERGENCY_VET; also in data/vets.ts).
-// Another organisation's number — fine to show and tap. OHRR's own number never appears here.
+// Another organization's number — fine to show and tap. OHRR's own number never appears here.
 export const emergencyVet = {
   name: 'MedVet Hilliard',
   phone: '614-870-0480',

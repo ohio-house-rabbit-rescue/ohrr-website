@@ -49,7 +49,7 @@ export const CATEGORIES: readonly TopicCategory[] = [
 
 export const CATEGORY_LABEL: Record<TopicCategory, string> = {
   health: 'Health',
-  behavior: 'Behaviour',
+  behavior: 'Behavior',
   diet: 'Diet',
   litter: 'Litter box',
   bonding: 'Bonding',

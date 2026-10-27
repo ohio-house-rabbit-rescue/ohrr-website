@@ -1578,7 +1578,7 @@ function AddDonation({
             </div>
             <label className={fieldLabel}>
               Notes
-              <textarea className={staffInput} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Colour, anything a buyer or bidder would want to know" />
+              <textarea className={staffInput} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Color, anything a buyer or bidder would want to know" />
             </label>
           </div>
         )}

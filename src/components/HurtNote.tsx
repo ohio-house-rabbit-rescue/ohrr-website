@@ -3,7 +3,7 @@ import { emergencyVet, wildOrDomestic } from '../data/found'
 
 // "Hurt?" — the app's note on the found-rabbit pages: OHRR's volunteers can't
 // respond to emergencies; an injured rabbit needs a vet, a wild one the Ohio
-// Wildlife Center. Other organisations' numbers are fine to show and tap.
+// Wildlife Center. Other organizations' numbers are fine to show and tap.
 export default function HurtNote({ className = '' }: { className?: string }) {
   return (
     <div className={`rounded-2xl border border-brand-orange/30 bg-brand-orange-50/60 p-5 text-base leading-relaxed text-slate-700 ${className}`}>

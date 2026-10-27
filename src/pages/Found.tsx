@@ -1,7 +1,7 @@
 // /found — "Found a rabbit?" (website mirror of the app's FoundRabbit page):
 // report it, domestic or wild, how to catch a stray, the Columbus field-rescue
 // path, and what to do if you need to surrender. OHRR's wording throughout;
-// OHRR is reached by email only — the vet's and the wildlife centre's contacts
+// OHRR is reached by email only — the vet's and the wildlife center's contacts
 // are theirs to show.
 import { Link } from 'react-router-dom'
 import { PageHero, Section, Card, H2, LinkCard, btn, ext } from '../components/ui'

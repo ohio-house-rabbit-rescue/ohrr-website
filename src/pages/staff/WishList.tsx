@@ -200,7 +200,7 @@ export default function WishList() {
     }
     setBusy(false)
   }
-  // Up / down swaps with the neighbour, then numbers the list afresh (10, 20, …)
+  // Up / down swaps with the neighbor, then numbers the list afresh (10, 20, …)
   // and saves the ones that changed.
   const move = async (index: number, by: -1 | 1) => {
     const order = [...list]

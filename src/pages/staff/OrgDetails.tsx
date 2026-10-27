@@ -146,7 +146,7 @@ export default function OrgDetails() {
         <div>
           <h2 className="font-display text-base font-extrabold text-ink">Volunteer-hours letters</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Who signs the letters volunteers need for school credit, a military service award or a workplace programme.
+            Who signs the letters volunteers need for school credit, a military service award or a workplace program.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -162,7 +162,7 @@ export default function OrgDetails() {
         <label className={label}>
           EIN (optional)
           <input className={staffInput} value={d.ein} onChange={txt('ein')} placeholder="00-0000000" />
-          <span className={hint}>Employers’ volunteer-grant programmes often ask for it. Leave blank to leave it off.</span>
+          <span className={hint}>Employers’ volunteer-grant programs often ask for it. Leave blank to leave it off.</span>
         </label>
       </Card>
 

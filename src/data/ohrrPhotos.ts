@@ -55,7 +55,7 @@ export const FAMILY_PHOTOS: Photo[] = [
     src: '/img/ohrr/family-beverly-may.jpg',
     w: 600,
     h: 600,
-    alt: 'Beverly May sitting on the Adoption Center floor beside a grey lop rabbit',
+    alt: 'Beverly May sitting on the Adoption Center floor beside a gray lop rabbit',
     caption: 'Beverly May',
   },
   {
@@ -90,7 +90,7 @@ export const LOLA_PHOTO: Photo = {
   src: '/img/ohrr/lola-vet-care-fund.jpg',
   w: 1200,
   h: 806,
-  alt: 'Lola, a fluffy white and grey rabbit, sitting on a rug',
+  alt: 'Lola, a fluffy white and gray rabbit, sitting on a rug',
 }
 
 /** Tips for Catching a Stray (i-want-to-learn/tips-for-catching-a-stray), in the article's order. */
