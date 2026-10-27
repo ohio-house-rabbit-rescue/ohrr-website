@@ -67,12 +67,43 @@ export function loadLabelSize(): LabelSize {
   return LABEL_SIZES.find((s) => s.key === DEFAULT_LABEL_KEY)!
 }
 
-export function saveLabelSize(s: LabelSize): void {
+/** When this device's size was last picked (ms); 0 when never picked here. */
+export function labelSizePickedAt(): number {
   try {
-    localStorage.setItem(SIZE_KEY, JSON.stringify(s))
+    const at = (JSON.parse(localStorage.getItem(SIZE_KEY) ?? '{}') as { pickedAt?: unknown }).pickedAt
+    return typeof at === 'number' ? at : 0
+  } catch {
+    return 0
+  }
+}
+
+export function saveLabelSize(s: LabelSize, pickedAt: number): void {
+  try {
+    localStorage.setItem(SIZE_KEY, JSON.stringify({ key: s.key, label: s.label, wIn: s.wIn, hIn: s.hIn, pickedAt }))
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * The rescue's label size (app_settings row {wIn, hIn, at}), shared by every
+ * phone and computer. The last size picked stays until someone picks another:
+ * whichever is newer — the rescue's or this device's own pick — is used.
+ */
+export const LABEL_SIZE_SETTING = 'label_size'
+
+/** When the rescue's size was set (ms); 0 when not known. */
+export function labelSizeSetAt(v: unknown): number {
+  const at = (v as { at?: unknown } | null)?.at
+  return typeof at === 'number' ? at : 0
+}
+
+/** A stored size, checked — null when missing or out of range. */
+export function labelSizeFrom(v: unknown): LabelSize | null {
+  const s = v as Partial<LabelSize> | null
+  if (!s || typeof s.wIn !== 'number' || typeof s.hIn !== 'number') return null
+  if (!(s.wIn >= 0.5 && s.hIn >= 0.5 && s.wIn <= 8.5 && s.hIn <= 11)) return null
+  return LABEL_SIZES.find((p) => p.wIn === s.wIn && p.hIn === s.hIn) ?? customLabelSize(s.wIn, s.hIn)
 }
 
 export function customLabelSize(wIn: number, hIn: number): LabelSize {
