@@ -8,6 +8,9 @@
 // shelf). Update 40 adds donation intake: drop-offs (who gave it, for the
 // thank-you letter), where a donation is headed, a value for each or for the
 // whole lot, size, use-by, splitting a lot, baskets and the monthly report.
+// Update 47 adds receiving: a donation or bought (what we paid, where), and its
+// use from OHRR's own list (Midwest BunFest, Guardians Event, Hop Shop, Bunny
+// Care …); 'event' joins headed_for and 'rabbits' now means our own use.
 import { supabase } from './supabase'
 import type { IconName } from '../components/icons'
 
@@ -85,6 +88,13 @@ export interface TaggedItem {
   plan_skipped?: boolean
   /** The box it's packed in (update 46; missing before it). */
   box?: { code: string; box_no: number; location: string | null } | null
+  /** Update 47 (donations): how it came in, what was paid and where, and its use ("Guardians Event"). */
+  source?: 'donation' | 'purchase' | null
+  cost_cents?: number | null
+  bought_from?: string | null
+  purpose?: string | null
+  /** Client only: the receiving details couldn't be saved yet (update 47 not run). */
+  receiving_skipped?: boolean
   created_at: string
   updated_at?: string
 }
@@ -116,15 +126,19 @@ export const CATEGORY_IDEAS = [
 /** "50 of them · 24×36 · Worth $10 each · $500 in all · For: Raffle · Like new · Kept: Bin 3" — the extra details in one line (the app's wording). */
 export function extrasSummary(
   item: Pick<TaggedItem, 'kind' | 'quantity' | 'price_cents' | 'condition' | 'category' | 'location'> &
-    Partial<Pick<TaggedItem, 'value_cents' | 'value_basis' | 'size' | 'headed_for' | 'use_by' | 'outcome'>>,
+    Partial<Pick<TaggedItem, 'value_cents' | 'value_basis' | 'size' | 'headed_for' | 'use_by' | 'outcome' | 'purpose' | 'source' | 'cost_cents' | 'bought_from'>>,
 ): string {
   const parts: string[] = []
   const donation = item.kind === 'donation'
   if (donation && item.quantity && item.quantity > 1) parts.push(`${item.quantity} of them`)
   if (donation && item.size) parts.push(item.size)
+  if (donation && item.source === 'purchase') {
+    const paid = item.cost_cents != null ? `Bought for ${money(item.cost_cents)}` : 'Bought'
+    parts.push(item.bought_from ? `${paid} at ${item.bought_from}` : paid)
+  }
   if (donation && item.value_cents != null) parts.push(`Worth ${valueLine({ value_cents: item.value_cents, value_basis: item.value_basis, quantity: item.quantity })}`)
   if (donation && item.price_cents != null) parts.push(`Sells at ${money(item.price_cents)} each`)
-  if (donation && item.headed_for && !item.outcome) parts.push(`For: ${headedLabel(item.headed_for)}`)
+  if (donation && (item.purpose || item.headed_for) && !item.outcome) parts.push(`For: ${purposeLine(item)}`)
   if (item.condition) parts.push(conditionLabel(item.condition))
   if (item.category) parts.push(item.category)
   if (item.location) parts.push(`Kept: ${item.location}`)
@@ -145,18 +159,81 @@ export const UPDATE_39_EXTRAS_NOTE = 'Condition, category and where it’s kept 
 
 /* ------------------------------------------------------------- update 40 */
 
-export type HeadedFor = 'raffle' | 'auction' | 'shop' | 'rabbits'
+/** Update 47 adds 'event': used at an event, not as a raffle prize or auction lot. */
+export type HeadedFor = 'raffle' | 'auction' | 'shop' | 'rabbits' | 'event'
 
-/** Where a donation is headed; '' = not sure yet (sort later). */
+/** How a donation will be used; '' = not sure yet (sort later). 'rabbits' is
+ *  kept for the rescue's own use (Bunny Care, office). */
 export const HEADED_FOR: { value: HeadedFor | ''; label: string }[] = [
   { value: '', label: 'Not sure yet' },
   { value: 'raffle', label: 'Raffle' },
   { value: 'auction', label: 'Silent Auction' },
+  { value: 'event', label: 'Used at an event' },
   { value: 'shop', label: 'Hop Shop' },
-  { value: 'rabbits', label: 'For the rabbits' },
+  { value: 'rabbits', label: 'Our own use' },
 ]
 
 export const headedLabel = (v: string | null | undefined): string => (v ? (HEADED_FOR.find((h) => h.value === v)?.label ?? '') : '')
+
+/* ------------------------------------------------------------- update 47 */
+
+/** One of OHRR's uses: an event (raffle, auction or used there), sold in the
+ *  Hop Shop, or kept for the rescue's own use (Bunny Care, office). */
+export type PurposeUse = 'event' | 'shop' | 'keep'
+
+export interface ItemPurpose {
+  id: string
+  name: string
+  use: PurposeUse
+  sort_order: number
+  is_active: boolean
+}
+
+/** OHRR's uses on 2026-10-27, shown until update 47 is run (it makes the same list). */
+export const DEFAULT_PURPOSES: ItemPurpose[] = [
+  { id: 'default-bunfest', name: 'Midwest BunFest', use: 'event', sort_order: 10, is_active: true },
+  { id: 'default-guardians', name: 'Guardians Event', use: 'event', sort_order: 20, is_active: true },
+  { id: 'default-special', name: 'Special Event', use: 'event', sort_order: 30, is_active: true },
+  { id: 'default-hopshop', name: 'Hop Shop', use: 'shop', sort_order: 40, is_active: true },
+  { id: 'default-care', name: 'Bunny Care', use: 'keep', sort_order: 50, is_active: true },
+]
+
+export const PURPOSE_USES: { value: PurposeUse; label: string; hint: string }[] = [
+  { value: 'event', label: 'An event', hint: 'Raffle prize, auction lot, or used there' },
+  { value: 'shop', label: 'Sold in the Hop Shop', hint: 'Gets a price' },
+  { value: 'keep', label: 'Kept for our own use', hint: 'Bunny care, office, cleaning' },
+]
+
+/** Where headed_for lands for a use: an event starts as "used at the event". */
+export function headedForUse(use: PurposeUse | null | undefined): HeadedFor | '' {
+  return use === 'shop' ? 'shop' : use === 'keep' ? 'rabbits' : use === 'event' ? 'event' : ''
+}
+
+/** How it's used at an event. */
+export const EVENT_USES: { value: 'raffle' | 'auction' | 'event'; label: string }[] = [
+  { value: 'raffle', label: 'Raffle prize' },
+  { value: 'auction', label: 'Silent Auction' },
+  { value: 'event', label: 'Used at the event' },
+]
+
+/** "Guardians Event · Raffle prize", "Hop Shop", "Bunny Care", or the old place. */
+export function purposeLine(item: { purpose?: string | null; headed_for?: HeadedFor | null }): string {
+  if (!item.purpose) return item.headed_for ? headedLabel(item.headed_for) : ''
+  const how = item.headed_for === 'raffle' || item.headed_for === 'auction' ? EVENT_USES.find((e) => e.value === item.headed_for)?.label : ''
+  return how ? `${item.purpose} · ${how}` : item.purpose
+}
+
+/** The kind as people say it: a donation we bought is "Bought — sort later". */
+export function kindLabel(item: Pick<TaggedItem, 'kind' | 'source'>): string {
+  return item.kind === 'donation' && item.source === 'purchase' ? 'Bought — sort later' : KIND_META[item.kind].label
+}
+
+/** What we paid, from dollars typed for the whole lot or for each. */
+export function costCents(v: { cost: string; costBasis: 'each' | 'all'; quantity: number }): number | null {
+  const c = toCents(v.cost)
+  if (c == null) return null
+  return v.costBasis === 'each' ? c * Math.max(1, v.quantity) : c
+}
 
 /** Where a donation headed for X goes when it's sorted. */
 export const HEADED_KIND: Record<'raffle' | 'auction' | 'shop', ItemKind> = { raffle: 'raffle', auction: 'auction', shop: 'stock' }
@@ -217,8 +294,9 @@ export const toCents = (s: string): number | null => {
 export function statusLabel(item: TaggedItem): string {
   if (item.kind === 'donation') {
     if (item.outcome === 'basket') return item.in_basket ? `In the basket “${item.in_basket.title}”` : 'In a basket'
-    if (item.outcome === 'rabbits') return 'Used for the rabbits'
+    if (item.outcome === 'rabbits') return 'In use by OHRR'
     if (item.outcome === 'passed_on') return 'Passed on / not usable'
+    if (item.purpose) return `To be sorted · for: ${purposeLine(item)}`
     return item.headed_for ? `To be sorted · for: ${headedLabel(item.headed_for)}` : 'To be sorted'
   }
   if (item.kind === 'stock') {
@@ -295,7 +373,28 @@ export interface DonationPlan {
   size?: string | null
   use_by?: string | null
   dropoff_id?: string | null
+  /** Update 47: its use from OHRR's list, how it came in, and what was paid where. */
+  purpose?: string | null
+  source?: 'donation' | 'purchase'
+  cost_cents?: number | null
+  bought_from?: string | null
 }
+
+/** The update 47 keys of a plan. */
+const RECEIVING_KEYS = ['purpose', 'source', 'cost_cents', 'bought_from'] as const
+
+/** Sent receiving details (update 47) but the item came back without them: not run yet. */
+function receivingSkipped(plan: DonationPlan | null, item: TaggedItem): boolean {
+  if (!plan || 'source' in item) return false
+  return RECEIVING_KEYS.some((k) => plan[k] != null && plan[k] !== '' && plan[k] !== 'donation')
+}
+
+/** Before update 47 'event' is not a place: keep the rest of the plan. */
+const isUnknownPlace = (e: unknown) => /unknown place|headed_for_check/i.test((e as { message?: string } | null)?.message ?? '')
+
+/** Shown after Add when the receiving details could not be kept yet. */
+export const UPDATE_47_NOTE =
+  'The item is saved. Donation or bought, what we paid, where it was bought and what it’s for need database update 47; add them from the item once it has run.'
 
 /**
  * Catalog a new item in one call. The database gives a donation the next DON
@@ -324,11 +423,14 @@ export async function catalogNewItem(orgId: string, input: CatalogInput): Promis
   const extras = { p_condition: blank(input.condition), p_category: blank(input.category), p_location: blank(input.location) }
   // Newest first: with the plan (update 40), then without it (39), then the bare call (36).
   if (plan) {
-    const withPlan = await supabase.rpc('catalog_new_item', { ...base, ...extras, p_plan: plan })
+    let withPlan = await supabase.rpc('catalog_new_item', { ...base, ...extras, p_plan: plan })
+    if (withPlan.error && plan.headed_for === 'event' && isUnknownPlace(withPlan.error)) {
+      withPlan = await supabase.rpc('catalog_new_item', { ...base, ...extras, p_plan: { ...plan, headed_for: null } })
+    }
     if (!withPlan.error) {
       const item = asItem(withPlan.data)
       if (!item) throw new Error('Saved, but the item could not be read back.')
-      return item
+      return receivingSkipped(plan, item) ? { ...item, receiving_skipped: true } : item
     }
     if (!isMissingFunction(withPlan.error)) throw withPlan.error
     // Without the plan a value is read as the value of one. A value typed for
@@ -381,10 +483,17 @@ export const isNeeds40 = (e: unknown) => e instanceof Error && e.message === NEE
 
 /** Headed for, value each/all, size, use-by, drop-off — only the keys given. */
 export async function setDonationPlan(orgId: string, code: string, plan: DonationPlan): Promise<TaggedItem | null> {
-  return asItem(await rpc40('set_donation_plan', { p_org: orgId, p_code: code, p_plan: plan }))
+  let item: TaggedItem | null
+  try {
+    item = asItem(await rpc40('set_donation_plan', { p_org: orgId, p_code: code, p_plan: plan }))
+  } catch (err) {
+    if (plan.headed_for !== 'event' || !isUnknownPlace(err)) throw err
+    item = asItem(await rpc40('set_donation_plan', { p_org: orgId, p_code: code, p_plan: { ...plan, headed_for: null } }))
+  }
+  return item && receivingSkipped(plan, item) ? { ...item, receiving_skipped: true } : item
 }
 
-/** Used for the rabbits, passed on / not usable, or null to undo (also takes it out of a basket). */
+/** In use by OHRR (our own use), passed on / not usable, or null to undo (also takes it out of a basket). */
 export async function setDonationOutcome(orgId: string, code: string, outcome: 'rabbits' | 'passed_on' | null, note?: string): Promise<TaggedItem | null> {
   return asItem(await rpc40('set_donation_outcome', { p_org: orgId, p_code: code, p_outcome: outcome, p_note: blank(note) }))
 }
@@ -522,17 +631,53 @@ export async function setItemExtras(
   return asItem(data)
 }
 
-/** Places and categories typed lately, for one-click chips (empty before update 39, or on any error). */
-export async function catalogSuggestions(orgId: string): Promise<{ locations: string[]; categories: string[] }> {
+export interface CatalogSuggestions {
+  locations: string[]
+  categories: string[]
+  /** Update 47: stores typed before, and Hop Shop vendors. */
+  stores: string[]
+}
+
+/** Places, categories and stores used lately, for the drop-downs (empty before update 39, or on any error). */
+export async function catalogSuggestions(orgId: string): Promise<CatalogSuggestions> {
   try {
     const { data, error } = await supabase.rpc('catalog_suggestions', { p_org: orgId })
-    if (error || !data || typeof data !== 'object') return { locations: [], categories: [] }
-    const d = data as { locations?: unknown; categories?: unknown }
+    if (error || !data || typeof data !== 'object') return { locations: [], categories: [], stores: [] }
+    const d = data as { locations?: unknown; categories?: unknown; stores?: unknown }
     const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
-    return { locations: strings(d.locations), categories: strings(d.categories) }
+    return { locations: strings(d.locations), categories: strings(d.categories), stores: strings(d.stores) }
   } catch {
-    return { locations: [], categories: [] }
+    return { locations: [], categories: [], stores: [] }
   }
+}
+
+/** OHRR's list of uses; the five it started with until update 47 is run. */
+export async function listItemPurposes(orgId: string): Promise<{ purposes: ItemPurpose[]; ready: boolean }> {
+  const { data, error } = await supabase.rpc('list_item_purposes', { p_org: orgId })
+  if (error || !Array.isArray(data)) return { purposes: DEFAULT_PURPOSES, ready: false }
+  return { purposes: data as ItemPurpose[], ready: true }
+}
+
+/** Admin 1 and up add to the list of uses (false before update 47). */
+export async function canEditItemPurposes(orgId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('can_edit_item_purposes', { p_org: orgId })
+  return !error && data === true
+}
+
+/** Add a use (id null), or rename one, change its kind, or hide it. */
+export async function saveItemPurpose(orgId: string, p: { id?: string | null; name: string; use: PurposeUse; is_active?: boolean }): Promise<ItemPurpose> {
+  const { data, error } = await supabase.rpc('save_item_purpose', {
+    p_org: orgId,
+    p_id: p.id ?? null,
+    p_name: p.name.trim(),
+    p_use: p.use,
+    p_is_active: p.is_active ?? true,
+  })
+  if (error) {
+    if (isMissingFunction(error)) throw new Error('Adding to the list needs database update 47.')
+    throw new Error(error.message || 'Could not save the use')
+  }
+  return data as ItemPurpose
 }
 
 /** After printing labels: remember which are done (or undo with printed=false). */

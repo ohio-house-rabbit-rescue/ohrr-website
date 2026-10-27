@@ -29,7 +29,18 @@
 // the 4 × 6 roll is in, and go over the number written on each box. The box
 // being filled is kept in this browser (boxes.ts), the app's Catalog does the
 // same with ?box=1.
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+//
+// Update 47 (OHRR 2026-10-27: "items come in as a donation or a purchase …
+// then identify where it goes … put the location"; "the where is it headed is
+// … more of a purpose of the item"): Add a donation is now Receive items, in
+// two parts. 1 Receiving: donated or bought (what we paid and where; a
+// purchase has no donor or drop-off and gets a PUR number), photos, name, how
+// many, and where it's kept — required, typed with a drop-down of places used
+// before, unless it goes in a box (the box's place). 2 What it's for: OHRR's
+// list of uses (Midwest BunFest, Guardians Event, Special Event, Hop Shop,
+// Bunny Care), which Admin 1 and up can add to; an event's item is a raffle
+// prize, an auction lot or used there. A box is given its place when started.
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner, shortDate, todayOhio } from '../../lib/staff'
@@ -39,31 +50,41 @@ import { Icon } from '../../components/icons'
 import {
   CATEGORY_IDEAS,
   CONDITIONS,
+  DEFAULT_PURPOSES,
+  EVENT_USES,
   HEADED_FOR,
   KIND_META,
+  PURPOSE_USES,
+  UPDATE_47_NOTE,
   MAX_ITEM_PHOTOS,
   SORT_INTO,
   UPDATE_36_NOTE,
   UPDATE_39_ADD_NOTE,
   UPDATE_39_EXTRAS_NOTE,
   UPDATE_40_ADD_NOTE,
+  canEditItemPurposes,
   catalogNewItem,
   catalogSuggestions,
   conditionLabel,
+  costCents,
   donationValues,
   headedLabel,
   extrasSummary,
   has40,
   hasDetails,
+  headedForUse,
   isMissingFunction,
   isNeeds40,
   itemPhotos,
+  kindLabel,
   listDropoffs,
+  listItemPurposes,
   listItems,
   makeBasket,
   money,
   recentDonors,
   saveItem,
+  saveItemPurpose,
   setDonationOutcome,
   setDonationPlan,
   setItemExtras,
@@ -75,10 +96,13 @@ import {
   toCents,
   dueSoon,
   valueLine,
+  type CatalogSuggestions,
   type DonationPlan,
   type Dropoff,
   type HeadedFor,
   type ItemKind,
+  type ItemPurpose,
+  type PurposeUse,
   type TaggedItem,
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
@@ -88,8 +112,8 @@ import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { todayStamp, type SheetColumn, type SheetRow, type SheetSpec } from '../../lib/inventoryExport'
 import ExportButtons from './ExportButtons'
 
-/** Recent places and categories (update 39; empty lists before it). */
-type Suggestions = { locations: string[]; categories: string[] }
+/** Recent places and categories (update 39), and stores (update 47); empty lists before them. */
+type Suggestions = CatalogSuggestions
 
 /** Newest first, no repeats (ignoring case), at most `max`. */
 const bump = (list: string[], v: string, max: number) => {
@@ -111,6 +135,10 @@ const SHEET_COLUMNS: SheetColumn[] = [
   { header: 'Donated by', width: 22 },
   { header: 'Received', width: 13, kind: 'date' },
   { header: 'Headed for', width: 15 },
+  { header: 'What it’s for', width: 18 },
+  { header: 'Came in as', width: 12 },
+  { header: 'What we paid', width: 12, kind: 'money' },
+  { header: 'Bought from', width: 18 },
   { header: 'How many', width: 10, kind: 'number' },
   { header: 'Size', width: 12 },
   { header: 'Value each', width: 12, kind: 'money' },
@@ -132,11 +160,15 @@ function sheetRow(i: TaggedItem): SheetRow {
     cells: [
       i.code,
       i.title,
-      KIND_META[i.kind].label,
+      kindLabel(i),
       statusLabel(i),
       i.donated_by,
       i.received_on,
       headedLabel(i.headed_for),
+      i.purpose ?? null,
+      i.kind === 'donation' ? (i.source === 'purchase' ? 'Bought' : 'Donation') : null,
+      i.cost_cents ?? null,
+      i.bought_from ?? null,
       i.quantity,
       i.size,
       v.each,
@@ -162,8 +194,9 @@ const DONATION_VIEWS: { v: DonationView; label: string }[] = [
   { v: 'unsure', label: 'Not sure yet' },
   { v: 'raffle', label: 'Raffle' },
   { v: 'auction', label: 'Silent Auction' },
+  { v: 'event', label: 'Used at an event' },
   { v: 'shop', label: 'Hop Shop' },
-  { v: 'rabbits', label: 'For the rabbits' },
+  { v: 'rabbits', label: 'Our own use' },
   { v: 'done', label: 'Done' },
 ]
 
@@ -203,7 +236,8 @@ export default function Items() {
   const [view, setView] = useState<DonationView>('waiting')
   const [q, setQ] = useState('')
   const [panel, setPanel] = useState<Panel>(null)
-  const [suggestions, setSuggestions] = useState<Suggestions>({ locations: [], categories: [] })
+  const [suggestions, setSuggestions] = useState<Suggestions>({ locations: [], categories: [], stores: [] })
+  const purposes = usePurposes(orgId)
   // A message under one row (an outcome that didn't go, update 40 not run).
   const [rowNote, setRowNote] = useState<{ id: string; text: string } | null>(null)
   const [rowBusy, setRowBusy] = useState<string | null>(null)
@@ -211,7 +245,7 @@ export default function Items() {
   const [bulkError, setBulkError] = useState<string | null>(null)
   const [basketMode, setBasketMode] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
-  // ?add=1 (the dashboard's "Add a donation"): bring the form into view, focused.
+  // ?add=1 (the dashboard's "Receive items"): bring the form into view, focused.
   // ?add=1&code=X (Scan an item, a new label): the same, with that code filled in.
   // ?code=X (Scan an item, "Open it"): open that item's edit panel.
   const [params, setParams] = useSearchParams()
@@ -298,9 +332,13 @@ export default function Items() {
     el?.focus({ preventScroll: true })
   }, [spot])
 
-  // A place or sort of thing just typed goes to the front of its chips.
+  // A place, sort of thing or store just typed goes to the front of its list.
   const used = (it: TaggedItem) =>
-    setSuggestions((s) => ({ locations: bump(s.locations, it.location ?? '', 10), categories: bump(s.categories, it.category ?? '', 12) }))
+    setSuggestions((s) => ({
+      locations: bump(s.locations, it.location ?? '', 30),
+      categories: bump(s.categories, it.category ?? '', 12),
+      stores: bump(s.stores, it.bought_from ?? '', 30),
+    }))
 
   const shown = useMemo(() => {
     const n = q.trim().toLowerCase()
@@ -377,7 +415,7 @@ export default function Items() {
     if (!headed || bulkCount === 0) return
     const ask =
       headed === 'rabbits'
-        ? `Mark all ${bulkCount} as used for the rabbits?`
+        ? `Mark all ${bulkCount} as in use by OHRR?`
         : `Move all ${bulkCount} to ${PLACE_NAME[headed]}? Each keeps its code, so a label already printed still works.`
     if (!window.confirm(ask)) return
     setBulkBusy(true)
@@ -387,7 +425,7 @@ export default function Items() {
       await load()
       setNote(
         headed === 'rabbits'
-          ? `Marked ${n} as used for the rabbits.`
+          ? `Marked ${n} as in use by OHRR.`
           : headed === 'shop'
             ? `Moved ${n} to the Hop Shop. Any without a price are hidden until they’re priced in Hop Shop inventory.`
             : `Moved ${n} to ${PLACE_NAME[headed]}. Each kept its code, so its label still works.`,
@@ -428,7 +466,8 @@ export default function Items() {
           <h1 className="font-display text-2xl font-black text-ink">Items</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Everything with an OHRR number: donations waiting to be sorted, auction lots and raffle prizes (DON-00042), and shop stock (a SKU like
-            HAY-101-001). Add a donation here or catalog it in the app, then decide where it goes, tidy details, mark items won or drawn, and count stock.
+            HAY-101-001). Receive items here or in the app — donated (DON-00042) or bought (PUR-00001) — then sort them, tidy details, mark items won or drawn,
+            and count stock.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -438,6 +477,12 @@ export default function Items() {
           <Link to="/staff/boxes" className={btn.outline}>
             <Icon name="box" size={16} /> Boxes
           </Link>
+          {/* OHRR 2026-10-27: "where is the vendor potion for things tht we buy … i dont see it on the page of items and hop shop". */}
+          {canStock && (
+            <Link to="/staff/hopshop/suppliers" className={btn.outline}>
+              <Icon name="bag" size={16} /> Vendors
+            </Link>
+          )}
           {canDonations && (
             <>
               <Link to="/staff/dropoffs" className={btn.outline}>
@@ -455,6 +500,7 @@ export default function Items() {
         <AddDonation
           orgId={orgId}
           suggestions={suggestions}
+          purposes={purposes}
           stockLink={canAddStock}
           focusRequest={focusAdd}
           presetCode={addCode}
@@ -504,14 +550,14 @@ export default function Items() {
               </button>
             ))}
           </div>
-          {view === 'done' && <p className="mt-2 text-sm text-slate-600">Done: in a basket, used for the rabbits, or passed on.</p>}
+          {view === 'done' && <p className="mt-2 text-sm text-slate-600">Done: in a basket, in use by OHRR, or passed on.</p>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {headed && mayBulk && (
               <button type="button" onClick={() => void moveAll()} disabled={bulkBusy || bulkCount === 0} className={`${btn.orange} disabled:opacity-60`}>
                 {bulkBusy
                   ? 'Moving…'
                   : headed === 'rabbits'
-                    ? `Mark all ${bulkCount} as used for the rabbits`
+                    ? `Mark all ${bulkCount} as in use by OHRR`
                     : `Move all ${bulkCount} to ${PLACE_NAME[headed]}`}
               </button>
             )}
@@ -565,7 +611,7 @@ export default function Items() {
       {items && shown.length === 0 && (
         <p className="mt-6 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
           {items.length === 0
-            ? 'Nothing has a number yet. Add a donation above, or catalog donations in the app.'
+            ? 'Nothing has a number yet. Receive items above, or in the app.'
             : filter === 'donation' && view !== 'done'
               ? 'Nothing waiting here.'
               : 'Nothing matches.'}
@@ -625,10 +671,11 @@ export default function Items() {
                     )}
                   </p>
                   <p className="text-sm text-slate-600">
-                    {k.label} · {statusLabel(it)}
+                    {kindLabel(it)} · {statusLabel(it)}
                     {donation && it.outcome === 'basket' && it.in_basket ? ` (${it.in_basket.code})` : ''}
                     {it.kind === 'stock' ? ` · ${money(it.price_cents) || 'no price'} each` : ''}
                     {it.kind !== 'stock' && it.donated_by ? ` · from ${it.donated_by}` : ''}
+                    {donation && it.source === 'purchase' && it.bought_from ? ` · bought at ${it.bought_from}` : ''}
                     {!donation && it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
                     {donation && it.received_on ? ` · received ${shortDate(it.received_on)}` : ''}
                     {it.box ? ` · in ${boxName(it.box.code)}${it.box.location ? ` (${it.box.location})` : ''}` : ''}
@@ -656,7 +703,7 @@ export default function Items() {
                         </button>
                       )}
                       <button type="button" disabled={busyRow} onClick={() => void outcome(it, 'rabbits')} className={smallBtn}>
-                        Used for the rabbits
+                        In use by OHRR
                       </button>
                       <button type="button" disabled={busyRow} onClick={() => void outcome(it, 'passed_on')} className={smallBtn}>
                         Passed on / not usable
@@ -741,10 +788,18 @@ export default function Items() {
                   item={it}
                   orgId={orgId}
                   suggestions={suggestions}
-                  onSaved={(saved) => {
+                  purposes={purposes}
+                  onSaved={(saved, warn) => {
                     swap(saved)
                     used(saved)
                     setPanel(null)
+                    setNote(
+                      <>
+                        Saved: <strong>{saved.title}</strong> (<span className="font-mono font-bold tracking-widest">{saved.code}</span>).
+                        {warn && <span className="block text-amber-900">{warn}</span>}
+                      </>,
+                    )
+                    document.getElementById(`item-${saved.tag_id}`)?.scrollIntoView({ block: 'nearest' })
                   }}
                   // A photo change saves at once and keeps the editor open (to reorder
                   // several); so does a save whose condition/category/place didn't go.
@@ -1046,7 +1101,7 @@ function ChoiceChips({ options, value, onPick, label }: { options: string[]; val
   )
 }
 
-/** Where a donation is headed: one of five, "Not sure yet" meaning sort it later (update 40). */
+/** Where a part split off is headed: "Not sure yet" meaning sort it later (update 40). */
 function HeadedChips({ value, onPick, label = 'Where it’s headed' }: { value: HeadedFor | ''; onPick: (v: HeadedFor | '') => void; label?: string }) {
   return (
     <div role="group" aria-label={label} className="mt-1 flex flex-wrap gap-1.5">
@@ -1060,9 +1115,9 @@ function HeadedChips({ value, onPick, label = 'Where it’s headed' }: { value: 
 }
 
 /** Is the value typed for one, or for the whole lot? (update 40) */
-function BasisToggle({ value, onPick }: { value: 'each' | 'all'; onPick: (v: 'each' | 'all') => void }) {
+function BasisToggle({ value, onPick, label = 'The value is for' }: { value: 'each' | 'all'; onPick: (v: 'each' | 'all') => void; label?: string }) {
   return (
-    <div role="group" aria-label="The value is for" className="inline-flex rounded-full border border-slate-300 bg-white p-0.5">
+    <div role="group" aria-label={label} className="inline-flex rounded-full border border-slate-300 bg-white p-0.5">
       {(['each', 'all'] as const).map((b) => (
         <button
           key={b}
@@ -1104,15 +1159,51 @@ function CategoryField({ value, set, suggestions }: { value: string; set: (v: st
   )
 }
 
-function PlaceField({ value, set, suggestions, shelf }: { value: string; set: (v: string) => void; suggestions: Suggestions; shelf?: boolean }) {
+/**
+ * Where it's kept: type it, with a drop-down of the places used before (and
+ * the boxes' places); a new one joins the list once an item is saved with it
+ * (OHRR 2026-10-27: "so if i added a item and type location as storage shed,
+ * OHRR that would then be added to the drop down list"). The six most recent
+ * are one-click chips too.
+ */
+function PlaceField({
+  value,
+  set,
+  suggestions,
+  shelf,
+  required,
+  label,
+}: {
+  value: string
+  set: (v: string) => void
+  suggestions: Suggestions
+  shelf?: boolean
+  required?: boolean
+  label?: string
+}) {
+  const listId = useId()
   return (
     <div>
       <p className={fieldLabel}>
-        Where is it kept? <span className="font-normal text-slate-600">{shelf ? 'its shelf' : 'a bin, shelf or closet'}</span>
+        {label ?? 'Where is it kept?'} <span className="font-normal text-slate-600">{shelf ? 'its shelf' : 'room or building, then the shelf or bin'}</span>
       </p>
       <div className="mt-1 flex flex-wrap items-center gap-1.5">
-        <ChoiceChips options={suggestions.locations} value={value} onPick={set} label="Recent places" />
-        <input className={`${staffInput} !mt-0 sm:!w-56`} value={value} onChange={(e) => set(e.target.value)} placeholder="Bin 3, back closet" aria-label="Where it is kept" />
+        <input
+          className={`${staffInput} !mt-0 sm:!w-80`}
+          value={value}
+          onChange={(e) => set(e.target.value)}
+          list={listId}
+          autoComplete="off"
+          required={required}
+          placeholder="Storage shed, OHRR"
+          aria-label={label ?? 'Where it is kept'}
+        />
+        <datalist id={listId}>
+          {suggestions.locations.map((l) => (
+            <option key={l} value={l} />
+          ))}
+        </datalist>
+        <ChoiceChips options={suggestions.locations.slice(0, 6)} value={value} onPick={set} label="Recent places" />
       </div>
     </div>
   )
@@ -1124,6 +1215,7 @@ function PlaceField({ value, set, suggestions, shelf }: { value: string; set: (v
  * shows only the sort of thing and its shelf (`only="place"`).
  */
 function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Partial<Details>) => void; suggestions: Suggestions; only?: 'place' }) {
+  // Used by Edit (a donation's details, or shop stock's sort and shelf).
   return (
     <div className="space-y-3">
       {only !== 'place' && (
@@ -1147,9 +1239,233 @@ function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Par
   )
 }
 
-/* ------------------------------------------------- Add a donation */
+/* ------------------------------------------------- receiving + uses (update 47) */
+
+/** OHRR's list of uses, whether this person may add to it, and adding one. */
+function usePurposes(orgId: string) {
+  const [purposes, setPurposes] = useState<ItemPurpose[]>(DEFAULT_PURPOSES)
+  const [canAdd, setCanAdd] = useState(false)
+  useEffect(() => {
+    if (!orgId) return
+    let alive = true
+    void listItemPurposes(orgId)
+      .then((r) => alive && setPurposes(r.purposes))
+      .catch(() => {
+        /* the five OHRR started with stay */
+      })
+    void canEditItemPurposes(orgId).then((c) => alive && setCanAdd(c))
+    return () => {
+      alive = false
+    }
+  }, [orgId])
+  const add = async (name: string, use: PurposeUse) => {
+    const p = await saveItemPurpose(orgId, { name, use })
+    setPurposes((list) => [...list.filter((x) => x.id !== p.id), p].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)))
+    return p
+  }
+  return { purposes, canAdd, add }
+}
+type Purposes = ReturnType<typeof usePurposes>
+
+/** Donated or bought (update 47). */
+function ReceivedAsChips({ value, onPick }: { value: 'donation' | 'purchase'; onPick: (v: 'donation' | 'purchase') => void }) {
+  return (
+    <div>
+      <p className={fieldLabel}>How did it come in?</p>
+      <div role="group" aria-label="How it came in" className="mt-1 flex flex-wrap gap-1.5">
+        {(
+          [
+            ['donation', 'Donated to OHRR'],
+            ['purchase', 'We bought it'],
+          ] as const
+        ).map(([v, l]) => (
+          <button key={v} type="button" onClick={() => onPick(v)} aria-pressed={value === v} className={pickChip(value === v)}>
+            {l}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** A purchase: what we paid (for all or each) and where it was bought. */
+function CostFields({
+  cost,
+  basis,
+  store,
+  quantity,
+  stores,
+  set,
+}: {
+  cost: string
+  basis: 'each' | 'all'
+  store: string
+  quantity: number
+  stores: string[]
+  set: (p: { cost?: string; basis?: 'each' | 'all'; store?: string }) => void
+}) {
+  const listId = useId()
+  const total = costCents({ cost, costBasis: basis, quantity })
+  return (
+    <div className="grid gap-3 md:grid-cols-[9rem_auto_minmax(0,1fr)] md:items-end">
+      <label className={fieldLabel}>
+        What we paid ($)
+        <input className={staffInput} inputMode="decimal" value={cost} onChange={(e) => set({ cost: e.target.value })} />
+      </label>
+      <div>
+        <BasisToggle value={basis} onPick={(b) => set({ basis: b })} label="What we paid is for" />
+        {total != null && quantity > 1 && <p className="mt-1 text-sm font-semibold text-slate-700">{money(total)} in all</p>}
+      </div>
+      <label className={fieldLabel}>
+        Where was it bought? <span className="font-normal text-slate-600">(a store or one of our vendors)</span>
+        <input className={staffInput} value={store} onChange={(e) => set({ store: e.target.value })} list={listId} autoComplete="off" placeholder="Tractor Supply" />
+        <datalist id={listId}>
+          {stores.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      </label>
+    </div>
+  )
+}
 
 /**
+ * What it's for: OHRR's list of uses, "+ Add a use…" for Admin 1 and up, and
+ * for an event how it's used there (raffle prize, Silent Auction, used at the
+ * event). Picking a use sets where it's headed.
+ */
+function PurposeField({
+  purpose,
+  headed,
+  set,
+  list,
+}: {
+  purpose: string
+  headed: HeadedFor | ''
+  set: (p: { purpose: string; headed: HeadedFor | '' }) => void
+  list: Purposes
+}) {
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const [use, setUse] = useState<PurposeUse>('event')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const active = list.purposes.filter((p) => p.is_active)
+  const current = list.purposes.find((p) => p.name.toLowerCase() === purpose.toLowerCase())
+  const choose = (pname: string) => {
+    if (pname === '__add') {
+      setAdding(true)
+      return
+    }
+    const p = list.purposes.find((x) => x.name === pname)
+    set({ purpose: pname, headed: p ? headedForUse(p.use) : '' })
+  }
+  const add = async () => {
+    if (busy || !name.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const p = await list.add(name, use)
+      set({ purpose: p.name, headed: headedForUse(p.use) })
+      setAdding(false)
+      setName('')
+    } catch (e) {
+      setError(errMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="space-y-3">
+      <label className={fieldLabel}>
+        What is it for?
+        <select className={`${staffInput} sm:!w-80`} value={current ? current.name : purpose} onChange={(e) => choose(e.target.value)}>
+          <option value="">Not sorted yet</option>
+          {active.map((p) => (
+            <option key={p.id} value={p.name}>
+              {p.name}
+            </option>
+          ))}
+          {purpose && !current && <option value={purpose}>{purpose}</option>}
+          {list.canAdd && <option value="__add">+ Add a use…</option>}
+        </select>
+      </label>
+      {!purpose && headed && <p className="text-sm text-slate-600">Before the list of uses it was headed for: {headedLabel(headed)}.</p>}
+      {adding && (
+        <div className="space-y-3 rounded-xl border-2 border-brand-blue/30 bg-brand-blue-50 p-3">
+          <p className="text-base font-bold text-ink">Add a use to the list</p>
+          <label className={fieldLabel}>
+            Name
+            <input
+              className={`${staffInput} sm:!w-80`}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void add()
+                }
+              }}
+              placeholder="Christmas event"
+              autoFocus
+            />
+          </label>
+          <div role="radiogroup" aria-label="What kind of use" className="flex flex-wrap gap-1.5">
+            {PURPOSE_USES.map((u) => (
+              <button key={u.value} type="button" role="radio" aria-checked={use === u.value} onClick={() => setUse(u.value)} className={pickChip(use === u.value)} title={u.hint}>
+                {u.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-slate-600">{PURPOSE_USES.find((u) => u.value === use)?.hint}</p>
+          {error && <p className="text-base font-semibold text-red-600">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => void add()} disabled={busy || !name.trim()} className={`${btn.blue} disabled:opacity-60`}>
+              {busy ? 'Saving…' : 'Save to the list'}
+            </button>
+            <button type="button" onClick={() => setAdding(false)} className={btn.outline}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {current?.use === 'event' && (
+        <div>
+          <p className={fieldLabel}>How will it be used there?</p>
+          <div role="group" aria-label="How it will be used at the event" className="mt-1 flex flex-wrap gap-1.5">
+            {EVENT_USES.map((h) => (
+              <button key={h.value} type="button" onClick={() => set({ purpose, headed: h.value })} aria-pressed={headed === h.value} className={pickChip(headed === h.value)}>
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A numbered part of Receive items: 1 Receiving, 2 What it's for. */
+function Part({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return (
+    <section className="mt-4 rounded-xl border border-slate-200 p-3" aria-label={title}>
+      <h3 className="flex items-center gap-2 font-display text-base font-extrabold text-ink">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-blue text-sm font-black text-white">{n}</span>
+        {title}
+      </h3>
+      <div className="mt-2 space-y-3">{children}</div>
+    </section>
+  )
+}
+
+/* ------------------------------------------------- Receive items */
+
+/**
+ * Receive items (update 47): 1 Receiving — donated or bought, then photos,
+ * name, how many, value or what we paid, and where it's kept (required unless
+ * it goes in a box) — and 2 What it's for, from OHRR's list of uses. A
+ * purchase has no donor or drop-off; the database gives it a PUR number.
+ *
  * Catalog a donation from the desk (update 36; details 39; intake 40). First
  * who it's from — a drop-off, remembered on this computer for the rest of the
  * day, so the thank-you letter lists everything they brought. Then each item:
@@ -1167,6 +1483,7 @@ function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Par
 function AddDonation({
   orgId,
   suggestions,
+  purposes,
   stockLink,
   focusRequest,
   presetCode,
@@ -1176,6 +1493,7 @@ function AddDonation({
 }: {
   orgId: string
   suggestions: Suggestions
+  purposes: Purposes
   /** Show the way to Hop Shop inventory (shop stock), for people who can add it. */
   stockLink: boolean
   /** Changes when the form should come into view and take the focus (?add=1). */
@@ -1203,6 +1521,13 @@ function AddDonation({
   const [donors, setDonors] = useState<string[]>([])
   const [dropBusy, setDropBusy] = useState(false)
   const [dropError, setDropError] = useState<string | null>(null)
+  // How it came in (update 47): donated, or bought — what we paid and where.
+  const [source, setSource] = useState<'donation' | 'purchase'>('donation')
+  const [cost, setCost] = useState('')
+  const [costBasis, setCostBasis] = useState<'each' | 'all'>('all')
+  const [boughtFrom, setBoughtFrom] = useState('')
+  const [purpose, setPurpose] = useState('')
+  const bought = source === 'purchase'
   // Each item
   const [title, setTitle] = useState('')
   const [qty, setQty] = useState('1')
@@ -1229,6 +1554,9 @@ function AddDonation({
   const [boxError, setBoxError] = useState<string | null>(null)
   const [fullBox, setFullBox] = useState<{ box: PackingBox; count: number | null } | null>(null)
   const [lastBox, setLastBox] = useState<{ ok: boolean; text: string } | null>(null)
+  // Where the box being filled is kept (asked when it's started), and the next one's.
+  const [boxPlace, setBoxPlace] = useState<string | null>(null)
+  const [nextBoxPlace, setNextBoxPlace] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
   const donorRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -1289,8 +1617,10 @@ function AddDonation({
     boxByCode(orgId, box.code)
       .then((b) => {
         if (!alive) return
-        if (b) setBoxCount(b.items.length)
-        else {
+        if (b) {
+          setBoxCount(b.items.length)
+          setBoxPlace(b.location)
+        } else {
           setBoxState(null)
           savePackingBox(null)
         }
@@ -1306,8 +1636,9 @@ function AddDonation({
     setBoxBusy(true)
     setBoxError(null)
     try {
-      const b = await newBox(orgId)
+      const b = await newBox(orgId, nextBoxPlace.trim() || null)
       setBox({ code: b.code, box_no: b.box_no })
+      setBoxPlace(b.location ?? (nextBoxPlace.trim() || null))
       setBoxCount(0)
       setFullBox(null)
       setLastBox(null)
@@ -1404,17 +1735,23 @@ function AddDonation({
   const q = count(qty)
   const worth = valueLine({ value_cents: toCents(value), value_basis: basis, quantity: q })
 
+  // Where it's kept: the box's place for an item going in a box, else typed (required).
+  const place = box ? (boxPlace ?? '') : details.location
+  const canAdd = Boolean(title.trim()) && (Boolean(box) || Boolean(details.location.trim()))
+  const noDonor = wantsBoxes || bought
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || busy) return
+    if (!canAdd || busy) return
     setError(null)
     // The box it goes in is the one being filled when Add was pressed.
     const packing = box
     try {
       // A name or email typed but not started: start the drop-off now, so the
-      // thank-you letter has this item on it. Receiving into boxes has no donor.
-      let d = wantsBoxes ? null : current
-      if (!wantsBoxes && !d && dropoffs !== false && (donor.trim() || email.trim())) {
+      // thank-you letter has this item on it. Receiving into boxes, and
+      // anything we bought, has no donor.
+      let d = noDonor ? null : current
+      if (!noDonor && !d && dropoffs !== false && (donor.trim() || email.trim())) {
         setBusy('Starting the drop-off…')
         d = await begin()
       }
@@ -1425,29 +1762,32 @@ function AddDonation({
         urls.push(await uploadItemPhoto(photos[i].file, orgId))
       }
       setBusy('Saving…')
+      const store = boughtFrom.trim()
       const plan: DonationPlan = {
         headed_for: headed || null,
         value_basis: basis,
         size: size.trim() || null,
         use_by: useBy || null,
         dropoff_id: d?.id ?? null,
+        purpose: purpose || null,
+        ...(bought ? { source: 'purchase' as const, cost_cents: costCents({ cost, costBasis, quantity: q }), bought_from: store || null } : {}),
       }
       let it = await catalogNewItem(orgId, {
         title,
-        // A scanned DON label nothing has yet; otherwise the database gives the next DON number.
-        code: donationCode,
-        donatedBy: wantsBoxes ? '' : d ? (d.donor_name ?? '') : donor,
-        valueCents: toCents(value),
+        // A scanned DON label nothing has yet; otherwise the database gives the next DON (or PUR) number.
+        code: bought ? null : donationCode,
+        donatedBy: noDonor ? '' : d ? (d.donor_name ?? '') : donor,
+        valueCents: bought ? null : toCents(value),
         photoUrl: urls[0] ?? null,
         description: notes,
         quantity: q,
         priceCents: toCents(details.price),
         condition: details.condition,
         category: details.category,
-        location: details.location,
+        location: place,
         plan,
       })
-      const skipped = { details_skipped: it.details_skipped, plan_skipped: it.plan_skipped }
+      const skipped = { details_skipped: it.details_skipped, plan_skipped: it.plan_skipped, receiving_skipped: it.receiving_skipped }
       if (urls.length > 1) it = await setItemPhotos(orgId, it.code, urls)
       it = { ...it, ...skipped }
       let into: { ok: boolean; text: string } | null = null
@@ -1466,14 +1806,15 @@ function AddDonation({
       onAdded(it)
       setLast(it)
       setLastBox(into)
-      if (donationCode) onCodeDone()
-      if (!d && !wantsBoxes) rememberDonor(donor)
-      // Who it's from, where it's headed and where it's kept stay: the next
-      // thing is often from the same box, and a box usually goes to one place.
+      if (donationCode && !bought) onCodeDone()
+      if (!d && !noDonor) rememberDonor(donor)
+      // Who it's from, how it came in, the store, its use and where it's kept
+      // stay: the next thing is often from the same bag or box.
       setTitle('')
       setQty('1')
       setValue('')
       setBasis('each')
+      setCost('')
       setSize('')
       setUseBy('')
       setNotes('')
@@ -1492,12 +1833,12 @@ function AddDonation({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="add-donation-heading" className="font-display text-lg font-extrabold text-ink">
-            {wantsBoxes ? 'Receive into boxes' : 'Add a donation'}
+            {wantsBoxes ? 'Receive into boxes' : 'Receive items'}
           </h2>
           <p className="mt-0.5 text-sm text-slate-600">
             {wantsBoxes
               ? 'For sorting items nobody wrote down — no donor needed. Add each item, print its label, and put it in the numbered box. It gets the next DON number.'
-              : 'Something given to OHRR. Name it and it gets the next DON number. Sort it later, or tick where it’s headed.'}
+              : 'Donated to OHRR or bought by us. First receive it — what it is and where it’s kept — then say what it’s for. A donation gets the next DON number, something we bought the next PUR number.'}
           </p>
         </div>
         {!wantsBoxes && (
@@ -1517,7 +1858,7 @@ function AddDonation({
           </Link>
         </p>
       )}
-      {donationCode && (
+      {donationCode && !bought && (
         <p className="mt-2 flex flex-wrap items-center gap-x-3 rounded-xl bg-brand-blue-50 px-3 py-1.5 text-base text-slate-800" role="status">
           <span>
             Its number is <span className="font-mono font-bold tracking-widest">{donationCode}</span>, from the label you scanned.
@@ -1538,7 +1879,8 @@ function AddDonation({
           <span className="min-w-0 flex-1 text-base text-slate-800">
             <span className="block font-display text-lg font-extrabold text-ink">Filling Box {box.box_no}</span>
             Write {box.box_no} on the box.
-            {boxCount != null && ` ${boxCount} item${boxCount === 1 ? '' : 's'} in it.`}{' '}
+            {boxCount != null && ` ${boxCount} item${boxCount === 1 ? '' : 's'} in it.`}
+            {boxPlace ? ` Kept: ${boxPlace}.` : ' No place set yet — add it on the box’s page.'}{' '}
             <Link to={`/staff/boxes/${box.code}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
               See what’s in it
             </Link>
@@ -1566,6 +1908,9 @@ function AddDonation({
             until the sorting is done. Then put the 4 × 6 roll in the printer, print all the waiting box labels at once, and stick each one over the number
             written on its box.
           </p>
+          <div className="mt-2">
+            <PlaceField value={nextBoxPlace} set={setNextBoxPlace} suggestions={suggestions} label="Where will the next box be kept?" />
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => void startBox()} disabled={boxBusy} className={`${btn.orange} disabled:opacity-60`}>
               <Icon name="box" size={16} /> {boxBusy ? 'Starting the box…' : 'Start the next box'}
@@ -1587,6 +1932,9 @@ function AddDonation({
             <li>Press Box is full, and start the next box.</li>
             <li>When the sorting is done, put the 4 × 6 roll in the printer and print all the box labels from Boxes. Stick each one over the number.</li>
           </ol>
+          <div className="mt-3">
+            <PlaceField value={nextBoxPlace} set={setNextBoxPlace} suggestions={suggestions} label="Where will this box be kept?" />
+          </div>
           <button type="button" onClick={() => void startBox()} disabled={boxBusy} className={`${btn.orange} mt-3 disabled:opacity-60`}>
             <Icon name="box" size={16} /> {boxBusy ? 'Starting…' : 'Start a box'}
           </button>
@@ -1594,151 +1942,196 @@ function AddDonation({
       ) : null}
       {boxError && <p className="mt-2 text-base font-semibold text-red-600">{boxError}</p>}
 
-      {/* Who is it from (a drop-off); receiving into boxes has no donor */}
-      {!wantsBoxes && (
-        <fieldset className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <legend className="px-1 text-base font-bold text-ink">Who is it from?</legend>
-          {current ? (
-            <p className="text-base text-slate-800">
-              Adding to:{' '}
-              <Link to={`/staff/dropoffs/${current.id}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
-                {dropoffName(current)}
-              </Link>{' '}
-              ·{' '}
-              <button type="button" onClick={startNew} className="min-h-11 px-1 font-bold text-brand-blue">
-                Start a new one
-              </button>
-            </p>
-          ) : (
-            <>
-              <div className={`grid gap-3 ${dropoffs === false ? '' : 'md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_11rem_auto] md:items-end'}`}>
-                <label className={fieldLabel}>
-                  Donor’s name
-                  <input ref={donorRef} className={staffInput} value={donor} onChange={(e) => setDonor(e.target.value)} list="recent-donors" autoComplete="off" />
-                </label>
-                {dropoffs !== false && (
-                  <>
-                    <label className={fieldLabel}>
-                      Email <span className="font-normal text-slate-600">(optional, for the thank-you letter)</span>
-                      <input className={staffInput} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
-                    </label>
-                    <label className={fieldLabel}>
-                      Date
-                      <input className={staffInput} type="date" required value={day} onChange={(e) => setDay(e.target.value || todayOhio())} />
-                    </label>
-                    <button type="button" onClick={() => void start()} disabled={dropBusy} className={`${btn.blue} disabled:opacity-60`}>
-                      {dropBusy ? 'Starting…' : 'Start'}
-                    </button>
-                  </>
-                )}
-              </div>
-              {donors.length > 0 && (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="mr-1 text-sm text-slate-600">Recent donors:</span>
-                  {donors.map((d) => (
-                    <button key={d} type="button" onClick={() => setDonor(d)} aria-pressed={donor.trim().toLowerCase() === d.toLowerCase()} className={pickChip(donor.trim().toLowerCase() === d.toLowerCase())}>
-                      {d}
-                    </button>
-                  ))}
-                  <datalist id="recent-donors">
-                    {donors.map((d) => (
-                      <option key={d} value={d} />
-                    ))}
-                  </datalist>
+      <Part n={1} title="Receiving">
+        <ReceivedAsChips value={source} onPick={setSource} />
+        {bought && (
+          <CostFields
+            cost={cost}
+            basis={costBasis}
+            store={boughtFrom}
+            quantity={q}
+            stores={suggestions.stores}
+            set={(p) => {
+              if (p.cost !== undefined) setCost(p.cost)
+              if (p.basis) setCostBasis(p.basis)
+              if (p.store !== undefined) setBoughtFrom(p.store)
+            }}
+          />
+        )}
+        {/* Who is it from (a drop-off); receiving into boxes, or a purchase, has no donor */}
+        {!noDonor && (
+          <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <legend className="px-1 text-base font-bold text-ink">Who is it from?</legend>
+            {current ? (
+              <p className="text-base text-slate-800">
+                Adding to:{' '}
+                <Link to={`/staff/dropoffs/${current.id}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
+                  {dropoffName(current)}
+                </Link>{' '}
+                ·{' '}
+                <button type="button" onClick={startNew} className="min-h-11 px-1 font-bold text-brand-blue">
+                  Start a new one
+                </button>
+              </p>
+            ) : (
+              <>
+                <div className={`grid gap-3 ${dropoffs === false ? '' : 'md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_11rem_auto] md:items-end'}`}>
+                  <label className={fieldLabel}>
+                    Donor’s name
+                    <input ref={donorRef} className={staffInput} value={donor} onChange={(e) => setDonor(e.target.value)} list="recent-donors" autoComplete="off" />
+                  </label>
+                  {dropoffs !== false && (
+                    <>
+                      <label className={fieldLabel}>
+                        Email <span className="font-normal text-slate-600">(optional, for the thank-you letter)</span>
+                        <input className={staffInput} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+                      </label>
+                      <label className={fieldLabel}>
+                        Date
+                        <input className={staffInput} type="date" required value={day} onChange={(e) => setDay(e.target.value || todayOhio())} />
+                      </label>
+                      <button type="button" onClick={() => void start()} disabled={dropBusy} className={`${btn.blue} disabled:opacity-60`}>
+                        {dropBusy ? 'Starting…' : 'Start'}
+                      </button>
+                    </>
+                  )}
                 </div>
-              )}
-              {dropoffs === false ? (
-                <p className="mt-2 text-sm text-slate-600">Drop-offs and thank-you letters need database update 40. Until then the donor’s name goes on each item.</p>
-              ) : (
-                <p className="mt-2 text-sm text-slate-600">Start keeps everything they brought together, for one thank-you letter. Leave it blank if nobody gave a name.</p>
-              )}
-              {dropError && <p className="mt-2 text-base font-semibold text-red-600">{dropError}</p>}
+                {donors.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 text-sm text-slate-600">Recent donors:</span>
+                    {donors.map((d) => (
+                      <button key={d} type="button" onClick={() => setDonor(d)} aria-pressed={donor.trim().toLowerCase() === d.toLowerCase()} className={pickChip(donor.trim().toLowerCase() === d.toLowerCase())}>
+                        {d}
+                      </button>
+                    ))}
+                    <datalist id="recent-donors">
+                      {donors.map((d) => (
+                        <option key={d} value={d} />
+                      ))}
+                    </datalist>
+                  </div>
+                )}
+                {dropoffs === false ? (
+                  <p className="mt-2 text-sm text-slate-600">Drop-offs and thank-you letters need database update 40. Until then the donor’s name goes on each item.</p>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">Start keeps everything they brought together, for one thank-you letter. Leave it blank if nobody gave a name.</p>
+                )}
+                {dropError && <p className="mt-2 text-base font-semibold text-red-600">{dropError}</p>}
+              </>
+            )}
+          </fieldset>
+        )}
+
+        {/* Each item */}
+        <div className={`grid grid-cols-2 items-end gap-3 ${bought ? 'md:grid-cols-[minmax(0,1fr)_7rem]' : 'md:grid-cols-[minmax(0,1fr)_7rem_9rem_auto]'}`}>
+          <label className={`${fieldLabel} col-span-2 md:col-span-1`}>
+            What is it?
+            <input ref={titleRef} className={staffInput} required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Hand-knitted bunny blanket" />
+          </label>
+          <label className={fieldLabel}>
+            How many?
+            <input className={staffInput} type="number" inputMode="numeric" min={1} max={9999} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+          </label>
+          {!bought && (
+            <>
+              <label className={fieldLabel}>
+                Value ($)
+                <input className={staffInput} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
+              </label>
+              <div className="col-span-2 md:col-span-1">
+                <BasisToggle value={basis} onPick={setBasis} />
+              </div>
             </>
           )}
-        </fieldset>
-      )}
-
-      {/* Each item */}
-      <div className="mt-4 grid grid-cols-2 items-end gap-3 md:grid-cols-[minmax(0,1fr)_7rem_9rem_auto]">
-        <label className={`${fieldLabel} col-span-2 md:col-span-1`}>
-          What is it?
-          <input ref={titleRef} className={staffInput} required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Hand-knitted bunny blanket" />
-        </label>
-        <label className={fieldLabel}>
-          How many?
-          <input className={staffInput} type="number" inputMode="numeric" min={1} max={9999} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
-        </label>
-        <label className={fieldLabel}>
-          Value ($)
-          <input className={staffInput} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
-        </label>
-        <div className="col-span-2 md:col-span-1">
-          <BasisToggle value={basis} onPick={setBasis} />
         </div>
-      </div>
-      <p className="mt-1 min-h-6 text-sm font-semibold text-slate-700" aria-live="polite">
-        {worth}
-      </p>
-
-      <div className="mt-2">
-        <p className={fieldLabel}>Where it’s headed</p>
-        <HeadedChips value={headed} onPick={setHeaded} />
-      </div>
-
-      {/* Photos: chosen, or dropped here from a folder on the computer */}
-      <PhotoDrop onFiles={addPhotos} disabled={!!busy} className="mt-3 p-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className={`${btn.outline} cursor-pointer bg-white ${fileFocus} ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
-            <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="sr-only"
-              disabled={photos.length >= MAX_ITEM_PHOTOS}
-              onChange={(e) => addPhotos(Array.from(e.target.files ?? []))}
-            />
-          </label>
-          {photos.length > 1 && (
-            <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
-              Remove all
-            </button>
-          )}
-          <span className="text-sm text-slate-600">
-            {photos.length >= MAX_ITEM_PHOTOS ? `That’s ${MAX_ITEM_PHOTOS}, the most an item can have.` : 'Drop photos here, or use Add photos.'} Optional, up to{' '}
-            {MAX_ITEM_PHOTOS}. {COVER_NOTE}
-          </span>
-        </div>
-        {photoNote && (
-          <p className="mt-2 text-base font-semibold text-amber-900" role="status">
-            {photoNote}
+        {!bought && (
+          <p className="min-h-6 text-sm font-semibold text-slate-700" aria-live="polite">
+            {worth}
           </p>
         )}
-        {photos.length > 0 && (
-          <ul className="mt-3 flex flex-wrap gap-3" aria-label="Photos to add, in order">
-            {photos.map((p, i) => (
-              <PhotoTile
-                key={p.url}
-                src={p.url}
-                index={i}
-                count={photos.length}
-                disabled={!!busy}
-                onMove={(dir) => setPhotos((list) => moved(list, i, dir))}
-                onCover={() => setPhotos((list) => asCover(list, i))}
-                onRemove={() => removePhoto(i)}
+
+        {/* Photos: chosen, or dropped here from a folder on the computer */}
+        <PhotoDrop onFiles={addPhotos} disabled={!!busy} className="mt-3 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className={`${btn.outline} cursor-pointer bg-white ${fileFocus} ${photos.length >= MAX_ITEM_PHOTOS ? 'pointer-events-none opacity-50' : ''}`}>
+              <Icon name="camera" size={16} /> {photos.length ? `Add another photo (${photos.length} of ${MAX_ITEM_PHOTOS})` : 'Add photos'}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                disabled={photos.length >= MAX_ITEM_PHOTOS}
+                onChange={(e) => addPhotos(Array.from(e.target.files ?? []))}
               />
-            ))}
-          </ul>
+            </label>
+            {photos.length > 1 && (
+              <button type="button" onClick={clearPhoto} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
+                Remove all
+              </button>
+            )}
+            <span className="text-sm text-slate-600">
+              {photos.length >= MAX_ITEM_PHOTOS ? `That’s ${MAX_ITEM_PHOTOS}, the most an item can have.` : 'Drop photos here, or use Add photos.'} Optional, up to{' '}
+              {MAX_ITEM_PHOTOS}. {COVER_NOTE}
+            </span>
+          </div>
+          {photoNote && (
+            <p className="mt-2 text-base font-semibold text-amber-900" role="status">
+              {photoNote}
+            </p>
+          )}
+          {photos.length > 0 && (
+            <ul className="mt-3 flex flex-wrap gap-3" aria-label="Photos to add, in order">
+              {photos.map((p, i) => (
+                <PhotoTile
+                  key={p.url}
+                  src={p.url}
+                  index={i}
+                  count={photos.length}
+                  disabled={!!busy}
+                  onMove={(dir) => setPhotos((list) => moved(list, i, dir))}
+                  onCover={() => setPhotos((list) => asCover(list, i))}
+                  onRemove={() => removePhoto(i)}
+                />
+              ))}
+            </ul>
+          )}
+        </PhotoDrop>
+
+        {box ? (
+          <p className="text-base font-semibold text-ink">
+            Kept: in Box {box.box_no}
+            {boxPlace ? ` · ${boxPlace}` : ''}
+          </p>
+        ) : (
+          <PlaceField value={details.location} set={(location) => setDetails((x) => ({ ...x, location }))} suggestions={suggestions} required />
         )}
-      </PhotoDrop>
+      </Part>
+
+      <Part n={2} title="What it’s for">
+        <PurposeField
+          purpose={purpose}
+          headed={headed}
+          set={(p) => {
+            setPurpose(p.purpose)
+            setHeaded(p.headed)
+          }}
+          list={purposes}
+        />
+        {headed === 'shop' && (
+          <label className={`${fieldLabel} sm:w-60`}>
+            Price for one ($) <span className="font-normal text-slate-600">(in the Hop Shop)</span>
+            <input className={staffInput} inputMode="decimal" value={details.price} onChange={(e) => setDetails((x) => ({ ...x, price: e.target.value }))} />
+          </label>
+        )}
+      </Part>
 
       <div className="mt-3 border-t border-slate-100 pt-2">
         <div className="flex flex-wrap items-center gap-x-2">
           <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} aria-controls="add-more-details" className="inline-flex min-h-11 items-center gap-2 text-base font-bold text-brand-blue">
             <Icon name="chevron" size={16} className={more ? 'rotate-90' : ''} /> More details
           </button>
-          <span className="text-sm text-slate-600">Size, condition, sort of thing, where it’s kept, use by, a price, notes</span>
+          <span className="text-sm text-slate-600">Size, condition, sort of thing, use by, a price, notes</span>
         </div>
         {more && (
           <div id="add-more-details" className="mt-2 space-y-3">
@@ -1750,16 +2143,17 @@ function AddDonation({
               <ConditionField value={details.condition} set={(condition) => setDetails((x) => ({ ...x, condition }))} />
             </div>
             <CategoryField value={details.category} set={(category) => setDetails((x) => ({ ...x, category }))} suggestions={suggestions} />
-            <PlaceField value={details.location} set={(location) => setDetails((x) => ({ ...x, location }))} suggestions={suggestions} />
             <div className="grid gap-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,18rem)] sm:items-start">
               <label className={fieldLabel}>
                 Use by <span className="font-normal text-slate-600">(food, medicine)</span>
                 <input className={staffInput} type="date" value={useBy} onChange={(e) => setUseBy(e.target.value)} />
               </label>
-              <label className={fieldLabel}>
-                Price for one ($) <span className="font-normal text-slate-600">(if it may be sold)</span>
-                <input className={staffInput} inputMode="decimal" value={details.price} onChange={(e) => setDetails((x) => ({ ...x, price: e.target.value }))} />
-              </label>
+              {headed !== 'shop' && (
+                <label className={fieldLabel}>
+                  Price for one ($) <span className="font-normal text-slate-600">(if it may be sold)</span>
+                  <input className={staffInput} inputMode="decimal" value={details.price} onChange={(e) => setDetails((x) => ({ ...x, price: e.target.value }))} />
+                </label>
+              )}
             </div>
             <label className={fieldLabel}>
               Notes
@@ -1770,18 +2164,19 @@ function AddDonation({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={!!busy || !title.trim()} className={`${btn.orange} min-w-32 disabled:opacity-60`}>
+        <button type="submit" disabled={!!busy || !canAdd} className={`${btn.orange} min-w-32 disabled:opacity-60`}>
           {busy ?? 'Add'}
         </button>
+        {title.trim() && !canAdd && <span className="text-sm font-semibold text-slate-700">Say where it’s kept, then Add.</span>}
         {box && <span className="text-sm font-semibold text-slate-700">It goes in Box {box.box_no}.</span>}
-        {current && !wantsBoxes && <span className="text-sm text-slate-600">It goes on {dropoffName(current)}.</span>}
+        {current && !noDonor && <span className="text-sm text-slate-600">It goes on {dropoffName(current)}.</span>}
       </div>
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
         <div className="mt-3 space-y-2" role="status">
           <p className="rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800">
             Added <strong>{last.title}</strong> as <span className="font-mono font-bold tracking-widest">{last.code}</span>.
-            {last.donated_by && ` Gift of ${last.donated_by}.`}{' '}
+            {last.source === 'purchase' ? (last.bought_from ? ` Bought at ${last.bought_from}.` : ' Bought by OHRR.') : last.donated_by ? ` Gift of ${last.donated_by}.` : ''}{' '}
             {lastBox ? (
               <span className={`block font-semibold ${lastBox.ok ? 'text-ink' : 'text-amber-900'}`}>{lastBox.text}</span>
             ) : (
@@ -1793,6 +2188,7 @@ function AddDonation({
           </p>
           {last.details_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_39_ADD_NOTE}</p>}
           {last.plan_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_40_ADD_NOTE}</p>}
+          {last.receiving_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_47_NOTE}</p>}
           {lastBox && (
             <div className="flex flex-wrap items-center gap-2">
               <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className={btn.blue}>
@@ -1982,13 +2378,16 @@ function EditForm({
   item,
   orgId,
   suggestions,
+  purposes,
   onSaved,
   onChanged,
 }: {
   item: TaggedItem
   orgId: string
   suggestions: Suggestions
-  onSaved: (it: TaggedItem) => void
+  purposes: Purposes
+  /** Saved: back to the list, with "Saved: …" (and a warning when something waits for an update). */
+  onSaved: (it: TaggedItem, warn?: string) => void
   onChanged: (it: TaggedItem) => void
 }) {
   const stock = item.kind === 'stock'
@@ -2009,7 +2408,14 @@ function EditForm({
     value_basis: (item.value_basis ?? 'each') as 'each' | 'all',
     size: item.size ?? '',
     use_by: item.use_by ?? '',
+    // Update 47: what it's for, and how it came in.
+    purpose: item.purpose ?? '',
+    source: (item.source ?? 'donation') as 'donation' | 'purchase',
+    cost: dollars(item.cost_cents),
+    cost_basis: 'all' as 'each' | 'all',
+    bought_from: item.bought_from ?? '',
   })
+  const bought = plan.source === 'purchase'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const submit = async (e: FormEvent) => {
@@ -2022,7 +2428,7 @@ function EditForm({
       let saved = await saveItem(orgId, item.code, item.kind, {
         title: d.title,
         description: d.description,
-        donatedBy: d.donated_by,
+        donatedBy: bought ? '' : d.donated_by,
         valueCents: toCents(d.value),
         photoUrl: null,
         priceCents: stock ? toCents(d.price) : donation && detailsReady ? toCents(x.price) : null,
@@ -2051,12 +2457,28 @@ function EditForm({
         if (plan.value_basis !== (item.value_basis ?? 'each')) p.value_basis = plan.value_basis
         if (plan.size.trim() !== (item.size ?? '')) p.size = plan.size.trim() || null
         if (plan.use_by !== (item.use_by ?? '')) p.use_by = plan.use_by || null
+        // How it came in, its cost and store, and its use (update 47) go only when
+        // changed, so an edit before update 47 has run only warns when one was touched.
+        const cost = bought ? costCents({ cost: plan.cost, costBasis: plan.cost_basis, quantity: detailsReady ? count(x.quantity) : (item.quantity ?? 1) }) : null
+        const store = bought ? plan.bought_from.trim() : ''
+        if (
+          plan.purpose !== (item.purpose ?? '') ||
+          plan.source !== (item.source ?? 'donation') ||
+          cost !== (item.cost_cents ?? null) ||
+          store !== (item.bought_from ?? '')
+        ) {
+          Object.assign(p, { purpose: plan.purpose || null, source: plan.source, cost_cents: cost, bought_from: store || null })
+        }
         if (Object.keys(p).length) {
           try {
             saved = (await setDonationPlan(orgId, item.code, p)) ?? saved
           } catch (err) {
             onChanged(saved)
-            setError(`The rest is saved, but not where it’s headed, the value basis, size or use-by: ${errMessage(err)}`)
+            setError(`The rest is saved, but not what it’s for, how it came in, the value basis, size or use-by: ${errMessage(err)}`)
+            return
+          }
+          if (saved.receiving_skipped) {
+            onSaved(saved, 'Donation or bought, what we paid, where it was bought and what it’s for need database update 47.')
             return
           }
         }
@@ -2071,6 +2493,29 @@ function EditForm({
   const editWorth = valueLine({ value_cents: toCents(d.value), value_basis: plan.value_basis, quantity: detailsReady ? count(x.quantity) : item.quantity })
   return (
     <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+      {/* Receiving first, then what it's for — the same order as Receive items (update 47). */}
+      {planReady && (
+        <div className="space-y-3">
+          <ReceivedAsChips value={plan.source} onPick={(source) => setPlan((p) => ({ ...p, source }))} />
+          {bought && (
+            <CostFields
+              cost={plan.cost}
+              basis={plan.cost_basis}
+              store={plan.bought_from}
+              quantity={detailsReady ? count(x.quantity) : (item.quantity ?? 1)}
+              stores={suggestions.stores}
+              set={(c) =>
+                setPlan((p) => ({
+                  ...p,
+                  ...(c.cost !== undefined ? { cost: c.cost } : {}),
+                  ...(c.basis ? { cost_basis: c.basis } : {}),
+                  ...(c.store !== undefined ? { bought_from: c.store } : {}),
+                }))
+              }
+            />
+          )}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm font-semibold text-slate-700">
           Name
@@ -2089,10 +2534,14 @@ function EditForm({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm font-semibold text-slate-700">
-              Donated by
-              <input className={staffInput} value={d.donated_by} onChange={(e) => setD({ ...d, donated_by: e.target.value })} />
-            </label>
+            {bought ? (
+              <p className="self-end pb-2 text-sm font-semibold text-slate-700">Bought by OHRR — no donor.</p>
+            ) : (
+              <label className="block text-sm font-semibold text-slate-700">
+                Donated by
+                <input className={staffInput} value={d.donated_by} onChange={(e) => setD({ ...d, donated_by: e.target.value })} />
+              </label>
+            )}
             <label className="block text-sm font-semibold text-slate-700">
               Value ($)
               <input className={staffInput} inputMode="decimal" value={d.value} onChange={(e) => setD({ ...d, value: e.target.value })} />
@@ -2113,14 +2562,16 @@ function EditForm({
       {donation &&
         (planReady ? (
           <div className="space-y-3 rounded-xl border border-slate-200 p-3">
+            <PurposeField
+              purpose={plan.purpose}
+              headed={plan.headed_for}
+              set={(v) => setPlan((p) => ({ ...p, purpose: v.purpose, headed_for: v.headed }))}
+              list={purposes}
+            />
             <div className="flex flex-wrap items-center gap-3">
               <span className={fieldLabel}>The value is</span>
               <BasisToggle value={plan.value_basis} onPick={(value_basis) => setPlan((p) => ({ ...p, value_basis }))} />
               {editWorth && <span className="text-sm font-semibold text-slate-700">{editWorth}</span>}
-            </div>
-            <div>
-              <p className={fieldLabel}>Where it’s headed</p>
-              <HeadedChips value={plan.headed_for} onPick={(headed_for) => setPlan((p) => ({ ...p, headed_for }))} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className={fieldLabel}>
@@ -2135,7 +2586,7 @@ function EditForm({
           </div>
         ) : (
           <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-            Where it’s headed, a value for each or for all, size and use-by can be set here once database update 40 has run.
+            What it’s for, a value for each or for all, size and use-by can be set here once database update 40 has run.
           </p>
         ))}
       <label className="block text-sm font-semibold text-slate-700">
@@ -2144,9 +2595,12 @@ function EditForm({
       </label>
       <PhotosEditor orgId={orgId} item={item} onSaved={onChanged} />
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-      <button type="submit" disabled={busy || !d.title.trim()} className={`${btn.orange} disabled:opacity-60`}>
-        {busy ? 'Saving…' : 'Save'}
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={busy || !d.title.trim()} className={`${btn.orange} min-w-32 disabled:opacity-60`}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        <span className="text-sm text-slate-600">Saves the changes above and goes back to the list. Photos save as soon as they change.</span>
+      </div>
     </form>
   )
 }

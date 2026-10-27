@@ -8,15 +8,18 @@
 // opens the item too. The database reads codes the same way
 // (normalize_item_code), so any spelling matches: "don 42" is DON-00042 and
 // "hay-101-1" is HAY-101-001.
+// Things OHRR bought (update 47) carry PUR-00001 and are read like donations;
+// "pur 5" is PUR-00005.
 // Boxes of items (update 46) carry BOX-00012, shown as "Box 12"; "box 12" reads
 // the same. Box numbers have 1–5 digits, so a SKU of a type called BOX
 // (BOX-101-001) still reads as a SKU.
 import { APP_URL } from './constants'
 
 export const DON_PREFIX = 'DON-'
+export const PUR_PREFIX = 'PUR-'
 export const BOX_PREFIX = 'BOX-'
 
-const DON_RE = /^DON-[0-9]+$/
+const DON_RE = /^(DON|PUR)-[0-9]+$/
 const SKU_RE = /^[A-Z]{3}-[0-9]{3}-[0-9]{3,}$/
 const BOX_RE = /^BOX-[0-9]+$/
 
@@ -33,6 +36,8 @@ export function normalizeCode(raw: string): string {
   if (link) s = link[1]
   let m = s.match(/^\s*don[\s_-]*([0-9]{1,9})\s*$/i)
   if (m) return DON_PREFIX + pad(m[1], 5)
+  m = s.match(/^\s*pur[\s_-]*([0-9]{1,9})\s*$/i)
+  if (m) return PUR_PREFIX + pad(m[1], 5)
   m = s.match(/^\s*box[\s_-]*([0-9]{1,5})\s*$/i)
   if (m) return BOX_PREFIX + pad(m[1], 5)
   m = s.match(/^\s*([A-Za-z]{3})[\s_-]+([0-9]{1,3})[\s_-]+([0-9]{1,6})\s*$/)
@@ -43,7 +48,7 @@ export function normalizeCode(raw: string): string {
   return s
 }
 
-/** DON-00042: a donation, or the auction or raffle item it became. */
+/** DON-00042 (or PUR-00042, bought): a donation, or the auction or raffle item it became. */
 export function isDonationCode(code: string): boolean {
   return DON_RE.test(code)
 }

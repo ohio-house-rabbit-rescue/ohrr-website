@@ -106,7 +106,7 @@ export default function Dropoffs() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/staff/items?add=1" className={btn.orange}>
-            <Icon name="plus" size={16} /> Add a donation
+            <Icon name="plus" size={16} /> Receive items
           </Link>
           <Link to="/staff/donations/report" className={btn.outline}>
             <Icon name="book" size={16} /> Donations report
@@ -136,7 +136,7 @@ export default function Dropoffs() {
           {rows === null && !error && <Spinner />}
           {rows && shown.length === 0 && (
             <p className="mt-6 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-base text-slate-500">
-              {rows.length === 0 ? 'No drop-offs yet. Start one in Add a donation.' : 'Nothing matches.'}
+              {rows.length === 0 ? 'No drop-offs yet. Start one in Receive items.' : 'Nothing matches.'}
             </p>
           )}
           <ul className="mt-4 space-y-2">

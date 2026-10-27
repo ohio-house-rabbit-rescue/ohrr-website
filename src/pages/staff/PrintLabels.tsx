@@ -483,7 +483,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
                 {items.length === 0
                   ? shop
                     ? 'No Hop Shop items have a SKU yet. Add one in Hop Shop inventory.'
-                    : 'Nothing has a DON number yet. Add a donation on the Items page.'
+                    : 'Nothing has a DON number yet. Receive items on the Items page.'
                   : view.show === 'unprinted' && view.when === 'any' && view.kind === 'all' && !q.trim()
                     ? 'Every label has been printed.'
                     : 'Nothing matches. Try Any time, All, or a different search.'}

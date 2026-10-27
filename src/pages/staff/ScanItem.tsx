@@ -27,7 +27,7 @@ import { Icon, type IconName } from '../../components/icons'
 import Scanner from '../../components/Scanner'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { boxName, isBoxCode, isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
-import { KIND_META, extrasSummary, findByCode, itemPhotos, money, statusLabel, type TaggedItem } from '../../lib/items'
+import { KIND_META, extrasSummary, findByCode, itemPhotos, kindLabel, money, statusLabel, type TaggedItem } from '../../lib/items'
 import { PhotoUnreadable, readCodeFromImage } from '../../lib/readCode'
 
 type Result = { item: TaggedItem } | { code: string } | null
@@ -316,7 +316,8 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
   const cover = itemPhotos(item)[0]
   const extras = extrasSummary(item)
   const worth = item.kind === 'stock' ? (item.price_cents != null ? `${money(item.price_cents)} each` : '') : item.value_cents != null && item.kind !== 'donation' ? `Worth ${money(item.value_cents)}` : ''
-  const fromLine = [item.donated_by ? `Gift of ${item.donated_by}` : '', worth].filter(Boolean).join(' · ')
+  const from = item.source === 'purchase' ? (item.bought_from ? `Bought at ${item.bought_from}` : 'Bought by OHRR') : item.donated_by ? `Gift of ${item.donated_by}` : ''
+  const fromLine = [from, worth].filter(Boolean).join(' · ')
   const where = item.kind === 'stock' ? 'Hop Shop inventory' : 'Items'
   return (
     <section aria-labelledby="found-h" className="mt-5 rounded-2xl border-2 border-brand-blue/30 bg-white p-4 shadow-sm">
@@ -335,7 +336,7 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
           </h2>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-slate-700">
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm font-bold ${tile}`}>
-              <Icon name={k.icon} size={15} /> {k.label}
+              <Icon name={k.icon} size={15} /> {kindLabel(item)}
             </span>
             <span className="font-semibold">{statusLabel(item)}</span>
           </p>
@@ -394,8 +395,8 @@ function NotFound({ code, canAddStock, onAnother }: { code: string; canAddStock:
   const q = encodeURIComponent(code)
   const donation: Choice = {
     to: `/staff/items?add=1&code=${q}`,
-    label: 'A donation',
-    hint: don ? `Something given to OHRR. It gets this label’s number, ${code}.` : 'Something given to OHRR. It gets the next DON number; sort it later, or say where it’s headed.',
+    label: 'A donation or something we bought',
+    hint: don ? `Something given to OHRR. It gets this label’s number, ${code}.` : 'Receive it: donated (the next DON number) or bought (the next PUR number), where it’s kept, and what it’s for.',
     icon: 'gift',
   }
   const stock: Choice = {

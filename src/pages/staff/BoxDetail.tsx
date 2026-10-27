@@ -33,7 +33,7 @@ const select = `${staffInput} !py-3 text-base`
 /** What happened to one scanned or ticked item, in a sentence. */
 function resultLines(res: BoxPutResult, codes: string[]): LogLine[] {
   const out: LogLine[] = []
-  for (const c of res.not_found) out.push({ ok: false, text: `No item has the code ${c}. Add it first (Add a donation), then scan it again.` })
+  for (const c of res.not_found) out.push({ ok: false, text: `No item has the code ${c}. Add it first (Receive items), then scan it again.` })
   for (const m of res.moved) out.push({ ok: true, text: `${m.title} — moved here from ${boxName(m.from)}.` })
   const fresh = res.added - res.moved.length
   if (fresh > 0 && codes.length === 1) {

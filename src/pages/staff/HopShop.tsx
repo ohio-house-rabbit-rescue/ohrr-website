@@ -6,7 +6,7 @@
 // live on the public Hop Shop shelf (name, photo, price, in stock) the moment
 // it is saved. It is the one place an item the shop carries is added (type,
 // supplier, cost, price, reorder point); donations are added on Items.
-// /staff/hopshop?add=1 (the link under Add a donation on Items) opens the
+// /staff/hopshop?add=1 (the link under Receive items on Items) opens the
 // new-item form straight away. From Scan an item (2026-10-01): ?add=1&code=X
 // opens it with a scanned packet barcode filled in, and ?code=X opens that
 // product's card for editing. A laptop can choose a photo from the computer or
@@ -16,7 +16,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
-import { useStaff, staffInput, Spinner } from '../../lib/staff'
+import { useStaff, staffInput, Spinner, shortDate } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { isOhrrCode, isRetailBarcode, normalizeCode, skuParts } from '../../lib/codes'
@@ -25,6 +25,8 @@ import { copyText } from '../../lib/share/share'
 import {
   deleteProduct,
   deleteSupplier,
+  purchaseTotals,
+  type PurchaseTotal,
   eachFromPack,
   fromCents,
   groupBySupplier,
@@ -169,7 +171,7 @@ type Tab = 'items' | 'reorder' | 'suppliers' | 'types'
 const TABS: [Tab, string][] = [
   ['items', 'Items'],
   ['reorder', 'Reorder'],
-  ['suppliers', 'Suppliers'],
+  ['suppliers', 'Vendors'],
   ['types', 'Types'],
 ]
 
@@ -1617,6 +1619,17 @@ function Suppliers({
   const [filter, setFilter] = useState<'all' | 'supplier' | 'vendor'>('all')
   const shown = (suppliers ?? []).filter((s) => (filter === 'supplier' ? s.is_supplier : filter === 'vendor' ? s.is_vendor : true))
 
+  // What we bought from each one (update 47; empty before it).
+  const [bought, setBought] = useState<Map<string, PurchaseTotal>>(new Map())
+  useEffect(() => {
+    if (!orgId) return
+    let alive = true
+    void purchaseTotals(orgId).then((m) => alive && setBought(m))
+    return () => {
+      alive = false
+    }
+  }, [orgId])
+
   // Gift counts and totals for the summary on each row (update 27).
   const ready = useVendorRecordsReady()
   const [gifts, setGifts] = useState<Map<string, GiftTotals> | null>(null)
@@ -1640,15 +1653,16 @@ function Suppliers({
   return (
     <div className="space-y-3">
       <p className="text-sm text-slate-600">
-        One list for the companies OHRR deals with. Tick <strong>Supplier</strong> for anyone we buy from and <strong>Vendor</strong> for anyone
-        who sells at Midwest BunFest — some are both. Everything on a company’s card is for the team only.
+        One list for every company OHRR deals with. Tick <strong>We buy from them</strong> for anyone we buy from and{' '}
+        <strong>Sells at our events</strong> for anyone with a table at BunFest or another event — some are both. Everything on a company’s
+        card is for the team only.
       </p>
       <div className="flex gap-2">
         {(
           [
             ['all', 'All'],
-            ['supplier', 'Suppliers'],
-            ['vendor', 'BunFest vendors'],
+            ['supplier', 'We buy from them'],
+            ['vendor', 'At our events'],
           ] as const
         ).map(([k, label]) => (
           <button
@@ -1672,8 +1686,8 @@ function Suppliers({
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-1.5">
                 <span className="font-display text-[15px] font-extrabold text-ink">{s.name}</span>
-                {s.is_supplier && <Badge tone="blue">Supplier</Badge>}
-                {s.is_vendor && <Badge tone="orange">Vendor</Badge>}
+                {s.is_supplier && <Badge tone="blue">We buy from them</Badge>}
+                {s.is_vendor && <Badge tone="orange">Sells at our events</Badge>}
                 {!s.is_active && <Badge tone="slate">Inactive</Badge>}
               </span>
               <span className="block text-xs text-slate-500">
@@ -1699,6 +1713,21 @@ function Suppliers({
                 </span>
               )}
               <CompanySummary c={s} gifts={gifts?.get(s.id)} />
+              {(() => {
+                const b = bought.get(s.id)
+                if (!b || b.items === 0) return null
+                return (
+                  <span className="mt-1 block text-sm font-semibold text-slate-600">
+                    {[
+                      `Bought from them: ${b.items} ${b.items === 1 ? 'item' : 'items'}`,
+                      b.cost_cents != null ? money(b.cost_cents) : null,
+                      b.last_on ? `last ${shortDate(b.last_on)}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                )
+              })()}
               {s.is_supplier && (
                 <Link to={`/staff/hopshop/deliveries?supplier=${s.id}`} className="mt-1 inline-flex min-h-11 items-center text-sm font-bold text-brand-blue">
                   Deliveries from {s.name} →
@@ -1738,7 +1767,7 @@ function Suppliers({
           </Card>
         ) : (
           <button type="button" onClick={() => setEditing('new')} className={`${btn.outline} min-h-[44px] w-full`}>
-            <Icon name="plus" size={16} /> Add a supplier or vendor
+            <Icon name="plus" size={16} /> Add a vendor
           </button>
         ))}
     </div>
