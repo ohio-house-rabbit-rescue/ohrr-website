@@ -1158,6 +1158,11 @@ function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Par
  * notes) sits under "More details". The database gives it the next DON number. Before
  * update 40 the drop-off part is left out (the donor's name goes on each
  * item) and the item is saved without where it's headed, size or use-by.
+ *
+ * Receive into boxes (?box=1) is for sorting a pile nobody wrote down (OHRR
+ * 2026-10-27: "its just a mess of items … no know donor"): it never asks who
+ * it's from and makes no drop-off. A box left open is picked up again only
+ * from the Receive into boxes tile, never by plain Add a donation.
  */
 function AddDonation({
   orgId,
@@ -1181,7 +1186,7 @@ function AddDonation({
    * to Hop Shop inventory — a donation gets the next DON number.
    */
   presetCode: string | null
-  /** Came from Receive into boxes (?box=1): explain boxes before one is started. */
+  /** Came from Receive into boxes (?box=1): boxes, and no donor or drop-off. */
   wantsBoxes: boolean
   /** The preset is used, or not wanted: back to the next number each time. */
   onCodeDone: () => void
@@ -1216,7 +1221,9 @@ function AddDonation({
   const [last, setLast] = useState<TaggedItem | null>(null)
   // Receive into boxes: the box being filled (kept in this browser), how many
   // are in it, the one just said to be full, and where the last item went.
-  const [box, setBoxState] = useState<PackingBox | null>(() => loadPackingBox())
+  const [packingBox, setBoxState] = useState<PackingBox | null>(() => loadPackingBox())
+  // Only Receive into boxes fills a box; plain Add a donation leaves it alone.
+  const box = wantsBoxes ? packingBox : null
   const [boxCount, setBoxCount] = useState<number | null>(null)
   const [boxBusy, setBoxBusy] = useState(false)
   const [boxError, setBoxError] = useState<string | null>(null)
@@ -1257,7 +1264,7 @@ function AddDonation({
   useEffect(() => {
     if (!focusRequest) return
     formRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
-    const target = current ? titleRef.current : (donorRef.current ?? titleRef.current)
+    const target = current || wantsBoxes ? titleRef.current : (donorRef.current ?? titleRef.current)
     target?.focus({ preventScroll: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest])
@@ -1405,9 +1412,9 @@ function AddDonation({
     const packing = box
     try {
       // A name or email typed but not started: start the drop-off now, so the
-      // thank-you letter has this item on it.
-      let d = current
-      if (!d && dropoffs !== false && (donor.trim() || email.trim())) {
+      // thank-you letter has this item on it. Receiving into boxes has no donor.
+      let d = wantsBoxes ? null : current
+      if (!wantsBoxes && !d && dropoffs !== false && (donor.trim() || email.trim())) {
         setBusy('Starting the drop-off…')
         d = await begin()
       }
@@ -1429,7 +1436,7 @@ function AddDonation({
         title,
         // A scanned DON label nothing has yet; otherwise the database gives the next DON number.
         code: donationCode,
-        donatedBy: d ? (d.donor_name ?? '') : donor,
+        donatedBy: wantsBoxes ? '' : d ? (d.donor_name ?? '') : donor,
         valueCents: toCents(value),
         photoUrl: urls[0] ?? null,
         description: notes,
@@ -1460,7 +1467,7 @@ function AddDonation({
       setLast(it)
       setLastBox(into)
       if (donationCode) onCodeDone()
-      if (!d) rememberDonor(donor)
+      if (!d && !wantsBoxes) rememberDonor(donor)
       // Who it's from, where it's headed and where it's kept stay: the next
       // thing is often from the same box, and a box usually goes to one place.
       setTitle('')
@@ -1485,19 +1492,21 @@ function AddDonation({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="add-donation-heading" className="font-display text-lg font-extrabold text-ink">
-            {box || fullBox || wantsBoxes ? 'Receive into boxes' : 'Add a donation'}
+            {wantsBoxes ? 'Receive into boxes' : 'Add a donation'}
           </h2>
           <p className="mt-0.5 text-sm text-slate-600">
-            {box || fullBox || wantsBoxes
-              ? 'Add each item, print its label, and put it in the numbered box. It gets the next DON number.'
+            {wantsBoxes
+              ? 'For sorting items nobody wrote down — no donor needed. Add each item, print its label, and put it in the numbered box. It gets the next DON number.'
               : 'Something given to OHRR. Name it and it gets the next DON number. Sort it later, or tick where it’s headed.'}
           </p>
         </div>
-        <Link to="/staff/dropoffs" className={`inline-flex min-h-11 items-center ${linkClass} text-sm`}>
-          Drop-offs and thank-you letters
-        </Link>
+        {!wantsBoxes && (
+          <Link to="/staff/dropoffs" className={`inline-flex min-h-11 items-center ${linkClass} text-sm`}>
+            Drop-offs and thank-you letters
+          </Link>
+        )}
       </div>
-      {stockLink && (
+      {stockLink && !wantsBoxes && (
         <p className="text-sm text-slate-600">
           Something the shop carries, bought from a supplier?{' '}
           <Link
@@ -1582,77 +1591,72 @@ function AddDonation({
             <Icon name="box" size={16} /> {boxBusy ? 'Starting…' : 'Start a box'}
           </button>
         </div>
-      ) : (
-        <p className="mt-2 text-sm text-slate-600">
-          Packing them into boxes as you go?{' '}
-          <button type="button" onClick={() => void startBox()} disabled={boxBusy} className="min-h-11 px-1 font-bold text-brand-blue">
-            {boxBusy ? 'Starting…' : 'Start a box'}
-          </button>
-        </p>
-      )}
+      ) : null}
       {boxError && <p className="mt-2 text-base font-semibold text-red-600">{boxError}</p>}
 
-      {/* Who is it from (a drop-off) */}
-      <fieldset className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-        <legend className="px-1 text-base font-bold text-ink">Who is it from?</legend>
-        {current ? (
-          <p className="text-base text-slate-800">
-            Adding to:{' '}
-            <Link to={`/staff/dropoffs/${current.id}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
-              {dropoffName(current)}
-            </Link>{' '}
-            ·{' '}
-            <button type="button" onClick={startNew} className="min-h-11 px-1 font-bold text-brand-blue">
-              Start a new one
-            </button>
-          </p>
-        ) : (
-          <>
-            <div className={`grid gap-3 ${dropoffs === false ? '' : 'md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_11rem_auto] md:items-end'}`}>
-              <label className={fieldLabel}>
-                Donor’s name
-                <input ref={donorRef} className={staffInput} value={donor} onChange={(e) => setDonor(e.target.value)} list="recent-donors" autoComplete="off" />
-              </label>
-              {dropoffs !== false && (
-                <>
-                  <label className={fieldLabel}>
-                    Email <span className="font-normal text-slate-600">(optional, for the thank-you letter)</span>
-                    <input className={staffInput} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
-                  </label>
-                  <label className={fieldLabel}>
-                    Date
-                    <input className={staffInput} type="date" required value={day} onChange={(e) => setDay(e.target.value || todayOhio())} />
-                  </label>
-                  <button type="button" onClick={() => void start()} disabled={dropBusy} className={`${btn.blue} disabled:opacity-60`}>
-                    {dropBusy ? 'Starting…' : 'Start'}
-                  </button>
-                </>
-              )}
-            </div>
-            {donors.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-sm text-slate-600">Recent donors:</span>
-                {donors.map((d) => (
-                  <button key={d} type="button" onClick={() => setDonor(d)} aria-pressed={donor.trim().toLowerCase() === d.toLowerCase()} className={pickChip(donor.trim().toLowerCase() === d.toLowerCase())}>
-                    {d}
-                  </button>
-                ))}
-                <datalist id="recent-donors">
-                  {donors.map((d) => (
-                    <option key={d} value={d} />
-                  ))}
-                </datalist>
+      {/* Who is it from (a drop-off); receiving into boxes has no donor */}
+      {!wantsBoxes && (
+        <fieldset className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <legend className="px-1 text-base font-bold text-ink">Who is it from?</legend>
+          {current ? (
+            <p className="text-base text-slate-800">
+              Adding to:{' '}
+              <Link to={`/staff/dropoffs/${current.id}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
+                {dropoffName(current)}
+              </Link>{' '}
+              ·{' '}
+              <button type="button" onClick={startNew} className="min-h-11 px-1 font-bold text-brand-blue">
+                Start a new one
+              </button>
+            </p>
+          ) : (
+            <>
+              <div className={`grid gap-3 ${dropoffs === false ? '' : 'md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_11rem_auto] md:items-end'}`}>
+                <label className={fieldLabel}>
+                  Donor’s name
+                  <input ref={donorRef} className={staffInput} value={donor} onChange={(e) => setDonor(e.target.value)} list="recent-donors" autoComplete="off" />
+                </label>
+                {dropoffs !== false && (
+                  <>
+                    <label className={fieldLabel}>
+                      Email <span className="font-normal text-slate-600">(optional, for the thank-you letter)</span>
+                      <input className={staffInput} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+                    </label>
+                    <label className={fieldLabel}>
+                      Date
+                      <input className={staffInput} type="date" required value={day} onChange={(e) => setDay(e.target.value || todayOhio())} />
+                    </label>
+                    <button type="button" onClick={() => void start()} disabled={dropBusy} className={`${btn.blue} disabled:opacity-60`}>
+                      {dropBusy ? 'Starting…' : 'Start'}
+                    </button>
+                  </>
+                )}
               </div>
-            )}
-            {dropoffs === false ? (
-              <p className="mt-2 text-sm text-slate-600">Drop-offs and thank-you letters need database update 40. Until then the donor’s name goes on each item.</p>
-            ) : (
-              <p className="mt-2 text-sm text-slate-600">Start keeps everything they brought together, for one thank-you letter. Leave it blank if nobody gave a name.</p>
-            )}
-            {dropError && <p className="mt-2 text-base font-semibold text-red-600">{dropError}</p>}
-          </>
-        )}
-      </fieldset>
+              {donors.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-sm text-slate-600">Recent donors:</span>
+                  {donors.map((d) => (
+                    <button key={d} type="button" onClick={() => setDonor(d)} aria-pressed={donor.trim().toLowerCase() === d.toLowerCase()} className={pickChip(donor.trim().toLowerCase() === d.toLowerCase())}>
+                      {d}
+                    </button>
+                  ))}
+                  <datalist id="recent-donors">
+                    {donors.map((d) => (
+                      <option key={d} value={d} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
+              {dropoffs === false ? (
+                <p className="mt-2 text-sm text-slate-600">Drop-offs and thank-you letters need database update 40. Until then the donor’s name goes on each item.</p>
+              ) : (
+                <p className="mt-2 text-sm text-slate-600">Start keeps everything they brought together, for one thank-you letter. Leave it blank if nobody gave a name.</p>
+              )}
+              {dropError && <p className="mt-2 text-base font-semibold text-red-600">{dropError}</p>}
+            </>
+          )}
+        </fieldset>
+      )}
 
       {/* Each item */}
       <div className="mt-4 grid grid-cols-2 items-end gap-3 md:grid-cols-[minmax(0,1fr)_7rem_9rem_auto]">
@@ -1770,7 +1774,7 @@ function AddDonation({
           {busy ?? 'Add'}
         </button>
         {box && <span className="text-sm font-semibold text-slate-700">It goes in Box {box.box_no}.</span>}
-        {current && <span className="text-sm text-slate-600">It goes on {dropoffName(current)}.</span>}
+        {current && !wantsBoxes && <span className="text-sm text-slate-600">It goes on {dropoffName(current)}.</span>}
       </div>
       {error && <p className="mt-3 text-base font-semibold text-red-600">{error}</p>}
       {last && (
