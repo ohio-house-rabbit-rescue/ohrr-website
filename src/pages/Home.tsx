@@ -5,6 +5,7 @@ import { btn, ext, Section, DoorList, type Door } from '../components/ui'
 import HomeBunnyHelp from '../components/HomeBunnyHelp'
 import { easterAhead } from '../lib/season'
 import PresentedBy from '../components/PresentedBy'
+import HelpNeededBand from '../components/HelpNeededBand'
 import { useOrgProfile } from '../lib/orgProfile'
 import { formatDate, formatShortDate, isUpcoming } from '../lib/format'
 import { useMobileVet } from '../lib/mobileVet'
@@ -290,6 +291,7 @@ export default function Home() {
   return (
     <>
       <Purpose />
+      <HelpNeededBand />
       <WhatsHappening />
       <ThinkingAboutARabbit />
       <PresentedBy surface="home" />
