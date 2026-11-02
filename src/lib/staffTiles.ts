@@ -9,7 +9,7 @@
 // short list. Adding a page later = one line in the list below.
 //
 // Each `show` is the same permission check the old dashboard and menu used.
-// The website has no Register (that's the app's register), so its Today row is the
+// The website has no Sell screen (that's the app's), so its Today row is the
 // Inbox, Bookings and Scan an item (added 2026-10-01 for laptop users: a USB
 // scanner, the webcam or a photo of the label), always in that order.
 import { useEffect, useState } from 'react'
@@ -19,7 +19,7 @@ import { useStaff, canSwitchFeatures } from './staff'
 import { myStaffVolunteerPage } from './volunteers/api'
 import type { IconName } from '../components/icons'
 
-/** The Today row, always in this order (the app's order, without the Register). */
+/** The Today row, always in this order (the app's order, without Sell). */
 const TODAY_ORDER = ['/staff/inbox', '/staff/bookings', '/staff/scan']
 
 export type GroupKey = 'items' | 'rabbits' | 'volunteers' | 'events' | 'word' | 'giving' | 'admin' | 'me'

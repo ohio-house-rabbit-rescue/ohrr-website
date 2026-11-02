@@ -396,8 +396,8 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
         <StaffTitle title={shop ? 'Hop Shop labels' : 'Print labels'} flow={['Check items', 'Choose size', 'Print']}>
           <p className="max-w-2xl">
             {shop
-              ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at the register; the QR code opens the item. Any label printer works.'
-              : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at the register or the desk, and the DON number can be typed. Any label printer works — check the items, choose the label size, then Print.'}
+              ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at checkout; the QR code opens the item. Any label printer works.'
+              : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at checkout or the desk, and the DON number can be typed. Any label printer works — check the items, choose the label size, then Print.'}
           </p>
         </StaffTitle>
         <p className="mt-1 text-base">

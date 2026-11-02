@@ -75,7 +75,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'inbox.manage', area: 'Inbox', description: 'Read and handle requests sent from the app and website' },
   { key: 'bookings.manage', area: 'Bookings', description: 'Set up bookable shifts & appointments, see rosters, confirm and check in' },
   { key: 'social.publish', area: 'Content', description: 'Release queued social-media posts (the one person who posts as OHRR)' },
-  { key: 'counter.use', area: 'Register', description: 'The Register (in the app): add items, ring up sales, take tickets at the door, sell raffle tickets' },
+  { key: 'counter.use', area: 'Selling', description: 'Selling (in the app): add items, ring up sales, take tickets at the door, sell raffle tickets' },
   { key: 'social.approve', area: 'Content', description: 'Approve social-media posts written by someone else' },
   { key: 'volunteers.certificates', area: 'Volunteers', description: 'Make volunteer certificates and set the hours that earn one' },
   { key: 'giving.guardians', area: 'Giving', description: 'Keep the Rescue Rabbit Guardians list (the Legacy Fund thank-you)' },
@@ -111,9 +111,9 @@ export const PRESETS: Record<string, Cap[]> = {
   'Rabbit listings helper': ['adoptions.listings.create', 'adoptions.listings.edit', 'adoptions.status.change'],
   'Care pages helper': ['content.education.edit'],
   'Content Approver': ['social.approve'],
-  // The register and the door only (the Register lives in the app, on a phone).
+  // Selling and the door only (selling lives in the app, on a phone).
   'Counter volunteer': ['counter.use'],
-  // Update 28: someone certified to work the Hop Shop — the register, stock counts and orders, nothing else.
+  // Update 28: someone certified to work the Hop Shop — selling, stock counts and orders, nothing else.
   'Hop Shop Worker': ['counter.use', 'hopshop.inventory.update', 'hopshop.orders.view'],
 }
 
@@ -148,7 +148,7 @@ export const LEVELS: { value: StaffLevel; label: string; plural: string; blurb: 
   { value: 'lead', label: 'Lead', plural: 'Leads', blurb: 'Runs an area and can share its tasks' },
   { value: 'volunteer3', label: 'Volunteer 3', plural: 'Volunteer 3', blurb: 'A trusted volunteer; their hours count straight away' },
   { value: 'volunteer2', label: 'Volunteer 2', plural: 'Volunteer 2', blurb: 'A few chosen tasks' },
-  { value: 'volunteer1', label: 'Volunteer 1', plural: 'Volunteer 1', blurb: 'One job, e.g. the Register' },
+  { value: 'volunteer1', label: 'Volunteer 1', plural: 'Volunteer 1', blurb: 'One job, e.g. selling' },
 ]
 const LEVEL_RANK: Record<StaffLevel, number> = {
   developer: 10,

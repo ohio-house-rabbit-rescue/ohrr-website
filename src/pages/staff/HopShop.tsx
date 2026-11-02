@@ -889,7 +889,7 @@ function ProductForm({
   const printed = !!initial?.label_printed_at
   const bc = normalizeCode(d.barcode)
   const barcodeInfo = !bc
-    ? 'Scan or type it, so scanning the packet at the register finds this item. Leave it empty when there isn’t one.'
+    ? 'Scan or type it, so scanning the packet at checkout finds this item. Leave it empty when there isn’t one.'
     : isOhrrCode(bc)
       ? `${bc} is an OHRR number, not the barcode on the packet.`
       : preset && bc === preset
