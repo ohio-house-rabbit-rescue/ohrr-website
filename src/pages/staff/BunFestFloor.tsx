@@ -261,7 +261,7 @@ export default function StaffFloor({ orgId }: { orgId: string }) {
                   onFocusTable={setSelected}
                 />
               ))}
-              {roster.vendors.length === 0 && <Empty>No vendors are tagged for {year}. Tick the year on each one under Vendors.</Empty>}
+              {roster.vendors.length === 0 && <Empty>No vendors are tagged for {year}. Check the year on each one under Vendors.</Empty>}
             </Section>
 
             <Section title={`Rescue partners · ${roster.partners.length}`}>
@@ -277,7 +277,7 @@ export default function StaffFloor({ orgId }: { orgId: string }) {
                   onFocusTable={setSelected}
                 />
               ))}
-              {roster.partners.length === 0 && <Empty>No rescues are tagged for {year}. Tick the year on each one under Rescues.</Empty>}
+              {roster.partners.length === 0 && <Empty>No rescues are tagged for {year}. Check the year on each one under Rescues.</Empty>}
             </Section>
 
             <Section title="Anything else">

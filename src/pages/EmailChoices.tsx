@@ -81,7 +81,7 @@ export default function EmailChoices() {
       </Card>
     )
   else if (!choices.subscribed) {
-    // Their ticks are kept, so starting again gives them back what they had.
+    // Their checks are kept, so starting again gives them back what they had.
     const again = choices.interests.length ? choices.interests : (['newsletter'] as Interest[])
     body = (
       <Card className="space-y-3 text-center">
@@ -104,7 +104,7 @@ export default function EmailChoices() {
           Emails to <strong className="text-ink">{choices.email}</strong>
         </p>
         <InterestPicker value={picked} onChange={(v) => { setPicked(v); setSaved(false) }} disabled={busy} />
-        {picked.length === 0 && <p className="text-sm font-semibold text-slate-700">Nothing ticked. To stop every email, use “Stop all emails from OHRR”.</p>}
+        {picked.length === 0 && <p className="text-sm font-semibold text-slate-700">Nothing checked. To stop every email, use “Stop all emails from OHRR”.</p>}
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
         {saved && (
           <p className="flex items-center gap-2 text-sm font-bold text-green-700">

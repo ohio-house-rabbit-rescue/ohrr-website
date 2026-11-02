@@ -75,7 +75,7 @@ export default function SchemaForm({
   initial?: Values
   /** Fixed fields added to every submission (e.g. the intake type). */
   extra?: Record<string, string>
-  /** Statements the person must tick, plus a typed signature and date. */
+  /** Statements the person must check, plus a typed signature and date. */
   agreement?: { statements: string[]; footnote?: string }
   submitLabel?: string
   onDone: (values: Values) => void
@@ -104,7 +104,7 @@ export default function SchemaForm({
       return
     }
     if (agreement && (ticked.some((t) => !t) || !signature.trim())) {
-      setError('Please tick each statement and type your name as a signature.')
+      setError('Please check each statement and type your name as a signature.')
       return
     }
     setBusy(true)

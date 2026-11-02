@@ -9,7 +9,7 @@ const APP_ONLY = [
   { h: 'My Bunny', p: 'Your own rabbits, with vet visits, medicine and nail-trim reminders that go straight into your phone calendar. It stays on your phone.' },
   { h: 'Works offline', p: 'Care guides, the vet list and Bunny Help open without a signal once you have used them.' },
   { h: 'Camera and share sheet', p: 'Send a found-rabbit report or a Happy Tail with a photo from the camera, and share a rabbit straight to Facebook or Instagram.' },
-  { h: 'For OHRR volunteers', p: 'Scan an item, the till and the BunFest door — the phone-side staff tools.' },
+  { h: 'For OHRR volunteers', p: 'Scan an item, the register and the BunFest door — the phone-side staff tools.' },
 ]
 const FEATURES = [
   { h: 'Adoptable rabbits', p: 'The same live list as this site, with photos and each rabbit’s story.' },

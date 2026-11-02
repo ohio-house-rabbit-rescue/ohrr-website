@@ -4,13 +4,13 @@
 //                           name + donor (one per piece for a lot of 50)
 //   /staff/hopshop/labels   Hop Shop price labels: QR + barcode + SKU + name +
 //                           price (one per item in stock)
-// Tick the items (nothing is ticked to start with — Show / Added / Kind / Sort,
-// day groups with "Tick these" and 50 at a time keep hundreds usable), choose
+// Check the items (nothing is checked to start with — Show / Added / Kind / Sort,
+// day groups with "Check these" and 50 at a time keep hundreds usable), choose
 // the label size, then Print — one label per page, margins zero — or make a PDF with one
-// label per page to print from wherever the printer is. Each ticked label can
+// label per page to print from wherever the printer is. Each checked label can
 // print more than once: a copies box, and "One per piece" / "One per item in
-// stock". ?code=X (repeatable) ticks just those; &copies=N sets their copies;
-// ?c=X:N (repeatable) ticks X with N copies (a delivery's labels, update 42).
+// stock". ?code=X (repeatable) checks just those; &copies=N sets their copies;
+// ?c=X:N (repeatable) checks X with N copies (a delivery's labels, update 42).
 // Labels printed on another phone or computer show up here at once (labelSync).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -48,7 +48,7 @@ interface Row {
   title: string
   /** The gray line under the name. */
   sub: string
-  /** Read out with the tick box: "Hay, from Ann". */
+  /** Read out with the check box: "Hay, from Ann". */
   spoken: string
   photo_url: string | null
   icon: IconName
@@ -127,7 +127,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
   const [items, setItems] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showPrice, setShowPrice] = useState(loadShowPrice)
-  // ?code=DON-00042 (one or more): tick just those — "Print its label" from Items, a product card or Scan an item.
+  // ?code=DON-00042 (one or more): check just those — "Print its label" from Items, a product card or Scan an item.
   const [searchParams] = useSearchParams()
   const perCode = useMemo(() => {
     const m = new Map<string, number>()
@@ -172,7 +172,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
         ? (await listProducts(orgId)).filter((p) => p.code || p.sku).map(productRow)
         : (await listItems(orgId)).filter((i) => i.kind !== 'stock').map(itemRow)
       if (again) {
-        // Printed on another phone or computer since the last look: untick them, so nothing prints twice.
+        // Printed on another phone or computer since the last look: uncheck them, so nothing prints twice.
         const before = new Map((items ?? []).map((r) => [r.code, r.label_printed_at]))
         const done = rows.filter((r) => r.label_printed_at && before.has(r.code) && !before.get(r.code)).map((r) => r.code)
         if (done.length) {
@@ -181,7 +181,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
             if (gone.length === 0) return p
             // The note now speaks of someone else's printing, so its Undo mustn't un-mark this computer's last print.
             setLastMarked([])
-            setNote(`${count(gone.length)} you had ticked ${gone.length === 1 ? 'was' : 'were'} printed by someone else, so ${gone.length === 1 ? 'it is' : 'they are'} unticked.`)
+            setNote(`${count(gone.length)} you had checked ${gone.length === 1 ? 'was' : 'were'} printed by someone else, so ${gone.length === 1 ? 'it is' : 'they are'} unchecked.`)
             return new Set([...p].filter((c) => !gone.includes(c)))
           })
         }
@@ -198,7 +198,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
             return new Set(w)
           }
         }
-        // Nothing ticked to start with: with hundreds of items, people tick what they want.
+        // Nothing checked to start with: with hundreds of items, people check what they want.
         return new Set<string>()
       })
     } catch (e) {
@@ -240,7 +240,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
   const labelCount = selected.reduce((n, i) => n + copiesOf(copies[i.code]), 0)
   const setCopy = (code: string, v: string) => setCopies((c) => ({ ...c, [code]: v }))
 
-  // A preview of the first ticked label, at the chosen size.
+  // A preview of the first checked label, at the chosen size.
   useEffect(() => {
     const first = selected[0] ?? shown[0]
     if (!first) {
@@ -321,7 +321,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
 
   const count = (n: number) => `${n} label${n === 1 ? '' : 's'}`
 
-  // Paint every ticked label, put each on its own print page, open the print dialog.
+  // Paint every checked label, put each on its own print page, open the print dialog.
   const print = async () => {
     if (selected.length === 0) return
     setBusy('Making the labels…')
@@ -393,11 +393,11 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
         <Link to={shop ? '/staff/hopshop' : '/staff/items'} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
           <Icon name="arrowLeft" size={16} /> {shop ? 'Hop Shop inventory' : 'Items'}
         </Link>
-        <StaffTitle title={shop ? 'Hop Shop labels' : 'Print labels'} flow={['Tick items', 'Choose size', 'Print']}>
+        <StaffTitle title={shop ? 'Hop Shop labels' : 'Print labels'} flow={['Check items', 'Choose size', 'Print']}>
           <p className="max-w-2xl">
             {shop
-              ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at the till; the QR code opens the item. Any label printer works.'
-              : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at the till or the desk, and the DON number can be typed. Any label printer works — tick the items, choose the label size, then Print.'}
+              ? 'A price label for each item on the shelf: the name, the price and its SKU. The barcode scans at the register; the QR code opens the item. Any label printer works.'
+              : 'A label per donation — or a copy for every piece: the QR code opens it, the barcode scans at the register or the desk, and the DON number can be typed. Any label printer works — check the items, choose the label size, then Print.'}
           </p>
         </StaffTitle>
         <p className="mt-1 text-base">
@@ -407,7 +407,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
-          {/* The items to print, ticked */}
+          {/* The items to print, checked */}
           <section aria-label="Items to print">
             <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
               <label className="text-sm font-semibold text-slate-700">
@@ -456,11 +456,11 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-2">
               <span className="text-sm text-slate-600">
-                {shown.length} shown · {picked.size} ticked
+                {shown.length} shown · {picked.size} checked
               </span>
               {shown.length > 0 && (
                 <button type="button" onClick={() => setPicked((p) => new Set([...p, ...shown.map((i) => i.code)]))} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
-                  Tick all {shown.length}
+                  Check all {shown.length}
                 </button>
               )}
               {picked.size > 0 && (
@@ -503,7 +503,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
                       onClick={() => setPicked((p) => new Set([...p, ...g.rows.map((i) => i.code)]))}
                       className="min-h-11 px-2 text-sm font-bold text-brand-blue"
                     >
-                      Tick these {g.rows.length}
+                      Check these {g.rows.length}
                     </button>
                   </div>
                 )}
@@ -573,7 +573,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
             )}
           </section>
 
-          {/* Label size, preview and the print buttons — stay in view while ticking a long list */}
+          {/* Label size, preview and the print buttons — stay in view while checking a long list */}
           <div className="space-y-4 lg:sticky lg:top-24">
             <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
               <label htmlFor="label-size" className="font-display text-lg font-extrabold text-ink">

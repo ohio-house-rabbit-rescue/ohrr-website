@@ -113,8 +113,8 @@ export function SurrenderIntake() {
 
 /**
  * /mailing-list — "Get emails from OHRR" (update 31): a standard email form, no
- * account. `?interests=volunteer` (or events, …) ticks what the person came for;
- * otherwise only "OHRR news" starts ticked. Before update 31 it lands in the
+ * account. `?interests=volunteer` (or events, …) checks what the person came for;
+ * otherwise only "OHRR news" starts checked. Before update 31 it lands in the
  * Inbox as it always did (lib/emailList).
  */
 export function MailingList() {
@@ -129,9 +129,9 @@ export function MailingList() {
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    // Nothing ticked would mean emails they didn't pick ("OHRR news"), so ask.
+    // Nothing checked would mean emails they didn't pick ("OHRR news"), so ask.
     if (interests.length === 0) {
-      setError('Tick at least one thing you’d like to hear about.')
+      setError('Check at least one thing you’d like to hear about.')
       return
     }
     setStatus('busy')

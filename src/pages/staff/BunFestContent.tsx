@@ -109,8 +109,8 @@ function YearChips({ value, onChange }: { value: number[]; onChange: (years: num
       </div>
       <span className="mt-1 block text-xs text-slate-500">
         {value.length === 0
-          ? 'No years ticked — they show on every year’s list until you tick one.'
-          : 'They appear on the list for the years ticked here.'}
+          ? 'No years checked — they show on every year’s list until you check one.'
+          : 'They appear on the list for the years checked here.'}
       </span>
     </div>
   )
@@ -221,7 +221,7 @@ function SessionsList({ orgId }: { orgId: string }) {
     setError(null)
     try {
       const n = await copySessions(orgId, from, year)
-      setNote(n === 0 ? `Nothing to copy from ${from}.` : `Copied ${n} sessions from ${from} — they start hidden, so edit then tick “People can see this”.`)
+      setNote(n === 0 ? `Nothing to copy from ${from}.` : `Copied ${n} sessions from ${from} — they start hidden, so edit then check “People can see this”.`)
       await load()
     } catch (e) {
       setError(errMessage(e))
@@ -551,7 +551,7 @@ function VendorsTab({ orgId }: { orgId: string }) {
       <div>
         <Explain label="About vendors">
           <p>
-            A vendor is a company in the Hop Shop inventory <strong>Suppliers</strong> list with “Vendor” ticked. Visitors see the name,
+            A vendor is a company in the Hop Shop inventory <strong>Suppliers</strong> list with “Vendor” checked. Visitors see the name,
             category, <strong>About them</strong> and website; everything else on the card — contact, photo, paperwork, fees,
             what they’ve given — is for the team only.
           </p>
@@ -566,7 +566,7 @@ function VendorsTab({ orgId }: { orgId: string }) {
       {rows === null && !error && <Spinner />}
       {rows && rows.length === 0 && (
         <Card className="text-sm text-slate-600">
-          No vendors yet. Add one below, or tick “Vendor” on a company in Hop Shop inventory → Suppliers.
+          No vendors yet. Add one below, or check “Vendor” on a company in Hop Shop inventory → Suppliers.
         </Card>
       )}
 

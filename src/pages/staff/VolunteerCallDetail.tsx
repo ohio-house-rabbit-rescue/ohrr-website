@@ -634,7 +634,7 @@ function ThanksTab({ call, org, orgId }: { call: Call; org: OrgBits; orgId: stri
           {thanked} of {people.length} thanked
         </p>
         <Explain label="About the thank-yous" className="mt-1">
-          <p>Each thank-you gives their hours here, this year and in all, and links to their own hours page. Send it by email or text, then tick it off.</p>
+          <p>Each thank-you gives their hours here, this year and in all, and links to their own hours page. Send it by email or text, then check it off.</p>
         </Explain>
       </div>
       <FormError>{error}</FormError>

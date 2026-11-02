@@ -889,7 +889,7 @@ function ProductForm({
   const printed = !!initial?.label_printed_at
   const bc = normalizeCode(d.barcode)
   const barcodeInfo = !bc
-    ? 'Scan or type it, so scanning the packet at the till finds this item. Leave it empty when there isn’t one.'
+    ? 'Scan or type it, so scanning the packet at the register finds this item. Leave it empty when there isn’t one.'
     : isOhrrCode(bc)
       ? `${bc} is an OHRR number, not the barcode on the packet.`
       : preset && bc === preset
@@ -1653,7 +1653,7 @@ function Suppliers({
     <div className="space-y-3">
       <Explain label="About companies">
         <p>
-          One list for every company OHRR deals with. Tick <strong>We buy from them</strong> for anyone we buy from and{' '}
+          One list for every company OHRR deals with. Check <strong>We buy from them</strong> for anyone we buy from and{' '}
           <strong>Sells at our events</strong> for anyone with a table at BunFest or another event — some are both. Everything on a company’s
           card is for the team only.
         </p>

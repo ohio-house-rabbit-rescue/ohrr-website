@@ -1,4 +1,4 @@
-// The email tick boxes and the consent line under them — the sign-up form and
+// The email check boxes and the consent line under them — the sign-up form and
 // the email-choices page (/emails/<token>) show the same six, the same way.
 import { INTERESTS, CONSENT_LINE, cleanInterests, type Interest } from '../lib/emailList'
 

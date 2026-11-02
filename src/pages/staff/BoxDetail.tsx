@@ -1,7 +1,7 @@
 // One box (/staff/boxes/:code, update 46) — the website's copy of the app's
 // scan/pages/BoxDetail.tsx, made for a laptop at the desk: what's in the box,
 // adding items with a USB barcode scanner or by typing (the box stays
-// focused for the next label), the webcam, or ticking them in a list; where
+// focused for the next label), the webcam, or checking them in a list; where
 // it's kept; and the 4 × 6 in box label (Print or PDF) and a letter-size
 // packing list. A box code typed into Scan an item lands here. No Bluetooth
 // printing here — that's the app's.
@@ -31,7 +31,7 @@ interface PickRow extends ListRow {
 
 const select = `${staffInput} !py-3 text-base`
 
-/** What happened to one scanned or ticked item, in a sentence. */
+/** What happened to one scanned or checked item, in a sentence. */
 function resultLines(res: BoxPutResult, codes: string[]): LogLine[] {
   const out: LogLine[] = []
   for (const c of res.not_found) out.push({ ok: false, text: `No item has the code ${c}. Add it first (Receive items), then scan it again.` })
@@ -529,7 +529,7 @@ function BackLink() {
   )
 }
 
-/** Tick items to put in the box: those not in any box yet, newest first, by day. */
+/** Check items to put in the box: those not in any box yet, newest first, by day. */
 function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPut: (codes: string[]) => Promise<void>; onCancel: () => void }) {
   const [rows, setRows] = useState<PickRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -608,7 +608,7 @@ function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPu
         </label>
       </div>
       <button type="button" onClick={() => void put()} disabled={busy || picked.size === 0} className={`${btn.orange} mt-3 w-full text-base disabled:opacity-60 sm:w-auto`}>
-        <Icon name="box" size={18} /> {busy ? 'Putting them in…' : picked.size === 0 ? 'Tick the items for this box' : `Put ${picked.size} in ${boxName(box.code)}`}
+        <Icon name="box" size={18} /> {busy ? 'Putting them in…' : picked.size === 0 ? 'Check the items for this box' : `Put ${picked.size} in ${boxName(box.code)}`}
       </button>
       {error && (
         <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-base font-semibold text-red-700" role="alert">
@@ -629,7 +629,7 @@ function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPu
                 {g.heading} <span className="font-sans text-sm font-semibold text-slate-500">· {g.rows.length}</span>
               </h3>
               <button type="button" onClick={() => setPicked((p) => new Set([...p, ...g.rows.map((r) => r.code)]))} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
-                Tick these {g.rows.length}
+                Check these {g.rows.length}
               </button>
             </div>
           )}

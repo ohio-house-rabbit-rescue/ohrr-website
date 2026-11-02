@@ -230,7 +230,7 @@ export function useCatalog(everyMs = 15000): { catalog: Catalog | null; source: 
 /**
  * The server's clock, kept moving between reads: countdowns count from the
  * database's `now`, not the visitor's (a phone's clock can be minutes out).
- * Ticks every 20 s.
+ * Checks every 20 s.
  */
 export function useServerNow(serverNowIso: string | null | undefined): string {
   const offset = useRef(0)

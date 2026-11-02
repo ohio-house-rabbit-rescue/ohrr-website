@@ -27,7 +27,7 @@ export const sampleAnnouncements: Announcement[] = [
   {
     id: 's-kroger',
     title: 'Link OHRR to your Kroger Community Rewards',
-    body: 'Link OHRR to your Kroger account and they will donate to us every time you shop. It takes less than a minute and each shopping trip automatically donates to our rescue rabbits at no cost to you. You\'ll see our name towards the bottom of your receipt.',
+    body: 'Link OHRR to your Kroger account and they will donate to us every time you shop. It takes less than a minute and each shopping trip automatically donates to our rescue rabbits at no cost to you. You\'ll see our name toward the bottom of your receipt.',
     createdAt: '2026-03-30T16:17:10+00:00',
     url: '/info/kroger-rewards',
     imageUrl: '/img/news/kroger-community-rewards.jpg',

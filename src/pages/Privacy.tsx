@@ -24,7 +24,7 @@ import { APP_URL, LIVE_SITE, OHRR } from '../lib/constants'
 //     staff scanner + item photos (getUserMedia / file input) — only when tapped;
 //   - reminders: local, scheduled on the device (@capacitor/local-notifications);
 //   - phone notifications (update 32, web app only): `push_subscriptions` —
-//     the browser's push address + keys and the topics ticked, with the account
+//     the browser's push address + keys and the topics checked, with the account
 //     if signed in; sent by the ohrr-jobs Edge Function through the browser's
 //     push service; removed when turned off;
 //   - anyone can delete their own account in the app (`delete_own_account`),
@@ -143,7 +143,7 @@ export default function Privacy() {
             </li>
             <li>
               <strong>Emails from OHRR.</strong> If you ask for emails, on this website or in the app, we keep your
-              email address, your name if you give it, what you ticked, where you signed up and when. OHRR staff who
+              email address, your name if you give it, what you checked, where you signed up and when. OHRR staff who
               send the emails can see and download this list. Every email has a link to change what you get or stop.
             </li>
             <li>
@@ -188,7 +188,7 @@ export default function Privacy() {
             <li>
               <strong>Notifications from OHRR.</strong> If you turn on notifications in the app (My OHRR), for example
               for volunteer calls or new rabbits, we keep your phone's notification address — made by your phone's
-              browser, not your phone number — and what you ticked, with your account if you're signed in. OHRR's
+              browser, not your phone number — and what you checked, with your account if you're signed in. OHRR's
               notifications are delivered through your browser's own notification service (Google, Apple, Mozilla or
               Microsoft). Turning them off removes the address.
             </li>

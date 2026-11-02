@@ -34,8 +34,8 @@ export function cleanInterests(v: unknown): Interest[] {
   return INTERESTS.map((i) => i.key).filter((k) => want.has(k))
 }
 
-/** Next to the tick boxes, wherever someone picks what they get. */
-export const CONSENT_LINE = 'OHRR will email you about what you tick. Every email has a link to change this or stop.'
+/** Next to the check boxes, wherever someone picks what they get. */
+export const CONSENT_LINE = 'OHRR will email you about what you check. Every email has a link to change this or stop.'
 
 /** The link in every email that lets someone change what they get or stop. */
 export const emailChoicesLink = (token: string) => `https://ohrr-website.pages.dev/emails/${token}`
@@ -101,7 +101,7 @@ export async function emailChoicesByToken(token: string): Promise<EmailChoices |
   return { email: d.email, interests: cleanInterests(d.interests), subscribed: d.subscribed !== false }
 }
 
-/** Save what they get; `subscribed` false stops every email (their ticks are kept for an undo). */
+/** Save what they get; `subscribed` false stops every email (their checks are kept for an undo). */
 export async function setEmailChoicesByToken(token: string, interests: Interest[], subscribed: boolean): Promise<void> {
   const { error } = await supabase.rpc('set_email_prefs_by_token', { p_token: token, p_interests: interests, p_subscribed: subscribed })
   if (error) throw new Error(error.message || 'Could not save that right now.')

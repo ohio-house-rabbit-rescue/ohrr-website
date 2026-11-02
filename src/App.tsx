@@ -163,7 +163,7 @@ export default function App() {
         <Route path="hopshop/reorder" element={<StaffHopShop />} />
         <Route path="hopshop/suppliers" element={<StaffHopShop />} />
         <Route path="hopshop/types" element={<StaffHopShop />} />
-        {/* Hop Shop price labels (update 41); its own key, so it never keeps the donation list's ticks */}
+        {/* Hop Shop price labels (update 41); its own key, so it never keeps the donation list's checks */}
         <Route path="hopshop/labels" element={<PrintLabels key="shop" mode="shop" />} />
         <Route
           path="hopshop/deliveries/new"

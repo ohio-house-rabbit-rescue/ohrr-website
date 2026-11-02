@@ -129,7 +129,7 @@ const CERT_KINDS: { value: string; label: string }[] = [
   { value: 'animal-handling', label: 'Animal handling' },
   { value: 'vet-transport', label: 'Vet transport' },
 ]
-const certLabel = (kind: string) => CERT_KINDS.find((k) => k.value === kind)?.label ?? (kind === 'counter' ? 'The Counter' : kind)
+const certLabel = (kind: string) => CERT_KINDS.find((k) => k.value === kind)?.label ?? (kind === 'counter' ? 'The Register' : kind)
 /** Typed text that names a common kind is saved as that kind, so nobody holds it twice. */
 const certKindFrom = (text: string) => {
   const t = text.trim()
@@ -200,7 +200,7 @@ function HowAccessWorks() {
         </p>
         <p>
           <strong className="text-ink">Volunteers who only sign up for shifts and log their hours don’t need an account.</strong> They use
-          their private volunteer link (Staff → Volunteer roster &amp; hours). Only people who work in the staff area — the Counter,
+          their private volunteer link (Staff → Volunteer roster &amp; hours). Only people who work in the staff area — the Register,
           check-in, editing — need one.
         </p>
       </div>

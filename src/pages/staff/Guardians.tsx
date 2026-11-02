@@ -254,7 +254,7 @@ export default function Guardians() {
               </label>
               <label className="block text-sm font-semibold text-slate-700">
                 Sort under
-                <span className="block text-xs font-normal text-slate-500">Usually the surname; fix it if the guess is wrong.</span>
+                <span className="block text-xs font-normal text-slate-500">Usually the last name; fix it if the guess is wrong.</span>
                 <input
                   className={staffInput}
                   value={sortUnder}

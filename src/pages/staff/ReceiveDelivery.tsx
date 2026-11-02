@@ -313,7 +313,7 @@ export default function ReceiveDelivery() {
   const save = async () => {
     setError(null)
     if (included.length === 0) {
-      setError('Tick at least one line and pick its product.')
+      setError('Check at least one line and pick its product.')
       return
     }
     setStep('saving')
@@ -744,7 +744,7 @@ function LineCard({
       <label className="block text-sm font-semibold text-slate-700">
         Product
         <select className={staffInput} value={r.productId} onChange={(e) => onPickProduct(e.target.value)} aria-label={`Product for ${title}`}>
-          <option value="">— pick one, or leave unticked —</option>
+          <option value="">— pick one, or leave unchecked —</option>
           {canCreate && <option value={NEW}>+ A new Hop Shop item from this line</option>}
           {products.map((x) => (
             <option key={x.id} value={x.id}>

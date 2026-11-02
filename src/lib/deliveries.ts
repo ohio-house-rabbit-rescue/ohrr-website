@@ -157,7 +157,7 @@ export async function invoiceFileUrl(path: string): Promise<string> {
 export const dayText = (iso: string | null) =>
   iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
-/** The Hop Shop labels page with each delivered item ticked, as many copies as came in (?c=SKU:N). */
+/** The Hop Shop labels page with each delivered item checked, as many copies as came in (?c=SKU:N). */
 export function deliveryLabelsLink(d: Pick<Delivery, 'lines'>): string {
   const qs = (d.lines ?? [])
     .filter((l) => l.sku && l.units_added > 0)

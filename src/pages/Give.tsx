@@ -56,7 +56,7 @@ const WAYS: Way[] = [
   },
   {
     h: 'Kroger Community Rewards',
-    p: "Link OHRR to your Kroger account and Kroger donates to us every time you shop. It takes less than a minute and costs you nothing — you'll see our name towards the bottom of your receipt.",
+    p: "Link OHRR to your Kroger account and Kroger donates to us every time you shop. It takes less than a minute and costs you nothing — you'll see our name toward the bottom of your receipt.",
     extra: 'If you live outside Columbus, pick a Columbus store as your main store and OHRR still receives the benefit.',
     href: KROGER_POST,
     cta: 'How to link your card',

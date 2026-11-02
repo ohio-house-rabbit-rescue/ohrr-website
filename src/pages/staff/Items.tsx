@@ -817,7 +817,7 @@ export default function Items() {
         })}
       </ul>
 
-      {/* While ticking a long list: how many are picked, and the way back up to the form. */}
+      {/* While checking a long list: how many are picked, and the way back up to the form. */}
       {basketMode && pickedItems.length > 0 && (
         <div className="sticky bottom-3 z-10 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-brand-blue bg-white px-4 py-2 shadow-xl">
           <span className="text-base font-semibold text-ink">
@@ -881,7 +881,7 @@ function BasketContents({ item }: { item: TaggedItem }) {
 const BASKET_NAME_ID = 'basket-name'
 
 /**
- * "Make a basket": the donations ticked in the list become one raffle prize or
+ * "Make a basket": the donations checked in the list become one raffle prize or
  * Silent Auction lot with its own code (make_basket, update 40). The basket's
  * value is what they're worth together.
  */
@@ -934,7 +934,7 @@ function BasketPanel({
       <p className="font-display text-lg font-extrabold text-ink">Make a basket</p>
       <p className="text-sm text-slate-600">
         {picked.length === 0
-          ? 'Tick the donations that go in it, in the list below.'
+          ? 'Check the donations that go in it, in the list below.'
           : `${picked.length} picked. ${addsUp(values)}`}
       </p>
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">

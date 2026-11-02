@@ -1,5 +1,5 @@
 // Staff → Vets: the rabbit-savvy vet directory shown on /learn/vets, in the
-// app's Find a vet, and — for practices ticked "gives the RHDV2 vaccine" — on
+// app's Find a vet, and — for practices checked "gives the RHDV2 vaccine" — on
 // the BunFest rabbit rules. Desktop mirror of the app's StaffVets.tsx; same
 // `vets` table, same permission (Edit education / care content).
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
@@ -211,7 +211,7 @@ function VetForm({
         )}
         <label className={tick}>
           <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-slate-300" checked={d.is_published} onChange={check('is_published')} />
-          Show on the website and in the app (untick for a draft)
+          Show on the website and in the app (uncheck for a draft)
         </label>
       </div>
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
@@ -347,7 +347,7 @@ export default function ManageVets() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <StaffTitle title="Vets">
           <p className="max-w-2xl">
-            The rabbit-savvy vets on the website’s vet list and in the app’s Find a vet. Tick “Gives the RHDV2 vaccine” and
+            The rabbit-savvy vets on the website’s vet list and in the app’s Find a vet. Check “Gives the RHDV2 vaccine” and
             the practice also appears on the BunFest rabbit rules.
           </p>
         </StaffTitle>

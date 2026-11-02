@@ -688,7 +688,7 @@ function TypeForm({ initial, approvals, onSaved }: { initial: TypeWithApproval; 
         <input className={staffInput} value={d.ask_reason ?? ''} onChange={txt('ask_reason')} placeholder="Which rabbit would you like to meet?" />
       </label>
       <label className="block text-sm font-semibold text-slate-700">
-        A box they must tick (optional)
+        A box they must check (optional)
         <input className={staffInput} value={d.attest_text ?? ''} onChange={txt('attest_text')} placeholder="I have completed the Buncare Orientation." />
       </label>
       <WeeklyEditor rules={d.weekly ?? []} defaultCapacity={d.capacity ?? 1} onChange={(weekly) => setD({ ...d, weekly })} />
