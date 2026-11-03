@@ -11,9 +11,13 @@ import { externalHref, formatDate, hostOf } from '../lib/format'
 import { telHref, useRescues } from '../lib/rescues'
 import { SILENT_AUCTION_FLAG, useFeature } from '../lib/settings'
 import { isAuctionLink } from '../lib/auctionSite'
+import { ReserveSession } from '../components/ReserveSession'
+import { RegisterBunnies } from '../components/RegisterBunnies'
 import {
   bunfestDest,
   presenterName,
+  reserveDay,
+  reserveState,
   timeRange,
   useFestivalYear,
   usePages,
@@ -85,6 +89,7 @@ export function BunFestTopic() {
   const page = pages.data?.find((p) => p.slug === slug)
   const raffle = useRaffleDetails(page?.feature === 'raffle' ? event?.slug : undefined)
   const auction = useFeature(SILENT_AUCTION_FLAG)
+  const reserve = reserveState(page?.reserve)
 
   if (loading || (year && pages.loading)) {
     return (
@@ -174,7 +179,22 @@ export function BunFestTopic() {
             </div>
           ))}
 
-          {page.reserveClosedNote && <Later>{page.reserveClosedNote}</Later>}
+          {/* Advance requests for a service (Bunny Spa, Glamour Shots): open, not yet open, or closed */}
+          {page.feature === 'reserve' && page.reserve && reserve === 'open' && (
+            <ReserveSession
+              title={page.title}
+              formName={page.reserve.formName}
+              services={page.reserve.services}
+              slots={page.reserve.slots}
+              closesOn={page.reserve.closesOn}
+            />
+          )}
+          {page.feature === 'reserve' && page.reserve && reserve === 'early' && (
+            <Later>Advance requests for {page.title} open on {reserveDay(page.reserve.opensOn)}.</Later>
+          )}
+          {page.reserveClosedNote && reserve === 'closed' && <Later>{page.reserveClosedNote}</Later>}
+          {/* Register the rabbits you are bringing: next to the Spa and Glamour requests, and on Bringing Your Bunny */}
+          {(page.feature === 'reserve' || page.slug === 'bringing-bunny') && <RegisterBunnies />}
 
           {page.emailSignup && (
             <a href={`mailto:${page.emailSignup}?subject=${encodeURIComponent(page.title)}`} className={btn.blue}>

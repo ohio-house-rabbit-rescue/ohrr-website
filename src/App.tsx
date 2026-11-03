@@ -106,6 +106,7 @@ import SendNotification from './pages/staff/SendNotification'
 const ScanItem = lazy(() => import('./pages/staff/ScanItem'))
 // Boxes of items (update 46): their own chunks too (the packing list loads jsPDF).
 const Boxes = lazy(() => import('./pages/staff/Boxes'))
+const BunnyRegistrations = lazy(() => import('./pages/staff/BunnyRegistrations'))
 const BoxDetail = lazy(() => import('./pages/staff/BoxDetail'))
 // Add a delivery from its invoice (update 42): its own chunks too (pdf.js and
 // the text reader load only when an invoice is read).
@@ -196,6 +197,14 @@ export default function App() {
         <Route path="bunfest/floor" element={<BunFestContent />} />
         <Route path="bunfest/vendors" element={<BunFestContent />} />
         <Route path="bunfest/partners" element={<BunFestContent />} />
+        <Route
+          path="bunfest/bunnies"
+          element={
+            <Suspense fallback={<Spinner />}>
+              <BunnyRegistrations />
+            </Suspense>
+          }
+        />
         <Route path="tails" element={<HappyTails />} />
         <Route path="raffle-tickets" element={<RaffleTicketsDesk />} />
         {/* Pre-printed tag sheets are retired (update 41): every label is printed with its own number */}

@@ -182,6 +182,72 @@ export interface PageSection {
   slot?: 'raffle-details'
 }
 
+/**
+ * Taking requests ahead of the day (the same setup the app reads). `opensOn` / `closesOn` are
+ * "YYYY-MM-DD", both inclusive, both optional: no `opensOn` means it is open already, no
+ * `closesOn` means it stays open. The page closes itself, so nobody has to remember to switch it off.
+ */
+export interface ReserveSetup {
+  formName: string
+  /** The choices offered, e.g. the spa's services. */
+  services?: string[]
+  /** The times people can ask for. Falls back to SESSION_SLOTS. */
+  slots?: string[]
+  opensOn?: string
+  closesOn?: string
+  /** What the page says once advance requests have closed. */
+  closedNote?: string
+}
+
+// The festival runs 10–4; offer 30-minute windows people can ask for. A page can set its own `slots`.
+export const SESSION_SLOTS = [
+  '10:00 AM',
+  '10:30 AM',
+  '11:00 AM',
+  '11:30 AM',
+  '12:00 PM',
+  '12:30 PM',
+  '1:00 PM',
+  '1:30 PM',
+  '2:00 PM',
+  '2:30 PM',
+  '3:00 PM',
+  '3:30 PM',
+] as const
+
+export type ReserveState = 'early' | 'open' | 'closed'
+
+const todayYmd = (): string => {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+export function reserveState(r: ReserveSetup | null | undefined): ReserveState {
+  if (!r) return 'closed'
+  const now = todayYmd()
+  if (r.opensOn && now < r.opensOn) return 'early'
+  if (r.closesOn && now > r.closesOn) return 'closed'
+  return 'open'
+}
+
+/** "Friday, October 17" — for telling people when a window opens or shuts. */
+export function reserveDay(v: string | undefined): string | null {
+  if (!v) return null
+  // Midday keeps the date from sliding a day either way when it is parsed.
+  const d = new Date(`${v}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
+const strings = (v: unknown): string[] | undefined => {
+  if (!Array.isArray(v)) return undefined
+  const out = v.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+  return out.length > 0 ? out : undefined
+}
+/** Only a "YYYY-MM-DD" is a date we can compare; anything else is ignored. */
+const ymd = (v: unknown): string | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined)
+
 export interface FestivalPage {
   id: string
   slug: string
@@ -193,6 +259,8 @@ export interface FestivalPage {
   note: string | null
   sections: PageSection[]
   feature: 'reserve' | 'raffle' | null
+  /** Advance requests for a service (Bunny Spa, Glamour Shots): the form, and when it opens and closes. */
+  reserve: ReserveSetup | null
   reserveClosedNote: string | null
   emailSignup: string | null
   contact: { address?: string; phone?: string; url?: string; urlLabel?: string } | null
@@ -249,6 +317,18 @@ function toPage(r: PageRow): FestivalPage {
     note: str(r.note) ?? null,
     sections,
     feature: r.feature,
+    // A reserve page without a form name would show a form that goes nowhere.
+    reserve:
+      r.feature === 'reserve' && str(reserve?.formName)
+        ? {
+            formName: str(reserve?.formName) as string,
+            services: strings(reserve?.services),
+            slots: strings(reserve?.slots),
+            opensOn: ymd(reserve?.opensOn),
+            closesOn: ymd(reserve?.closesOn),
+            closedNote: str(reserve?.closedNote),
+          }
+        : null,
     reserveClosedNote: str(reserve?.closedNote) ?? null,
     emailSignup: str(r.email_signup) ?? null,
     contact: contact && (contact.address || contact.phone || contact.url) ? contact : null,
