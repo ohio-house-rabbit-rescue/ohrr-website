@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, errMessage } from './supabase'
 import { useStaff, canSwitchFeatures } from './staff'
+import { useCanDesign } from './designAccess'
 import { myStaffVolunteerPage } from './volunteers/api'
 import type { IconName } from '../components/icons'
 
@@ -81,6 +82,7 @@ export const groupLink = (g: GroupWithTiles): string => (g.tiles.length === 1 &&
 /** The waiting counts cost a database call each, so only the dashboard and the group pages ask for them. */
 export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): StaffTiles {
   const { membership, can } = useStaff()
+  const { can: canDesign } = useCanDesign()
   const myHours = useMyVolunteerHours()
   const orgId = membership?.orgId ?? null
   const newCount = useCount('count_new_requests', counts && orgId && can('inbox.manage') ? orgId : null)
@@ -157,6 +159,8 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
     { to: '/staff/activity', title: 'Activity', hint: 'Who changed what, and when', icon: 'clock', group: 'admin', show: can('audit.view') },
     // Founders and Developers only (update 38)
     { to: '/staff/features', title: 'Features', hint: 'Show or hide whole features', icon: 'settings', group: 'admin', show: canSwitchFeatures(membership) },
+    // Founders, Developers and the Web page admin task (update 54)
+    { to: '/staff/design', title: 'Web page design', hint: 'Colors, pictures, home page order', icon: 'sparkles', group: 'admin', show: canDesign },
     { to: '/staff/details', title: 'OHRR details', hint: 'Hours, a notice, email, address', icon: 'mappin', group: 'admin', show: can('settings.manage') },
 
     // Me

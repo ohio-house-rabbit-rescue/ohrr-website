@@ -35,7 +35,7 @@ function ScrollToTop() {
 
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-white text-ink">
+    <div className="design-page min-h-screen bg-white text-ink">
       <ScrollToTop />
       <Header />
       <main id="main">

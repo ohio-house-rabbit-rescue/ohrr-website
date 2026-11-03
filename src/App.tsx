@@ -92,6 +92,7 @@ import Volunteers from './pages/staff/Volunteers'
 import SilentAuctionManager from './pages/staff/SilentAuction'
 import AuctionDesk from './pages/staff/AuctionDesk'
 import Features from './pages/staff/Features'
+import Design from './pages/staff/Design'
 import Activity from './pages/staff/Activity'
 import ResetPassword from './pages/staff/ResetPassword'
 // One account for everyone (update 31): the email list
@@ -135,6 +136,7 @@ export default function App() {
         <Route path="g/:group" element={<StaffGroup />} />
         <Route path="announcements" element={<ManageAnnouncements />} />
         <Route path="homepage" element={<ManageHero />} />
+        <Route path="design" element={<Design />} />
         <Route path="rabbits" element={<ManageRabbits />} />
         <Route path="volunteer" element={<ManageVolunteer />} />
         <Route path="care" element={<ManageCare />} />

@@ -63,7 +63,6 @@ const PAGES: { title: string; subtitle: string; to: string; extra?: string }[] =
   { title: 'Contact', subtitle: 'Email, a message form, and visiting', to: '/contact', extra: 'email message address directions visit' },
   { title: 'Get the OHRR app', subtitle: 'The whole rescue on your phone', to: '/app', extra: 'app iphone android my bunny' },
   { title: 'Privacy', subtitle: 'How this site handles your information', to: '/privacy', extra: 'privacy data' },
-  { title: 'OHRR staff sign-in', subtitle: 'For staff & volunteers', to: '/staff', extra: 'staff sign in login admin dashboard' },
 ]
 
 const SUGGESTIONS = ['Adopt', 'Bonding', 'Diet', 'Foster', 'Vets', 'Donate']

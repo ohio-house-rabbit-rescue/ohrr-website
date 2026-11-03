@@ -137,3 +137,21 @@ body {
     box-shadow: none !important;
   }
 }
+
+/* The shared look (Staff → Web page design). Without a design these are the plain page and the
+   plain band; the variables are set on the page by lib/design.ts. */
+.design-page {
+  background-image: var(--design-page-image, none);
+  background-size: cover;
+  background-position: center;
+}
+@media (min-width: 768px) {
+  .design-page {
+    background-attachment: fixed;
+  }
+}
+.design-band-web {
+  background-image: var(--design-band-image-web, none);
+  background-size: cover;
+  background-position: center;
+}

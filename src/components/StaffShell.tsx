@@ -61,8 +61,15 @@ function SignIn() {
         </div>
       ) : (
         <>
-          <h1 className="font-display text-2xl font-black text-ink">Staff &amp; owner sign‑in</h1>
-          <p className="mt-1 text-sm text-slate-600">Manage OHRR's content right here on the site.</p>
+          <h1 className="font-display text-2xl font-black text-ink">This area is for OHRR staff and volunteers</h1>
+          <p className="mt-2 text-base text-slate-700">
+            {mode === 'signin'
+              ? 'If you work or volunteer with OHRR and were given an account, please sign in.'
+              : 'Create your account, then enter the invite code you were given.'}
+          </p>
+          <p className="mt-1 text-base text-slate-700">
+            If you don’t have an account, there’s nothing for you here. Thank you for stopping by, and for caring about rabbits.
+          </p>
           <form onSubmit={onSubmit} className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <label className="block text-sm font-semibold text-slate-700">
               Email
@@ -82,13 +89,13 @@ function SignIn() {
             </button>
           </form>
           <p className="mt-3 text-center text-sm text-slate-500">
-            {mode === 'signin' ? 'New here?' : 'Already have an account?'}{' '}
+            {mode === 'signin' ? 'Joining the team?' : 'Already have an account?'}{' '}
             <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null) }} className="font-bold text-brand-blue">
-              {mode === 'signin' ? 'Create an account' : 'Sign in'}
+              {mode === 'signin' ? 'I was given an invite code' : 'Sign in'}
             </button>
           </p>
           <p className="mt-2 text-center">
-            <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-brand-blue">← Back to the website</Link>
+            <Link to="/" className="inline-flex min-h-11 items-center text-base font-semibold text-slate-600 hover:text-brand-blue">← Back to the website</Link>
           </p>
         </>
       )}

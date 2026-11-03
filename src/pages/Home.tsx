@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useRabbits, useEvents, useHeroSlides } from '../lib/data'
 import type { HeroSlide, Rabbit } from '../lib/types'
@@ -13,6 +14,7 @@ import { DONATE, OHRR, RABBIT_READY } from '../lib/constants'
 import { BandArt } from '../components/PageArt'
 import { SILENT_AUCTION_FLAG, useFeature } from '../lib/settings'
 import { isAuctionLink } from '../lib/auctionSite'
+import { resolveHome, useDesign } from '../lib/design'
 
 // The home page, built around the rescue's purpose (2026-09-24). OHRR's
 // mission, in its own words on the About page: run the Adoption Center,
@@ -47,7 +49,7 @@ function Purpose() {
   // Phone order: title, the rabbits' photos, the doors, then the sentence. On a
   // laptop the photos take the right-hand column beside all three.
   return (
-    <section className="relative overflow-hidden border-b border-brand-blue/10 bg-brand-blue-50">
+    <section className="design-band-web relative overflow-hidden border-b border-brand-blue/10 bg-brand-blue-50">
       {/* The logo's bunny, big and faint behind the title (PageArt); left of the photos on a laptop */}
       <div className="pointer-events-none absolute inset-0 mx-auto max-w-6xl">
         <BandArt name="bunny" className="right-0 top-2 h-[min(22rem,60%)] w-[min(22rem,60%)] text-brand-blue/10 sm:w-[min(22rem,72%)] sm:text-brand-blue/15 lg:right-[27rem]" />
@@ -287,16 +289,27 @@ function ThisWeekLine() {
   )
 }
 
+// The sections after the welcome band, in the order staff chose (Staff → Web page design); the
+// ids are the website's list in lib/design.ts.
+const PARTS: Record<string, ReactNode> = {
+  'help-needed': <HelpNeededBand />,
+  happening: <WhatsHappening />,
+  thinking: <ThinkingAboutARabbit />,
+  'presented-by': <PresentedBy surface="home" />,
+  'how-to-help': <HowToHelp />,
+  'this-week': <ThisWeekLine />,
+}
+
 export default function Home() {
+  const design = useDesign()
   return (
     <>
       <Purpose />
-      <HelpNeededBand />
-      <WhatsHappening />
-      <ThinkingAboutARabbit />
-      <PresentedBy surface="home" />
-      <HowToHelp />
-      <ThisWeekLine />
+      {resolveHome('web', design)
+        .filter((x) => x.on)
+        .map((x) => (
+          <Fragment key={x.id}>{PARTS[x.id]}</Fragment>
+        ))}
     </>
   )
 }

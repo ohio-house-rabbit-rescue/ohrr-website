@@ -44,6 +44,8 @@ export const CAPS = [
   // Update 32: the Amazon wish list items, and phone notifications (Staff → Send a notification).
   'giving.wishlist',
   'notifications.send',
+  // Update 54: the Web page admin — colors, background pictures and the home page sections.
+  'site.design',
 ] as const
 export type Cap = (typeof CAPS)[number]
 
@@ -82,6 +84,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: 'supporters.view', area: 'Supporters', description: 'See and download the supporter email list' },
   { key: 'giving.wishlist', area: 'Giving', description: 'Keep the Amazon wish list items' },
   { key: 'notifications.send', area: 'Supporters', description: 'Send phone notifications to people who asked for them' },
+  { key: 'site.design', area: 'Web page admin', description: 'Change how the app and website look: colors, background pictures, and the home page sections' },
 ]
 
 // Access presets (mirror the DB permission_presets seed) for quick invites,
@@ -115,6 +118,8 @@ export const PRESETS: Record<string, Cap[]> = {
   'Counter volunteer': ['counter.use'],
   // Update 28: someone certified to work the Hop Shop — selling, stock counts and orders, nothing else.
   'Hop Shop Worker': ['counter.use', 'hopshop.inventory.update', 'hopshop.orders.view'],
+  // Update 54: looks after how the app and website look.
+  'Web Page Admin': ['site.design'],
 }
 
 /*

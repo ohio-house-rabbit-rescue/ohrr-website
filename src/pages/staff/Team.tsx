@@ -106,6 +106,7 @@ const PRESET_LEVEL: Record<string, StaffLevel> = {
   'Care pages helper': 'volunteer2',
   'Hop Shop Worker': 'volunteer1',
   'Counter volunteer': 'volunteer1',
+  'Web Page Admin': 'lead',
 }
 const ADMIN_LEVELS: StaffLevel[] = ['admin1', 'admin2', 'admin3']
 
