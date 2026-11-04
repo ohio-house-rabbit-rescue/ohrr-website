@@ -21,6 +21,7 @@ interface Row {
   created_at: string
   unsubscribed_at: string | null
   unsubscribe_token: string
+  user_id: string | null
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -43,6 +44,8 @@ export default function Supporters() {
   const [q, setQ] = useState('')
   const [interest, setInterest] = useState<Interest | 'all'>('all')
   const [showLeft, setShowLeft] = useState(false)
+  // People on the team who are also on this list: one person, one account (update 55 keeps their email the same).
+  const [team, setTeam] = useState<{ ids: Set<string>; emails: Set<string> }>({ ids: new Set(), emails: new Set() })
 
   const load = useCallback(async () => {
     // A page at a time: the server hands back at most 1,000 rows per ask.
@@ -50,7 +53,7 @@ export default function Supporters() {
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
         .from('mailing_list')
-        .select('id, email, name, interests, source, created_at, unsubscribed_at, unsubscribe_token')
+        .select('id, email, name, interests, source, created_at, unsubscribed_at, unsubscribe_token, user_id')
         .eq('org_id', orgId)
         .order('created_at', { ascending: false })
         .range(from, from + 999)
@@ -67,6 +70,15 @@ export default function Supporters() {
       if (page.length < 1000) break
     }
     setRows(all)
+    // Who is on the team, to mark them. If this can't be read the list simply shows no marks.
+    const t = await supabase.rpc('list_team', { p_org: orgId })
+    if (!t.error && Array.isArray(t.data)) {
+      const people = t.data as Array<{ user_id: string; email: string | null }>
+      setTeam({
+        ids: new Set(people.map((m) => m.user_id)),
+        emails: new Set(people.map((m) => (m.email ?? '').toLowerCase()).filter(Boolean)),
+      })
+    }
   }, [orgId])
   useEffect(() => {
     if (orgId) void load()
@@ -87,6 +99,7 @@ export default function Supporters() {
         (!needle || r.email.toLowerCase().includes(needle) || (r.name ?? '').toLowerCase().includes(needle)),
     )
   }, [rows, q, interest, showLeft])
+  const onTeam = (r: Row) => (r.user_id != null && team.ids.has(r.user_id)) || team.emails.has(r.email.toLowerCase())
   const shownEmails = shown.filter((r) => !r.unsubscribed_at).map((r) => r.email)
 
   if (!can('supporters.view')) return <p className="text-slate-600">You don’t have access to the supporter email list.</p>
@@ -105,7 +118,7 @@ export default function Supporters() {
     void copy(shownEmails.join(', '), `Copied ${shownEmails.length} ${shownEmails.length === 1 ? 'address' : 'addresses'}. Paste them into BCC.`)
   const download = () => {
     const csv = toCsv(
-      ['Name', 'Email', 'Interests', 'Source', 'Joined', 'Unsubscribed', 'Unsubscribe link'],
+      ['Name', 'Email', 'Interests', 'Source', 'Joined', 'Unsubscribed', 'On the team', 'Unsubscribe link'],
       shown.map((r) => [
         r.name ?? '',
         r.email,
@@ -113,6 +126,7 @@ export default function Supporters() {
         sourceLabel(r.source),
         usDate(r.created_at),
         r.unsubscribed_at ? usDate(r.unsubscribed_at) : '',
+        onTeam(r) ? 'Yes' : '',
         emailChoicesLink(r.unsubscribe_token),
       ]),
     )
@@ -202,7 +216,10 @@ export default function Supporters() {
                   return (
                     <li key={r.id} className={`flex flex-wrap items-start gap-x-4 gap-y-1.5 px-5 py-3 ${left ? 'text-slate-400' : ''}`}>
                       <div className="min-w-0 flex-1 basis-60">
-                        <p className={`font-semibold ${left ? 'text-slate-500' : 'text-ink'}`}>{r.name || 'No name'}</p>
+                        <p className={`font-semibold ${left ? 'text-slate-500' : 'text-ink'}`}>
+                          {r.name || 'No name'}
+                          {onTeam(r) && <span className="ml-2 rounded-full bg-brand-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue">On the team</span>}
+                        </p>
                         <p className={`break-all text-sm ${left ? 'text-slate-400' : 'text-slate-700'}`}>{r.email}</p>
                       </div>
                       <div className="flex min-w-0 flex-1 basis-60 flex-wrap gap-1.5">

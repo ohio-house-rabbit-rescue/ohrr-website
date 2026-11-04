@@ -57,6 +57,8 @@ interface Member {
   /** Update 28 — null before it has been run. */
   level: StaffLevel | null
   display_name: string | null
+  /** Update 55: the name they gave as a customer, when their staff profile has none. */
+  account_name?: string | null
   title: string | null
   /** Whether the signed-in person may change this person (update 28: from list_team). */
   can_manage: boolean
@@ -139,7 +141,7 @@ const certKindFrom = (text: string) => {
 
 const fmtDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-const memberName = (m: Member) => m.display_name?.trim() || m.email || `Member ${m.user_id.slice(0, 8)}`
+const memberName = (m: Member) => m.display_name?.trim() || m.account_name?.trim() || m.email || `Member ${m.user_id.slice(0, 8)}`
 
 /** The quiet line on someone the signed-in person can't change. */
 function managedBy(m: Member, isSelf: boolean): string {
@@ -416,6 +418,7 @@ function InvitePanel({
           <label className="block text-sm font-semibold text-slate-700">
             Their email
             <input className={staffInput} type="email" value={who.email} onChange={setWhoField('email')} autoComplete="off" />
+            <span className="mt-1 block text-xs font-normal text-slate-500">They must sign in with this same email. If they already have an OHRR account, use the email they signed up with.</span>
           </label>
           <label className="block text-sm font-semibold text-slate-700">
             Phone <span className="font-normal text-slate-500">(optional)</span>
@@ -909,7 +912,7 @@ function MemberCard({
         <div className="min-w-0">
           <span className="break-all font-display text-[15px] font-extrabold text-ink">{memberName(member)}</span>
           {isSelf && <span className="ml-1.5 text-xs font-bold text-slate-400">(you)</span>}
-          {member.display_name && member.email && <span className="block break-all text-sm text-slate-500">{member.email}</span>}
+          {(member.display_name || member.account_name) && member.email && <span className="block break-all text-sm text-slate-500">{member.email}</span>}
           {member.title && <span className="block text-sm text-slate-600">{member.title}</span>}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
@@ -1011,6 +1014,7 @@ interface TeamRow {
   status: string
   level: string | null
   display_name: string | null
+  account_name?: string | null
   title: string | null
   can_manage: boolean | null
   access_until?: string | null
@@ -1074,6 +1078,7 @@ export default function Team() {
         status: r.status,
         level: parseLevel(r.level),
         display_name: r.display_name,
+        account_name: r.account_name ?? null,
         title: r.title,
         can_manage: Boolean(r.can_manage),
         access_until: typeof r.access_until === 'string' ? r.access_until : null,
