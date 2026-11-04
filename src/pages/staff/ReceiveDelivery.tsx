@@ -22,6 +22,8 @@ import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import PhotoDrop from '../../components/PhotoDrop'
 import { StaffTitle } from '../../components/StaffTitle'
+import Scanner from '../../components/Scanner'
+import { normalizeCode } from '../../lib/codes'
 import { fromCents, listProducts, listSuppliers, money, saveProduct, toCents, type StockCard, type Supplier } from '../../lib/hopshop'
 import { costEach, readInvoice, readLines, unitsFor, type InvoiceLine, type MatchHow, type RememberedMatch } from '../../lib/invoiceParse'
 import { readInvoiceFiles } from '../../lib/invoiceRead'
@@ -144,7 +146,15 @@ function openLocal(f: File) {
 
 const fileLabel = (f: File, i: number) => (isPdf(f) ? f.name : `Photo, page ${i + 1}`)
 
-type Step = 'start' | 'reading' | 'review' | 'saving' | 'done'
+type Step = 'start' | 'scan' | 'reading' | 'review' | 'saving' | 'done'
+
+/** One thing scanned in: the code as read, the Hop Shop item it matched (if any) and how many times. */
+interface Scanned {
+  code: string
+  productId: string | null
+  name: string
+  count: number
+}
 
 export default function ReceiveDelivery() {
   const { membership, can } = useStaff()
@@ -155,12 +165,18 @@ export default function ReceiveDelivery() {
   const [touch] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches)
 
   const [step, setStep] = useState<Step>('start')
+  // "No invoice — scan the items": what has been scanned so far, and what the last scan said.
+  const [scanned, setScanned] = useState<Scanned[]>([])
+  const [typedCode, setTypedCode] = useState('')
+  const [scanSaid, setScanSaid] = useState<{ ok: boolean; text: string } | null>(null)
+  const [camera, setCamera] = useState(false)
+  const [cameraKey, setCameraKey] = useState(0)
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [products, setProducts] = useState<StockCard[] | null>(null)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [files, setFiles] = useState<File[]>([])
-  const [readHow, setReadHow] = useState<'pdf' | 'photo' | 'typed'>('pdf')
+  const [readHow, setReadHow] = useState<'pdf' | 'photo' | 'typed' | 'scanned'>('pdf')
   const [lines, setLines] = useState<string[]>([])
   const [supplierId, setSupplierId] = useState(params.get('supplier') ?? '')
   const [invoiceNo, setInvoiceNo] = useState('')
@@ -272,6 +288,60 @@ export default function ReceiveDelivery() {
   const typeItIn = () => {
     setReadHow('typed')
     setRows([blankRow()])
+    setStep('review')
+  }
+
+  /* ------------------------------------------------ scanning (no invoice) */
+  // A scanner that types (USB or Bluetooth) fills the box and presses Enter; the camera reads one label at a time.
+  const sameCode = (a: string | null | undefined, b: string) => !!a && a.toUpperCase().replace(/[^A-Z0-9]/g, '') === b.replace(/[^A-Z0-9]/g, '')
+  const findScanned = (code: string): StockCard | null =>
+    (products ?? []).find((p) => sameCode(p.code, code) || sameCode(p.sku, code) || sameCode(p.barcode, code) || sameCode(p.supplier_sku, code)) ?? null
+
+  const handleScan = (raw: string) => {
+    const code = normalizeCode(raw)
+    if (!code) {
+      setScanSaid({ ok: false, text: 'That didn’t look like a label. Try again, or type the code.' })
+      return
+    }
+    const card = findScanned(code)
+    setScanned((list) => {
+      const hit = list.find((x) => x.code === code)
+      if (hit) return list.map((x) => (x === hit ? { ...x, count: x.count + 1 } : x))
+      return [{ code, productId: card?.id ?? null, name: card?.name ?? '', count: 1 }, ...list]
+    })
+    setScanSaid(card ? { ok: true, text: `Counted: ${card.name}` } : { ok: false, text: `${code} isn’t a Hop Shop item yet. You can pick or add it on the next screen.` })
+  }
+  const fromCamera = (raw: string) => {
+    handleScan(raw)
+    // A moment to move the label away before the camera looks again, so one item isn't counted twice.
+    window.setTimeout(() => setCameraKey((k) => k + 1), 1200)
+  }
+  const stepCount = (code: string, by: number) =>
+    setScanned((list) => list.map((x) => (x.code === code ? { ...x, count: x.count + by } : x)).filter((x) => x.count > 0))
+  const scannedTotal = scanned.reduce((n, l) => n + l.count, 0)
+
+  const doneScanning = () => {
+    if (!scanned.length) return
+    const made = scanned.map((l): Row => {
+      const p = l.productId ? byId.get(l.productId) : undefined
+      return {
+        ...blankRow(),
+        readAs: l.code,
+        description: p?.name ?? '',
+        qty: String(l.count),
+        productId: p?.id ?? '',
+        cost: p?.cost_cents != null ? fromCents(p.cost_cents) : '',
+        how: p ? 'barcode' : null,
+        sure: !!p,
+        matchKey: l.code.toLowerCase(),
+        include: !!p,
+      }
+    })
+    setReadHow('scanned')
+    setLines([])
+    setRows(made)
+    setError(null)
+    setCamera(false)
     setStep('review')
   }
 
@@ -413,6 +483,10 @@ export default function ReceiveDelivery() {
     setDupAsked(false)
     setResult(null)
     setError(null)
+    setScanned([])
+    setScanSaid(null)
+    setTypedCode('')
+    setCamera(false)
     void listProducts(orgId).then(setProducts).catch(() => undefined)
   }
 
@@ -532,6 +606,10 @@ export default function ReceiveDelivery() {
           <FormError>{error}</FormError>
           <p className="text-sm text-slate-600">
             No invoice to hand?{' '}
+            <button type="button" onClick={() => setStep('scan')} disabled={!products} className="min-h-11 font-bold text-brand-blue disabled:opacity-60">
+              Scan the items as you unpack them
+            </button>
+            {' · '}
             <button type="button" onClick={typeItIn} className="min-h-11 font-bold text-brand-blue">
               Type the lines yourself
             </button>
@@ -540,6 +618,84 @@ export default function ReceiveDelivery() {
               Past deliveries
             </Link>
           </p>
+        </div>
+      )}
+
+      {step === 'scan' && (
+        <div className="max-w-3xl space-y-4">
+          <Card className="space-y-3 border-2 border-brand-orange/60">
+            <p className="font-display text-lg font-extrabold text-ink">
+              Scan each item as you unpack it <span className="font-sans text-sm font-semibold text-slate-500">· {scannedTotal ? `${scannedTotal} counted` : 'none yet'}</span>
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const t = typedCode
+                setTypedCode('')
+                if (t.trim()) handleScan(t)
+              }}
+              className="flex gap-2"
+            >
+              <input
+                value={typedCode}
+                onChange={(e) => setTypedCode(e.target.value)}
+                placeholder="Scan, or type the item number or barcode"
+                aria-label="Item code"
+                autoFocus
+                autoCapitalize="characters"
+                className={`${staffInput} !mt-0 font-mono`}
+              />
+              <button type="submit" disabled={!typedCode.trim()} className={`${btn.blue} shrink-0 disabled:opacity-40`}>
+                Add
+              </button>
+            </form>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setCamera((c) => !c)} aria-pressed={camera} className={camera ? btn.blue : btn.outline}>
+                <Icon name="camera" size={16} /> {camera ? 'Stop the camera' : 'Use the camera'}
+              </button>
+            </div>
+            {camera && <Scanner key={cameraKey} onResult={fromCamera} />}
+            {scanSaid && (
+              <p
+                aria-live="polite"
+                className={`flex items-start gap-2 rounded-xl px-3 py-2 text-base font-semibold ${scanSaid.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}
+              >
+                <Icon name={scanSaid.ok ? 'check' : 'x'} size={18} className="mt-0.5 shrink-0" />
+                {scanSaid.text}
+              </p>
+            )}
+          </Card>
+
+          {scanned.length > 0 && (
+            <ul className="space-y-2">
+              {scanned.map((l) => (
+                <li key={l.code}>
+                  <Card className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base font-bold text-ink">{l.name || 'Not a Hop Shop item yet'}</p>
+                      <p className="truncate font-mono text-sm text-slate-600">{l.code}</p>
+                    </div>
+                    <button type="button" onClick={() => stepCount(l.code, -1)} aria-label={`One fewer ${l.name || l.code}`} className={`${btn.outline} !min-h-12 !min-w-12`}>
+                      −
+                    </button>
+                    <span className="w-8 text-center text-lg font-extrabold text-ink">{l.count}</span>
+                    <button type="button" onClick={() => stepCount(l.code, 1)} aria-label={`One more ${l.name || l.code}`} className={`${btn.outline} !min-h-12 !min-w-12`}>
+                      +
+                    </button>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-base text-slate-700">Scan each one. Scanning the same item again adds one. You check the list before anything is added to stock.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={doneScanning} disabled={!scanned.length} className={`${btn.orange} min-h-[56px] w-full px-8 text-base disabled:opacity-50 sm:w-auto`}>
+              <Icon name="check" size={18} /> Done scanning
+            </button>
+            <button type="button" onClick={() => setStep('start')} className="min-h-11 w-full px-3 text-sm font-bold text-slate-600 sm:w-auto">
+              Back
+            </button>
+          </div>
         </div>
       )}
 
@@ -556,7 +712,7 @@ export default function ReceiveDelivery() {
         <div className="space-y-5">
           <Card className="space-y-3">
             <p className="text-base font-bold text-ink">
-              {readHow === 'typed' ? 'The delivery' : `Read from the ${readHow === 'pdf' ? 'PDF' : files.length > 1 ? 'photos' : 'photo'} — check each line`}
+              {readHow === 'typed' ? 'The delivery' : readHow === 'scanned' ? 'Counted from your scans — check each line' : `Read from the ${readHow === 'pdf' ? 'PDF' : files.length > 1 ? 'photos' : 'photo'} — check each line`}
             </p>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <label className="col-span-2 block text-sm font-semibold text-slate-700">
