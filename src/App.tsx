@@ -11,6 +11,10 @@ import LearnArticle from './pages/LearnArticle'
 import LegacyFund from './pages/LegacyFund'
 import StaffGuardians from './pages/staff/Guardians'
 import MyAccount from './pages/staff/MyAccount'
+import GuideTrail from './features/guide/GuideTrail'
+import GuideLevelPage from './features/guide/GuideLevel'
+import GuideMoney from './features/guide/GuideMoney'
+import Welcome from './features/guide/Welcome'
 import Vets from './pages/Vets'
 import { BreedGuide, BreedDetail } from './pages/Breeds'
 import Volunteer from './pages/Volunteer'
@@ -237,6 +241,10 @@ export default function App() {
         <Route path="wish-list" element={<StaffWishList />} />
         <Route path="notify" element={<SendNotification />} />
         <Route path="account" element={<MyAccount />} />
+        {/* The guided start (Hop Into the App): the Trail, one level, and the plain note about money */}
+        <Route path="guide" element={<GuideTrail />} />
+        <Route path="guide/money" element={<GuideMoney />} />
+        <Route path="guide/:level" element={<GuideLevelPage />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />
         <Route path="auction/desk" element={<AuctionDesk />} />
@@ -259,6 +267,8 @@ export default function App() {
         <Route path="/bonding" element={<Navigate to="/adopt/bonding" replace />} />
         <Route path="/surrender/form" element={<SurrenderIntake />} />
         <Route path="/mailing-list" element={<MailingListPage />} />
+        {/* Unlisted, before sign-in: what the staff guide is and how to begin */}
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/emails/:token" element={<EmailChoices />} />
         <Route path="/impact" element={<Impact />} />
         <Route path="/support/become-a-supporter" element={<BecomeSupporter />} />

@@ -19,6 +19,8 @@ import { useStaff, canSwitchFeatures } from './staff'
 import { useCanDesign } from './designAccess'
 import { myStaffVolunteerPage } from './volunteers/api'
 import type { IconName } from '../components/icons'
+import { useGuideAccess } from '../features/guide/useGuide'
+import { TRAIL_PATH } from '../features/guide/guideEnv'
 
 /** The Today row, always in this order (the app's order, without Sell). */
 const TODAY_ORDER = ['/staff/inbox', '/staff/bookings', '/staff/scan']
@@ -84,6 +86,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
   const { membership, can } = useStaff()
   const { can: canDesign } = useCanDesign()
   const myHours = useMyVolunteerHours()
+  const guide = useGuideAccess()
   const orgId = membership?.orgId ?? null
   const newCount = useCount('count_new_requests', counts && orgId && can('inbox.manage') ? orgId : null)
   const pendingCount = useCount('count_pending_bookings', counts && orgId && can('bookings.manage') ? orgId : null)
@@ -165,6 +168,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
     { to: '/staff/details', title: 'OHRR details', hint: 'Hours, a notice, email, address', icon: 'mappin', group: 'admin', show: can('settings.manage') },
 
     // Me
+    { to: TRAIL_PATH, title: 'Start here', hint: 'A step-by-step guide to the app', icon: 'sparkles', group: 'me', show: guide.visible },
     { to: '/staff/account', title: 'My account', hint: 'Name, photo, level and access', icon: 'user', group: 'me', show: Boolean(membership) },
     {
       to: '#my-volunteer-hours',

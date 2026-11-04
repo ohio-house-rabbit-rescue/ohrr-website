@@ -15,6 +15,7 @@ import { ExpiringSponsorsNotice } from './ManageSponsors'
 import { CertificatesNotice, PendingApplicationsNotice } from './Volunteers'
 import { EasterCampaignNotice, PostsToApproveNotice } from './Posts'
 import { CERTIFICATES_CAP } from '../../lib/volunteers/api'
+import GuideCard from '../../features/guide/GuideCard'
 
 export default function StaffDashboard() {
   // Hooks before any early return (a hook below one blanked the app's dashboard once).
@@ -45,6 +46,10 @@ export default function StaffDashboard() {
       {can(CERTIFICATES_CAP) && membership?.orgId && <CertificatesNotice orgId={membership.orgId} className="mt-4" />}
       {can('social.approve') && <PostsToApproveNotice className="mt-4" />}
       {can('announcements.post') && <EasterCampaignNotice className="mt-4" />}
+
+      <div className="mt-4 empty:hidden">
+        <GuideCard />
+      </div>
 
       {today.length > 0 && (
         <section aria-labelledby="today-h" className="mt-4">

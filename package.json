@@ -2,7 +2,7 @@
   "name": "ohrr-website",
   "private": true,
   "version": "0.3.0",
-  "revision": 11,
+  "revision": 12,
   "type": "module",
   "scripts": {
     "dev": "vite",
