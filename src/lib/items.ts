@@ -87,7 +87,7 @@ export interface TaggedItem {
   /** Client only: headed for / size / use-by / drop-off couldn't be saved yet (update 40 not run). */
   plan_skipped?: boolean
   /** The box it's packed in (update 46; missing before it). */
-  box?: { code: string; box_no: number; location: string | null } | null
+  box?: { code: string; box_no: number; location: string | null; name?: string | null; part_no?: number | null; part_of?: number | null } | null
   /** Update 47 (donations): how it came in, what was paid and where, and its use ("Guardians Event"). */
   source?: 'donation' | 'purchase' | null
   cost_cents?: number | null

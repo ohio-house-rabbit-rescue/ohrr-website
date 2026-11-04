@@ -276,14 +276,14 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
     showSize(s, at)
     setCustomOpen(false)
     if (setsForAll && orgId)
-      setSetting(LABEL_SIZE_SETTING, { wIn: s.wIn, hIn: s.hIn, at }, { orgId, userId: user?.id }).catch((e) =>
+      setSetting(LABEL_SIZE_SETTING, { wIn: s.wIn, hIn: s.hIn, at, photo: s.photo === true }, { orgId, userId: user?.id }).catch((e) =>
         setError(`The size is set on this computer, but couldn’t be saved for everyone: ${errMessage(e)}`),
       )
   }
   const applyCustom = () => {
     const w = Number(customW)
     const h = Number(customH)
-    if (w >= 0.5 && h >= 0.5 && w <= 8.5 && h <= 11) chooseSize(customLabelSize(w, h))
+    if (w >= 0.5 && h >= 0.5 && w <= 8.5 && h <= 11) chooseSize({ ...customLabelSize(w, h), photo: size.photo })
   }
   const choosePrice = (on: boolean) => {
     setShowPrice(on)
@@ -584,7 +584,7 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
                 value={customOpen || size.key.startsWith('custom:') ? 'custom' : size.key}
                 onChange={(e) => {
                   const s = LABEL_SIZES.find((x) => x.key === e.target.value)
-                  if (s) chooseSize(s)
+                  if (s) chooseSize({ ...s, photo: size.photo })
                   else setCustomOpen(true)
                 }}
                 className={select}
@@ -617,6 +617,15 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
                   Use this size
                 </button>
               </div>
+              )}
+              {size.hIn >= 3 && (
+                <label className="mt-3 flex min-h-11 items-start gap-2 text-base font-bold text-slate-700">
+                  <input type="checkbox" checked={size.photo === true} onChange={(e) => chooseSize({ ...size, photo: e.target.checked })} className="mt-0.5 h-6 w-6 shrink-0 accent-brand-blue" />
+                  <span>
+                    Print the item’s photo on the label
+                    <span className="block text-sm font-semibold text-slate-500">Off: the name, the QR code and the number are printed big, with no picture.</span>
+                  </span>
+                </label>
               )}
               {shop && (
                 <label className="mt-3 flex min-h-11 items-center gap-2 text-base font-bold text-slate-700">

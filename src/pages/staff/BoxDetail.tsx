@@ -13,11 +13,12 @@ import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { Explain } from '../../components/StaffTitle'
 import Scanner from '../../components/Scanner'
-import { boxName, isBoxCode, normalizeCode } from '../../lib/codes'
+import { boxName, boxTitle, isBoxCode, normalizeCode } from '../../lib/codes'
+import BoxFields, { type BoxFieldValues } from '../../components/BoxFields'
 import { KIND_META, listItems, type TaggedItem } from '../../lib/items'
 import { labelDataUrl, labelsPdf } from '../../lib/labels'
 import { PAGE_SIZE, filterRows, groupByDay, type ListRow } from '../../lib/labelList'
-import { BOX_SIZE, boxByCode, boxLabel, deleteBox, markBoxesPrinted, packingListPdf, putInBox, saveBox, takeOutOfBox, type Box, type BoxPutResult } from '../../lib/boxes'
+import { BOX_SIZE, boxByCode, boxLabel, deleteBox, markBoxesPrinted, packingListPdf, putInBox, saveBox, setBoxDetails, takeOutOfBox, type Box, type BoxPutResult } from '../../lib/boxes'
 
 interface LogLine {
   ok: boolean
@@ -76,6 +77,10 @@ export default function BoxDetail() {
   const [editing, setEditing] = useState(false)
   const [place, setPlace] = useState('')
   const [memo, setMemo] = useState('')
+  // Name, description, event and place in a set (update 50).
+  const [fields, setFields] = useState<BoxFieldValues>({ name: '', description: '', eventId: null })
+  const [partNo, setPartNo] = useState('')
+  const [partOf, setPartOf] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [printImgs, setPrintImgs] = useState<string[]>([])
   const [copies, setCopies] = useState(1)
@@ -113,7 +118,7 @@ export default function BoxDetail() {
   }, [load])
 
   // The label preview follows what's in the box.
-  const labelKey = box ? JSON.stringify([box.code, box.location, box.items.map((i) => [i.code, i.title])]) : ''
+  const labelKey = box ? JSON.stringify([box.code, box.location, box.name, box.description, box.event_title, box.part_no, box.part_of, box.items.map((i) => [i.code, i.title])]) : ''
   useEffect(() => {
     if (!box) return
     let alive = true
@@ -183,8 +188,21 @@ export default function BoxDetail() {
     setBusy('Saving…')
     setError(null)
     try {
-      setBox(await saveBox(orgId, box.code, place, memo))
-      setEditing(false)
+      let b = await saveBox(orgId, box.code, place, memo)
+      const no = Number.parseInt(partNo, 10)
+      const of = Number.parseInt(partOf, 10)
+      const hasSet = Number.isFinite(no) && Number.isFinite(of)
+      if ((partNo.trim() || partOf.trim()) && !hasSet) throw new Error('For “1 of 4”, fill in both numbers — or leave both empty.')
+      const next = { name: fields.name.trim(), description: fields.description.trim(), eventId: fields.eventId, partNo: hasSet ? no : null, partOf: hasSet ? of : null }
+      const same =
+        next.name === (box.name ?? '') &&
+        next.description === (box.description ?? '') &&
+        next.eventId === (box.event_id ?? null) &&
+        next.partNo === (box.part_no ?? null) &&
+        next.partOf === (box.part_of ?? null)
+      if (!same) b = await setBoxDetails(orgId, box.code, next)
+      // Saved: back to the boxes, which say so.
+      navigate('/staff/boxes', { state: { saved: `${boxTitle(b)}${b.location ? ` · ${b.location}` : ''}` } })
     } catch (e) {
       setError(errMessage(e))
     } finally {
@@ -226,7 +244,7 @@ export default function BoxDetail() {
       // Let the print pages render before the dialog opens.
       await new Promise((r) => setTimeout(r, 200))
       window.print()
-      await marked(`${boxName(box.code)} label sent to print and marked as printed.`)
+      await marked(`${boxTitle(box)} label sent to print and marked as printed.`)
     } catch (e) {
       setError(errMessage(e))
     } finally {
@@ -241,7 +259,7 @@ export default function BoxDetail() {
     try {
       const label = boxLabel(box)
       download(await labelsPdf(Array.from({ length: copies }, () => label), BOX_SIZE), `ohrr-${box.code.toLowerCase()}-label.pdf`)
-      await marked(`${boxName(box.code)} label: a 4 × 6 in PDF, marked as printed.`)
+      await marked(`${boxTitle(box)} label: a 4 × 6 in PDF, marked as printed.`)
     } catch (e) {
       setError(errMessage(e))
     } finally {
@@ -288,7 +306,7 @@ export default function BoxDetail() {
     )
   }
 
-  const name = boxName(box.code)
+  const name = boxTitle(box)
   return (
     <>
       <div className="print:hidden">
@@ -306,18 +324,35 @@ export default function BoxDetail() {
               onClick={() => {
                 setPlace(box.location ?? '')
                 setMemo(box.note ?? '')
+                setFields({ name: box.name ?? '', description: box.description ?? '', eventId: box.event_id ?? null })
+                setPartNo(box.part_no ? String(box.part_no) : '')
+                setPartOf(box.part_of ? String(box.part_of) : '')
                 setEditing(true)
               }}
               className="min-h-11 font-bold text-brand-blue"
             >
-              {box.location || box.note ? 'Change' : 'Where is it kept?'}
+              {box.location || box.note || box.name || box.description ? 'Change' : 'Name it, or say where it is kept'}
             </button>
           </p>
+        )}
+        {!editing && (box.description || box.event_title) && (
+          <p className="text-base font-semibold text-slate-700">{[box.description, box.event_title ? `For ${box.event_title}` : null].filter(Boolean).join(' · ')}</p>
         )}
         {!editing && box.note && <p className="text-base text-slate-500">{box.note}</p>}
 
         {editing && (
           <div className="mt-3 max-w-xl space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <BoxFields orgId={orgId} value={fields} onChange={(patch) => setFields((f) => ({ ...f, ...patch }))} />
+            <div>
+              <p className="text-base font-bold text-ink">
+                Part of a set <span className="font-normal text-slate-500">(optional)</span>
+              </p>
+              <div className="mt-1 flex items-center gap-2 text-base text-ink">
+                <input type="number" inputMode="numeric" min={1} value={partNo} onChange={(e) => setPartNo(e.target.value)} aria-label="This box’s number in the set" className={`${staffInput} !mt-0 !w-20`} />
+                of
+                <input type="number" inputMode="numeric" min={1} value={partOf} onChange={(e) => setPartOf(e.target.value)} aria-label="How many boxes in the set" className={`${staffInput} !mt-0 !w-20`} />
+              </div>
+            </div>
             <label className="block text-base font-bold text-ink">
               Where it’s kept
               <input value={place} onChange={(e) => setPlace(e.target.value)} maxLength={120} placeholder="e.g. Garage shelf B" className={staffInput} />
@@ -587,9 +622,9 @@ function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPu
   }
 
   return (
-    <section aria-label={`Pick items for ${boxName(box.code)}`}>
+    <section aria-label={`Pick items for ${boxTitle(box)}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-extrabold text-ink">Pick items for {boxName(box.code)}</h2>
+        <h2 className="font-display text-lg font-extrabold text-ink">Pick items for {boxTitle(box)}</h2>
         <button type="button" onClick={onCancel} className="min-h-11 px-2 text-sm font-bold text-brand-blue">
           Cancel
         </button>
@@ -608,7 +643,7 @@ function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPu
         </label>
       </div>
       <button type="button" onClick={() => void put()} disabled={busy || picked.size === 0} className={`${btn.orange} mt-3 w-full text-base disabled:opacity-60 sm:w-auto`}>
-        <Icon name="box" size={18} /> {busy ? 'Putting them in…' : picked.size === 0 ? 'Check the items for this box' : `Put ${picked.size} in ${boxName(box.code)}`}
+        <Icon name="box" size={18} /> {busy ? 'Putting them in…' : picked.size === 0 ? 'Check the items for this box' : `Put ${picked.size} in ${boxTitle(box)}`}
       </button>
       {error && (
         <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-base font-semibold text-red-700" role="alert">
@@ -651,7 +686,7 @@ function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPu
                       <span className="block truncate font-display text-base font-extrabold text-ink">{r.title}</span>
                       <span className="block truncate text-sm text-slate-600">
                         {r.sub}
-                        {r.box ? ` · now in ${boxName(r.box.code)}` : ''}
+                        {r.box ? ` · now in ${boxTitle(r.box)}` : ''}
                       </span>
                     </span>
                     <span className="shrink-0 font-mono text-sm font-bold text-slate-500">{r.code}</span>

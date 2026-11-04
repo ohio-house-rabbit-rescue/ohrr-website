@@ -27,7 +27,7 @@ import { Icon, type IconName } from '../../components/icons'
 import Scanner from '../../components/Scanner'
 import { StaffTitle } from '../../components/StaffTitle'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
-import { boxName, isBoxCode, isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
+import { boxTitle, isBoxCode, isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
 import { KIND_META, extrasSummary, findByCode, itemPhotos, kindLabel, money, statusLabel, type TaggedItem } from '../../lib/items'
 import { PhotoUnreadable, readCodeFromImage } from '../../lib/readCode'
 
@@ -348,7 +348,7 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
             <p className="text-base font-semibold text-slate-700">
               In{' '}
               <Link to={`/staff/boxes/${item.box.code}`} className={linkClass}>
-                {boxName(item.box.code)}
+                {boxTitle(item.box)}
               </Link>
               {item.box.location ? ` · ${item.box.location}` : ''}
             </p>

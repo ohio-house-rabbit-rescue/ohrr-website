@@ -107,8 +107,9 @@ import {
   type TaggedItem,
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
-import { boxName, isDonationCode, normalizeCode } from '../../lib/codes'
-import { boxByCode, loadPackingBox, newBox, putInBox, savePackingBox, type PackingBox } from '../../lib/boxes'
+import { boxTitle, isDonationCode, normalizeCode } from '../../lib/codes'
+import { boxByCode, loadPackingBox, newBox, putInBox, savePackingBox, type Box, type PackingBox } from '../../lib/boxes'
+import BoxNameEditor from '../../components/BoxNameEditor'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { todayStamp, type SheetColumn, type SheetRow, type SheetSpec } from '../../lib/inventoryExport'
 import ExportButtons from './ExportButtons'
@@ -684,7 +685,7 @@ export default function Items() {
                     {donation && it.source === 'purchase' && it.bought_from ? ` · bought at ${it.bought_from}` : ''}
                     {!donation && it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
                     {donation && it.received_on ? ` · received ${shortDate(it.received_on)}` : ''}
-                    {it.box ? ` · in ${boxName(it.box.code)}${it.box.location ? ` (${it.box.location})` : ''}` : ''}
+                    {it.box ? ` · in ${boxTitle(it.box)}${it.box.location ? ` (${it.box.location})` : ''}` : ''}
                   </p>
                   {extras && <p className="text-sm font-semibold text-slate-700">{extras}</p>}
                   {!donation && it.contents && it.contents.length > 0 && <BasketContents item={it} />}
@@ -1562,6 +1563,8 @@ function AddDonation({
   const [lastBox, setLastBox] = useState<{ ok: boolean; text: string } | null>(null)
   // Where the box being filled is kept (asked when it's started), and the next one's.
   const [boxPlace, setBoxPlace] = useState<string | null>(null)
+  // The box being filled, as the database has it (its name, if it was given one — update 50).
+  const [boxRow, setBoxRow] = useState<Box | null>(null)
   const [nextBoxPlace, setNextBoxPlace] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
   const donorRef = useRef<HTMLInputElement>(null)
@@ -1624,6 +1627,7 @@ function AddDonation({
       .then((b) => {
         if (!alive) return
         if (b) {
+          setBoxRow(b)
           setBoxCount(b.items.length)
           setBoxPlace(b.location)
         } else {
@@ -1644,6 +1648,7 @@ function AddDonation({
     try {
       const b = await newBox(orgId, nextBoxPlace.trim() || null)
       setBox({ code: b.code, box_no: b.box_no })
+      setBoxRow(b)
       setBoxPlace(b.location ?? (nextBoxPlace.trim() || null))
       setBoxCount(0)
       setFullBox(null)
@@ -1886,13 +1891,14 @@ function AddDonation({
             <span className="font-display text-xl font-black leading-tight">{box.box_no}</span>
           </span>
           <span className="min-w-0 flex-1 text-base text-slate-800">
-            <span className="block font-display text-lg font-extrabold text-ink">Filling Box {box.box_no}</span>
+            <span className="block font-display text-lg font-extrabold text-ink">Filling {boxRow && boxRow.code === box.code ? boxTitle(boxRow) : `Box ${box.box_no}`}</span>
             Write {box.box_no} on the box.
             {boxCount != null && ` ${boxCount} item${boxCount === 1 ? '' : 's'} in it.`}
             {boxPlace ? ` Kept: ${boxPlace}.` : ' No place set yet — add it on the box’s page.'}{' '}
             <Link to={`/staff/boxes/${box.code}`} className={`inline-flex min-h-11 items-center ${linkClass}`}>
               See what’s in it
             </Link>
+            {boxRow && boxRow.code === box.code && <BoxNameEditor orgId={orgId} box={boxRow} onSaved={setBoxRow} />}
           </span>
           <button type="button" onClick={boxIsFull} disabled={!!busy} className={`${btn.outline} disabled:opacity-60`}>
             <Icon name="box" size={16} /> Box is full

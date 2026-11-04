@@ -1,20 +1,24 @@
-// Copy of ohrr-app src/features/scan/labels.ts — keep in sync.
-//
 // Item labels for a label printer: a QR code (opens the item), a Code 128
 // barcode (the app's scanner reads it), the number in big type (DON-00042 or a
 // SKU like HAY-101-001), the item's name and who gave it — or, for a Hop Shop
-// price label, the price. Painted on a canvas at the label's exact size, so the
-// same picture prints from a phone (AirPrint / the printer's app), from a
-// laptop (any label printer driver) or as a PDF with one label per page. Tall
-// labels (3 in and up) get the photo too.
+// price label, the price. Painted on a canvas at the label's exact size, so the same
+// picture prints from a phone (the printer's app or AirPrint), from a laptop
+// (any label printer driver) or as a PDF with one label per page. A tall label
+// (3 in and up) is printed with big type and no photo; "Print the photo too"
+// (Print labels → Label size) puts the item's photo across the top.
+//
+// A Silent Auction item can print as a bid-sheet label instead (update 44):
+// "SILENT AUCTION" across the top, a big QR ("Scan to buy it now — pay at the
+// auction table"), the name, donor, value, starting bid, raise and the Buy it
+// now price. Rows that don't fit a small label are left out, least needed first.
 //
 // A box of items prints a box label instead (update 46): the same QR and
 // barcode, "BOX 12" in big type, where it's kept, and the names of the items
 // inside, one per line — "+ 6 more — scan for the full list" when they don't
 // all fit.
 //
-// Website differences: the tiny canvas helpers (loadImage, ensureFonts) are
-// inlined here; the QR opens the APP's /t/CODE page (lib/codes.ts tagUrl).
+// Copy of ohrr-app src/features/scan/labels.ts — keep the two in sync. Website differences: the two tiny canvas
+// helpers (loadImage, ensureFonts) are inlined here, and the QR opens the APP's /t/CODE page (lib/codes.ts tagUrl).
 import QRCode from 'qrcode'
 import JsBarcode from 'jsbarcode'
 import { boxName, tagUrl } from './codes'
@@ -41,7 +45,12 @@ export interface LabelSize {
   label: string
   wIn: number
   hIn: number
+  /** Tall labels only: print the item's photo too. Off unless someone checks it. */
+  photo?: boolean
 }
+
+/** The item's photo goes on this label: a tall label, and "Print the photo too" is on. */
+export const printsPhoto = (size: LabelSize, minHeightIn = 3) => size.photo === true && size.hIn >= minHeightIn
 
 /** Common thermal label sizes. Widths from 1½ to 4 inches; custom is allowed. */
 export const LABEL_SIZES: LabelSize[] = [
@@ -51,7 +60,7 @@ export const LABEL_SIZES: LabelSize[] = [
   { key: '3x2', label: '3 × 2 in (76 × 51 mm)', wIn: 3, hIn: 2 },
   { key: '4x2', label: '4 × 2 in (102 × 51 mm)', wIn: 4, hIn: 2 },
   { key: '4x3', label: '4 × 3 in (102 × 76 mm)', wIn: 4, hIn: 3 },
-  { key: '4x6', label: '4 × 6 in shipping label, with the photo', wIn: 4, hIn: 6 },
+  { key: '4x6', label: '4 × 6 in shipping label', wIn: 4, hIn: 6 },
 ]
 export const DEFAULT_LABEL_KEY = '2.25x1.25'
 export const LABEL_DPI = 300
@@ -64,7 +73,7 @@ export function loadLabelSize(): LabelSize {
     const raw = localStorage.getItem(SIZE_KEY)
     if (raw) {
       const s = JSON.parse(raw) as LabelSize
-      if (s && s.wIn > 0.5 && s.hIn > 0.5 && s.wIn <= 8.5 && s.hIn <= 11) return s
+      if (s && s.wIn > 0.5 && s.hIn > 0.5 && s.wIn <= 8.5 && s.hIn <= 11) return { ...s, photo: s.photo === true }
     }
   } catch {
     /* private mode */
@@ -84,7 +93,7 @@ export function labelSizePickedAt(): number {
 
 export function saveLabelSize(s: LabelSize, pickedAt: number): void {
   try {
-    localStorage.setItem(SIZE_KEY, JSON.stringify({ key: s.key, label: s.label, wIn: s.wIn, hIn: s.hIn, pickedAt }))
+    localStorage.setItem(SIZE_KEY, JSON.stringify({ key: s.key, label: s.label, wIn: s.wIn, hIn: s.hIn, photo: s.photo === true, pickedAt }))
   } catch {
     /* ignore */
   }
@@ -108,7 +117,8 @@ export function labelSizeFrom(v: unknown): LabelSize | null {
   const s = v as Partial<LabelSize> | null
   if (!s || typeof s.wIn !== 'number' || typeof s.hIn !== 'number') return null
   if (!(s.wIn >= 0.5 && s.hIn >= 0.5 && s.wIn <= 8.5 && s.hIn <= 11)) return null
-  return LABEL_SIZES.find((p) => p.wIn === s.wIn && p.hIn === s.hIn) ?? customLabelSize(s.wIn, s.hIn)
+  // A copy: the presets in LABEL_SIZES are shared and never changed.
+  return { ...(LABEL_SIZES.find((p) => p.wIn === s.wIn && p.hIn === s.hIn) ?? customLabelSize(s.wIn, s.hIn)), photo: (s as { photo?: unknown }).photo === true }
 }
 
 export function customLabelSize(wIn: number, hIn: number): LabelSize {
@@ -128,15 +138,34 @@ export interface LabelItem {
   shop?: boolean
   /** Printed on a shop label when given (leave out for a label without a price). */
   price_cents?: number | null
+  /** A Silent Auction bid-sheet label: the prices, and what the QR offers. */
+  auction?: AuctionLabel | null
   /** A box label (update 46): the code is the box's BOX-00012. */
   box?: BoxLabel | null
 }
 
 export interface BoxLabel {
+  /** Number-only label (OHRR 2026-11-03): the name and number big, no list of items, so it never goes out of date as items are added. */
+  numberOnly?: boolean
   /** The items inside, in the order they went in: each line is "DON-00001  Stuffed bunny". */
   items: { code: string; title: string }[]
   /** Where the box is kept. */
   location?: string | null
+  /** "green tote" (update 50). */
+  description?: string | null
+  /** The event it goes to. */
+  event?: string | null
+}
+
+export interface AuctionLabel {
+  value_cents?: number | null
+  starting_bid_cents?: number | null
+  increment_cents?: number | null
+  buy_now_cents?: number | null
+  /** Buy it now is paid at the auction table (update 44). */
+  buy_now_at_table?: boolean
+  /** Bids can be placed online too. */
+  online_bidding?: boolean
 }
 
 export const priceText = (cents: number) => `$${(cents / 100).toFixed(2)}`
@@ -218,7 +247,11 @@ function barcodeImage(code: string, heightPx: number): HTMLCanvasElement {
 export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, size: LabelSize, dpi = LABEL_DPI): Promise<void> {
   const W = Math.round(size.wIn * dpi)
   const H = Math.round(size.hIn * dpi)
+  if (item.auction) return renderAuctionLabel(canvas, item, item.auction, size, dpi)
   if (item.box) return renderBoxLabel(canvas, item, item.box, size, dpi)
+  const wantsPhoto = printsPhoto(size) && !!item.photo_url
+  // A tall label without a photo is all big type (a 4 × 6 shipping label).
+  if (!wantsPhoto && size.hIn >= 3 && H >= W * 1.25) return renderTallLabel(canvas, item, size, dpi)
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
@@ -227,7 +260,7 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
   await ensureFonts(['800 40px "Nunito"', '900 80px "Nunito"', '600 40px "Open Sans"'])
 
   const m = Math.round(0.07 * dpi) // margin
-  const photo = size.hIn >= 3 && item.photo_url ? await loadPhoto(item.photo_url) : null
+  const photo = wantsPhoto && item.photo_url ? await loadPhoto(item.photo_url) : null
   let top = m
 
   // Tall labels: the photo across the top (about 45% of the height).
@@ -317,6 +350,271 @@ export async function renderLabel(canvas: HTMLCanvasElement, item: LabelItem, si
 }
 
 /**
+ * A tall label with no photo (4 × 6): the name in big type across the top, the
+ * gift line (or the price), a big QR, then the barcode and the number as large
+ * as the width allows. Nothing is drawn small to make room for a picture.
+ */
+async function renderTallLabel(canvas: HTMLCanvasElement, item: LabelItem, size: LabelSize, dpi: number): Promise<void> {
+  const W = Math.round(size.wIn * dpi)
+  const H = Math.round(size.hIn * dpi)
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, W, H)
+  await ensureFonts(['800 40px "Nunito"', '900 80px "Nunito"', '600 40px "Open Sans"'])
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'center'
+
+  const m = Math.round(0.14 * dpi)
+  const tw = W - 2 * m
+  const cx = W / 2
+  let y = m
+
+  // The rescue (or the shop) across the top.
+  ctx.fillStyle = '#0669ac'
+  const brand = fitBlock(ctx, item.shop ? 'OHRR HOP SHOP' : 'OHIO HOUSE RABBIT RESCUE', tw, 1, Math.round(W * 0.05), (px) => `800 ${px}px "Nunito"`)
+  ctx.fillText(brand.lines[0], cx, y)
+  y += Math.round(brand.px * 1.5)
+
+  // The bottom block is fixed: barcode, then the number.
+  const barH = Math.round(H * 0.085)
+  let codePx = Math.round(Math.min(W * 0.12, H * 0.065))
+  ctx.font = `900 ${codePx}px "Courier New", monospace`
+  while (codePx > 12 && ctx.measureText(item.code).width > tw) {
+    codePx -= 2
+    ctx.font = `900 ${codePx}px "Courier New", monospace`
+  }
+  const bottomH = barH + Math.round(m / 2) + Math.round(codePx * 1.25)
+
+  // Under the name: the price on a shop label, else who it is from and what it is for.
+  const showPrice = !!item.shop && item.price_cents != null
+  const pricePx = Math.round(W * 0.16)
+  const meta = (item.shop ? [] : [item.donated_by ? `Gift of ${item.donated_by}` : null, item.kindLabel ?? null]).filter(Boolean) as string[]
+  const metaPx = Math.round(W * 0.07)
+  const metaH = showPrice ? Math.round(pricePx * 1.25) : meta.length ? Math.round(meta.length * metaPx * 1.35) : 0
+
+  const remain = H - y - m - bottomH - metaH
+  const qrSide = Math.round(Math.min(W * 0.55, remain * 0.55))
+  const titleRoom = remain - qrSide - m * 2
+
+  // The name: as big as it will go, wrapped on up to as many lines as fit.
+  ctx.fillStyle = '#0f172a'
+  const minPx = Math.round(W * 0.06)
+  let px = Math.round(Math.min(W * 0.17, titleRoom / 1.15))
+  let lines: string[] = []
+  const text = item.title || 'Untitled'
+  for (;;) {
+    ctx.font = `900 ${px}px "Nunito"`
+    lines = wrapLines(ctx, text, tw)
+    if ((lines.length * px * 1.12 <= titleRoom && lines.every((l) => ctx.measureText(l).width <= tw)) || px <= minPx) break
+    px = Math.max(minPx, Math.floor(px * 0.93))
+  }
+  const cap = Math.max(1, Math.floor(titleRoom / (px * 1.12)))
+  if (lines.length > cap) lines = [...lines.slice(0, cap - 1), ellipsize(ctx, lines.slice(cap - 1).join(' '), tw)]
+  // Centered in the room the name has.
+  y += Math.max(0, Math.round((titleRoom - lines.length * px * 1.12) / 2))
+  for (const l of lines) {
+    ctx.fillText(ellipsize(ctx, l, tw), cx, y)
+    y += Math.round(px * 1.12)
+  }
+  // The rest stacks from the foot up: meta, QR, gap, barcode block, margin.
+  y = H - m - bottomH - m - qrSide - metaH
+
+  if (showPrice) {
+    ctx.font = `900 ${pricePx}px "Nunito"`
+    ctx.fillText(priceText(item.price_cents ?? 0), cx, y)
+  } else {
+    ctx.fillStyle = '#334155'
+    ctx.font = `600 ${metaPx}px "Open Sans"`
+    let my = y
+    for (const line of meta) {
+      ctx.fillText(ellipsize(ctx, line, tw), cx, my)
+      my += Math.round(metaPx * 1.35)
+    }
+  }
+  y += metaH
+
+  // QR in the middle, barcode and number at the foot.
+  const qr = await QRCode.toDataURL(tagUrl(item.code), { errorCorrectionLevel: 'M', margin: 0, width: 600 }).then(loadImage)
+  if (qr) ctx.drawImage(qr, Math.round((W - qrSide) / 2), y, qrSide, qrSide)
+  y = H - m - bottomH
+  const bar = barcodeImage(item.code, barH)
+  const barW = Math.min(tw, Math.round(bar.width * (barH / bar.height)))
+  ctx.drawImage(bar, Math.round((W - barW) / 2), y, barW, barH)
+  ctx.fillStyle = '#0f172a'
+  ctx.font = `900 ${codePx}px "Courier New", monospace`
+  ctx.fillText(item.code, cx, y + barH + Math.round(m / 2))
+  ctx.textAlign = 'left'
+}
+
+/** "$35" or "$12.50". */
+function dollars(cents: number): string {
+  return cents % 100 === 0 ? `$${(cents / 100).toLocaleString('en-US')}` : priceText(cents)
+}
+
+/** What the QR offers, in one or two short lines. */
+export function auctionScanText(a: AuctionLabel): string[] {
+  if (a.buy_now_cents != null && a.buy_now_at_table) return ['Scan to buy it now', 'pay at the auction table']
+  if (a.online_bidding) return [a.buy_now_cents != null ? 'Scan to bid or buy it now' : 'Scan to bid online']
+  return ['Scan for photos and details']
+}
+
+/** The bid-sheet label: header band, QR and what it offers, name, donor, prices. */
+async function renderAuctionLabel(canvas: HTMLCanvasElement, item: LabelItem, a: AuctionLabel, size: LabelSize, dpi: number): Promise<void> {
+  const W = Math.round(size.wIn * dpi)
+  const H = Math.round(size.hIn * dpi)
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, W, H)
+  await ensureFonts(['800 40px "Nunito"', '900 80px "Nunito"', '600 40px "Open Sans"'])
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'left'
+
+  const m = Math.round(0.07 * dpi)
+  const short = Math.min(W, H)
+
+  // Header: white on black prints crisply on a thermal label.
+  const headH = Math.round(Math.min(Math.max(H * 0.13, 0.15 * dpi), 0.34 * dpi))
+  ctx.fillStyle = '#0f172a'
+  ctx.fillRect(0, 0, W, headH)
+  ctx.fillStyle = '#ffffff'
+  let headPx = Math.round(headH * 0.6)
+  // The rescue's name too when it fits at three-quarters of the size.
+  const long = 'SILENT AUCTION · OHIO HOUSE RABBIT RESCUE'
+  ctx.font = `900 ${Math.round(headPx * 0.75)}px "Nunito"`
+  const head = ctx.measureText(long).width <= W - 2 * m ? long : 'SILENT AUCTION'
+  if (head === long) headPx = Math.round(headPx * 0.75)
+  ctx.font = `900 ${headPx}px "Nunito"`
+  while (headPx > 10 && ctx.measureText(head).width > W - 2 * m) {
+    headPx -= 2
+    ctx.font = `900 ${headPx}px "Nunito"`
+  }
+  ctx.textAlign = 'center'
+  ctx.fillText(head, W / 2, Math.round((headH - headPx) / 2))
+  ctx.textAlign = 'left'
+  let top = headH + m
+
+  // A tall label (4 in and up) gets the photo under the header.
+  const photo = printsPhoto(size, 4) && item.photo_url ? await loadPhoto(item.photo_url) : null
+  if (photo) {
+    const boxH = Math.round(H * 0.3)
+    const scale = Math.min((W - 2 * m) / photo.width, boxH / photo.height)
+    const dw = photo.width * scale
+    const dh = photo.height * scale
+    ctx.drawImage(photo, (W - dw) / 2, top + (boxH - dh) / 2, dw, dh)
+    top += boxH + m
+  }
+
+  // QR on the left with what it offers under it — or, on a tall label, the QR
+  // centered on top and the words full width below it.
+  const stack = H >= W * 0.9
+  const bodyH = H - top - m
+  // A label under about 1 in of body has no room for the words; the QR still works.
+  const scanLines = auctionScanText(a).slice(0, stack || bodyH >= 1.2 * dpi ? 2 : bodyH >= 0.8 * dpi ? 1 : 0)
+  const footPx = Math.round(Math.min(Math.max(short * 0.065, 0.085 * dpi), 0.17 * dpi))
+  const footH = Math.round(footPx * 1.2 * scanLines.length)
+  const qrSide = stack
+    ? Math.round(Math.min(W * 0.55, bodyH * 0.45))
+    : Math.max(Math.round(0.4 * dpi), Math.round(Math.min(bodyH - footH - Math.round(m / 2), W * 0.42)))
+  const qx = stack ? Math.round((W - qrSide) / 2) : m
+  const qr = await QRCode.toDataURL(tagUrl(item.code), { errorCorrectionLevel: 'M', margin: 0, width: 600 }).then(loadImage)
+  if (qr) ctx.drawImage(qr, qx, top, qrSide, qrSide)
+  ctx.fillStyle = '#0f172a'
+  ctx.textAlign = 'center'
+  let fy = top + qrSide + Math.round(m / 2)
+  scanLines.forEach((line, i) => {
+    const font = (px: number) => (i === 0 ? `900 ${px}px "Nunito"` : `600 ${px}px "Open Sans"`)
+    let px = footPx
+    ctx.font = font(px)
+    while (px > 10 && ctx.measureText(line).width > (stack ? W - 2 * m : qrSide + m)) {
+      px -= 1
+      ctx.font = font(px)
+    }
+    ctx.fillText(line, qx + qrSide / 2, fy)
+    fy += Math.round(footPx * 1.2)
+  })
+  ctx.textAlign = 'left'
+
+  // The text column: name, donor, then the prices; the number at the bottom.
+  const tx = stack ? m : m + qrSide + m
+  const tw = W - tx - m
+  if (stack) top = fy + m
+  const bottom = H - m
+  const unit = Math.min(stack ? bottom - top : bodyH, W * 0.6)
+  let titlePx = Math.round(Math.min(Math.max(0.11 * dpi, unit * 0.13), tw / 7))
+  let rowPx = Math.round(Math.min(Math.max(0.08 * dpi, unit * 0.085), tw / 11))
+  const codePx = Math.round(Math.max(0.07 * dpi, rowPx * 0.8))
+
+  type Row = { label: string; value: string; strong?: boolean }
+  let rows: Row[] = [
+    a.value_cents != null ? { label: 'Value', value: dollars(a.value_cents) } : null,
+    a.starting_bid_cents != null ? { label: 'Starting bid', value: dollars(a.starting_bid_cents) } : null,
+    a.increment_cents != null ? { label: 'Raise by', value: dollars(a.increment_cents) } : null,
+    a.buy_now_cents != null ? { label: 'Buy it now', value: dollars(a.buy_now_cents), strong: true } : null,
+  ].filter(Boolean) as Row[]
+  let titleLines = photo || stack ? 3 : 2
+  let donor = !!item.donated_by
+  const rowH = (r: Row) => Math.round((r.strong ? rowPx * 1.3 : rowPx) * 1.3)
+  const need = () => titleLines * titlePx * 1.12 + (donor ? rowPx * 1.35 : 0) + rows.reduce((n, r) => n + rowH(r), 0) + codePx * 1.3
+  const room = bottom - top
+  // Leave out what's least needed until it fits: donor, value, raise, title lines, then smaller type.
+  for (let guard = 0; guard < 30 && need() > room; guard++) {
+    if (donor) donor = false
+    else if (rows.some((r) => r.label === 'Value')) rows = rows.filter((r) => r.label !== 'Value')
+    else if (rows.some((r) => r.label === 'Raise by')) rows = rows.filter((r) => r.label !== 'Raise by')
+    else if (titleLines > 1) titleLines--
+    else {
+      titlePx = Math.max(12, Math.round(titlePx * 0.9))
+      rowPx = Math.max(10, Math.round(rowPx * 0.9))
+    }
+  }
+
+  let y = top
+  ctx.fillStyle = '#0f172a'
+  const title = fitBlock(ctx, item.title || 'Untitled', tw, titleLines, titlePx, (px) => `900 ${px}px "Nunito"`)
+  for (const l of title.lines) {
+    ctx.fillText(l, tx, y)
+    y += Math.round(title.px * 1.12)
+  }
+  if (donor && item.donated_by) {
+    ctx.fillStyle = '#334155'
+    ctx.font = `600 ${Math.round(rowPx * 0.9)}px "Open Sans"`
+    ctx.fillText(ellipsize(ctx, `Gift of ${item.donated_by}`, tw), tx, y + Math.round(rowPx * 0.1))
+    y += Math.round(rowPx * 1.35)
+  }
+
+  // Prices sit at the bottom of the column, the Buy it now price last and biggest.
+  const rowsH = rows.reduce((n, r) => n + rowH(r), 0)
+  y = Math.max(y + Math.round(rowPx * 0.2), bottom - Math.round(codePx * 1.3) - rowsH)
+  for (const r of rows) {
+    const px = r.strong ? Math.round(rowPx * 1.3) : rowPx
+    if (r.strong) {
+      ctx.fillStyle = '#0f172a'
+      ctx.fillRect(tx, y - Math.round(px * 0.12), tw, Math.max(2, Math.round(dpi / 150)))
+    }
+    ctx.fillStyle = r.strong ? '#0f172a' : '#334155'
+    ctx.font = r.strong ? `900 ${px}px "Nunito"` : `600 ${px}px "Open Sans"`
+    ctx.fillText(r.strong ? r.label.toUpperCase() : r.label, tx, y + Math.round(px * 0.1))
+    ctx.fillStyle = '#0f172a'
+    ctx.font = `900 ${px}px "Nunito"`
+    ctx.textAlign = 'right'
+    ctx.fillText(r.value, tx + tw, y + Math.round(px * 0.1))
+    ctx.textAlign = 'left'
+    y += rowH(r)
+  }
+
+  // The item's number, small, bottom right (staff find it on the desk by it).
+  ctx.fillStyle = '#334155'
+  ctx.font = `700 ${codePx}px "Courier New", monospace`
+  ctx.textAlign = 'right'
+  ctx.fillText(item.code, W - m, bottom - codePx)
+  ctx.textAlign = 'left'
+}
+
+/**
  * The box label: QR on the left; the rescue, BOX and the number, where it's
  * kept and how many items to its right; the barcode and code across the
  * label; then the items inside, one per line — the item's code, then its name
@@ -350,7 +648,7 @@ async function renderBoxLabel(canvas: HTMLCanvasElement, item: LabelItem, box: B
   const brand = fitBlock(ctx, 'OHIO HOUSE RABBIT RESCUE', tw, 1, Math.round(Math.max(0.08 * dpi, qrSide * 0.09)), (px) => `800 ${px}px "Nunito"`)
   ctx.fillText(brand.lines[0], tx, y)
   y += Math.round(brand.px * 1.3)
-  const name = boxName(item.code).toUpperCase()
+  const name = (item.title || boxName(item.code)).toUpperCase()
   let namePx = Math.round(qrSide * 0.42)
   ctx.font = `900 ${namePx}px "Nunito"`
   while (namePx > 14 && ctx.measureText(name).width > tw) {
@@ -361,8 +659,8 @@ async function renderBoxLabel(canvas: HTMLCanvasElement, item: LabelItem, box: B
   y += Math.round(namePx * 1.05)
   const infoPx = Math.round(Math.max(0.08 * dpi, qrSide * 0.1))
   ctx.font = `600 ${infoPx}px "Open Sans"`
-  const count = `${box.items.length} item${box.items.length === 1 ? '' : 's'}`
-  for (const line of [box.location ? box.location : null, count].filter(Boolean) as string[]) {
+  const count = box.numberOnly ? null : `${box.items.length} item${box.items.length === 1 ? '' : 's'}`
+  for (const line of [box.description ?? null, box.event ? `For ${box.event}` : null, box.location ? box.location : null, count].filter(Boolean) as string[]) {
     if (y + infoPx > top + qrSide) break
     ctx.fillText(ellipsize(ctx, line, tw), tx, y)
     y += Math.round(infoPx * 1.3)
@@ -388,6 +686,21 @@ async function renderBoxLabel(canvas: HTMLCanvasElement, item: LabelItem, box: B
   const bottom = H - m
   const room = bottom - top
   if (room < 0.12 * dpi) return
+  if (box.numberOnly) {
+    // The name and number as big as the room allows, across the middle of what is left.
+    ctx.fillStyle = '#0f172a'
+    ctx.textAlign = 'center'
+    const big = (item.title || boxName(item.code)).toUpperCase()
+    let bigPx = Math.floor(room * 0.8)
+    ctx.font = `900 ${bigPx}px "Nunito"`
+    while (bigPx > 20 && ctx.measureText(big).width > W - 2 * m) {
+      bigPx -= 4
+      ctx.font = `900 ${bigPx}px "Nunito"`
+    }
+    ctx.fillText(big, W / 2, top + Math.max(0, Math.round((room - bigPx) / 2)))
+    ctx.textAlign = 'left'
+    return
+  }
   const rows = box.items.map((it) => ({ code: it.code, title: it.title.trim() || 'Untitled' }))
   const maxPx = Math.round(Math.min(0.2 * dpi, short * 0.06))
   const minPx = Math.round(0.085 * dpi)
@@ -445,15 +758,12 @@ export async function labelDataUrl(item: LabelItem, size: LabelSize, dpi = LABEL
 /** All the labels as one PDF, one label per page at the label's size. */
 export async function labelsPdf(items: LabelItem[], size: LabelSize): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
-  const doc = new jsPDF({ unit: 'in', format: [size.wIn, size.hIn], orientation: size.wIn >= size.hIn ? 'landscape' : 'portrait' })
-  // Website: copies of one label (the same code and words) are painted once.
-  const painted = new Map<string, string>()
+  const orientation = size.wIn >= size.hIn ? 'landscape' : 'portrait'
+  const doc = new jsPDF({ unit: 'in', format: [size.wIn, size.hIn], orientation })
   for (let i = 0; i < items.length; i++) {
-    if (i > 0) doc.addPage([size.wIn, size.hIn], size.wIn >= size.hIn ? 'landscape' : 'portrait')
-    const key = JSON.stringify(items[i])
-    const png = painted.get(key) ?? (await labelDataUrl(items[i], size, 203))
-    painted.set(key, png)
-    // 'FAST' compresses the picture: a 4 × 6 label is ~3 MB a page without it.
+    if (i > 0) doc.addPage([size.wIn, size.hIn], orientation)
+    const png = await labelDataUrl(items[i], size, 203)
+    // 'FAST' compresses the picture; without it a 4 × 6 label is about 3 MB.
     doc.addImage(png, 'PNG', 0, 0, size.wIn, size.hIn, undefined, 'FAST')
   }
   return doc.output('blob')

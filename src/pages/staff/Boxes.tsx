@@ -4,14 +4,16 @@
 // printed yet wait at the top, to print all at once when the 4 × 6 roll is in
 // (Receive into boxes leaves them for the end of the sort).
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle } from '../../components/StaffTitle'
 import { labelDataUrl, labelsPdf } from '../../lib/labels'
-import { BOX_SIZE, boxLabel, listBoxes, markBoxesPrinted, newBox, type Box } from '../../lib/boxes'
+import { boxTitle } from '../../lib/codes'
+import BoxFields, { type BoxFieldValues } from '../../components/BoxFields'
+import { BOX_SIZE, boxLabel, listBoxes, makeBoxes, markBoxesPrinted, type Box } from '../../lib/boxes'
 
 export default function Boxes() {
   const { membership, can } = useStaff()
@@ -19,12 +21,21 @@ export default function Boxes() {
   // The same people as Items and Scan an item (staffTiles.ts).
   const canItems = can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
   const navigate = useNavigate()
+  const location = useLocation()
+  // "Saved: Raffle box · 1 of 4" after a box's details were saved.
+  const [saved, setSaved] = useState<string | null>(() => (location.state as { saved?: string } | null)?.saved ?? null)
   const [boxes, setBoxes] = useState<Box[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [q, setQ] = useState('')
   const [reload, setReload] = useState(0)
   const [printImgs, setPrintImgs] = useState<string[]>([])
+  // "Empty box" asks for a name, a description, an event and how many (update 50).
+  const [making, setMaking] = useState(false)
+  const [fields, setFields] = useState<BoxFieldValues>({ name: '', description: '', eventId: null })
+  const [count, setCount] = useState(1)
+  // Boxes printed during this visit stay in the list, so Print again is one click.
+  const [printedNow, setPrintedNow] = useState<string[]>([])
 
   useEffect(() => {
     if (!orgId) return
@@ -42,12 +53,21 @@ export default function Boxes() {
     }
   }, [orgId, reload])
 
-  const start = async () => {
+  const make = async () => {
     setBusy(true)
     setError(null)
     try {
-      const b = await newBox(orgId)
-      navigate(`/staff/boxes/${b.code}?scan=1`)
+      const made = await makeBoxes(orgId, { count, name: fields.name, description: fields.description, eventId: fields.eventId })
+      if (made.length === 1) {
+        navigate(`/staff/boxes/${made[0].code}?scan=1`)
+        return
+      }
+      setSaved(`${made.length} boxes made: ${made.map((b) => boxTitle(b)).join(', ')}`)
+      setMaking(false)
+      setFields({ name: '', description: '', eventId: null })
+      setCount(1)
+      setReload((n) => n + 1)
+      setBusy(false)
     } catch (e) {
       setError(errMessage(e))
       setBusy(false)
@@ -66,7 +86,7 @@ export default function Boxes() {
   }
 
   // Filled boxes whose label hasn't been printed, lowest number first (the order they were written on).
-  const waiting = (boxes ?? []).filter((b) => !b.label_printed_at && b.items.length > 0).sort((a, b) => a.box_no - b.box_no)
+  const waiting = (boxes ?? []).filter((b) => (!b.label_printed_at || printedNow.includes(b.code)) && b.items.length > 0).sort((a, b) => a.box_no - b.box_no)
 
   const needle = q.trim().toLowerCase()
   const shown = (boxes ?? []).filter(
@@ -76,6 +96,9 @@ export default function Boxes() {
       String(b.box_no) === needle.replace(/^box\s*/, '') ||
       b.code.toLowerCase().includes(needle) ||
       (b.location ?? '').toLowerCase().includes(needle) ||
+      boxTitle(b).toLowerCase().includes(needle) ||
+      (b.description ?? '').toLowerCase().includes(needle) ||
+      (b.event_title ?? '').toLowerCase().includes(needle) ||
       b.items.some((i) => i.title.toLowerCase().includes(needle) || i.code.toLowerCase().includes(needle)),
   )
 
@@ -88,18 +111,35 @@ export default function Boxes() {
         <StaffTitle title="Boxes">
           <p>
             Numbered boxes and what’s in them. Receive into boxes adds new items straight into a box; an empty box is for items that already have labels — scan
-            them in. Scanning a box label opens the full list.
+            them in. Give a box a name, a description (“green tote”) and the event it goes to, or make a whole set at once (“Raffle box 1 of 4”). Scanning a box
+            label opens the full list.
           </p>
         </StaffTitle>
 
-        {waiting.length > 0 && <WaitingLabels orgId={orgId} boxes={waiting} setPrintImgs={setPrintImgs} onPrinted={() => setReload((n) => n + 1)} />}
+        {saved && (
+          <p key={saved} role="status" className="mt-4 flex items-center gap-2 rounded-2xl bg-green-50 px-4 py-3 text-base font-bold text-green-900">
+            <Icon name="check" size={18} /> Saved: {saved}
+          </p>
+        )}
+
+        {waiting.length > 0 && (
+          <WaitingLabels
+            orgId={orgId}
+            boxes={waiting}
+            setPrintImgs={setPrintImgs}
+            onPrinted={(codes) => {
+              setPrintedNow((l) => [...new Set([...l, ...codes])])
+              setReload((n) => n + 1)
+            }}
+          />
+        )}
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Link to="/staff/items?add=1&box=1" className={`${btn.orange} min-h-12 text-base`}>
             <Icon name="camera" size={18} /> Receive into boxes
           </Link>
-          <button type="button" onClick={() => void start()} disabled={busy || !orgId} className={`${btn.outline} min-h-12 text-base disabled:opacity-60`}>
-            <Icon name="plus" size={18} /> {busy ? 'Starting…' : 'Empty box'}
+          <button type="button" onClick={() => setMaking((m) => !m)} disabled={busy || !orgId} className={`${btn.outline} min-h-12 text-base disabled:opacity-60`}>
+            <Icon name="plus" size={18} /> Empty box
           </button>
           {boxes && boxes.length > 0 && (
             <input
@@ -112,6 +152,36 @@ export default function Boxes() {
             />
           )}
         </div>
+
+        {making && (
+          <div className="mt-4 max-w-xl space-y-3 rounded-2xl border-2 border-brand-orange/60 bg-white p-4">
+            <p className="font-display text-lg font-extrabold text-ink">A new box</p>
+            <BoxFields orgId={orgId} value={fields} onChange={(patch) => setFields((f) => ({ ...f, ...patch }))} />
+            <label className="block text-base font-bold text-ink">
+              How many boxes like this?
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={50}
+                value={count}
+                onChange={(e) => setCount(Math.max(1, Math.min(50, Math.floor(Number(e.target.value)) || 1)))}
+                className={`${staffInput} !w-28`}
+              />
+              <span className="mt-1 block text-sm font-normal text-slate-600">
+                {count > 1 ? `Makes a set: ${boxTitle({ code: 'BOX-00000', name: fields.name || 'Box', part_no: 1, part_of: count })} up to ${count} of ${count}.` : 'Just this one.'}
+              </span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void make()} disabled={busy} className={`${btn.blue} disabled:opacity-60`}>
+                {busy ? 'Making…' : count > 1 ? `Make ${count} boxes` : 'Make the box'}
+              </button>
+              <button type="button" onClick={() => setMaking(false)} className={btn.outline}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-base font-semibold text-red-700" role="alert">{error}</p>}
         {boxes === null && !error && <Spinner />}
@@ -131,9 +201,12 @@ export default function Boxes() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-display text-base font-extrabold text-ink">
-                    Box {b.box_no}
+                    {boxTitle(b)}
                     {b.location ? <span className="font-sans text-sm font-semibold text-slate-600"> · {b.location}</span> : null}
                   </span>
+                  {(b.description || b.event_title) && (
+                    <span className="block text-sm font-semibold text-slate-700">{[b.description, b.event_title ? `For ${b.event_title}` : null].filter(Boolean).join(' · ')}</span>
+                  )}
                   <span className="block text-sm text-slate-600">
                     {b.items.length} item{b.items.length === 1 ? '' : 's'} · {b.label_printed_at ? 'label printed' : 'label not printed yet'}
                   </span>
@@ -189,7 +262,7 @@ function WaitingLabels({
   boxes: Box[]
   /** The labels for the print dialog, shown by the page outside its own column. */
   setPrintImgs: (imgs: string[]) => void
-  onPrinted: () => void
+  onPrinted: (codes: string[]) => void
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -202,7 +275,7 @@ function WaitingLabels({
     } catch {
       /* they printed; the box pages can still say so */
     }
-    onPrinted()
+    onPrinted(boxes.map((b) => b.code))
   }
 
   const print = async () => {
@@ -247,7 +320,7 @@ function WaitingLabels({
         {plural} to print
       </h2>
       <p className="mt-1 text-base text-slate-700">
-        Box {boxes.map((b) => b.box_no).join(', ')}. Put the 4 × 6 roll in the printer, print them, and stick each one over the number written on its box.
+        {boxes.map((b) => boxTitle(b)).join(', ')}. Put the 4 × 6 roll in the printer, print them, and stick each one over the number written on its box.
       </p>
       {error && <p className="mt-2 text-base font-semibold text-red-600" role="alert">{error}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-2">
