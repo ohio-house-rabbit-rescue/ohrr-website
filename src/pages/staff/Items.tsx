@@ -128,6 +128,27 @@ const dollars = (c: number | null | undefined) => (c == null ? '' : c % 100 === 
 
 type Filter = 'all' | ItemKind
 
+// Find an item (the app's list has the same): narrow by when it came in and choose the order.
+type When = 'all' | 'today' | 'week' | 'month'
+type Order = 'newest' | 'oldest' | 'name'
+const WHENS: { key: When; label: string; days: number }[] = [
+  { key: 'all', label: 'Any time', days: 0 },
+  { key: 'today', label: 'Today', days: 1 },
+  { key: 'week', label: 'Last 7 days', days: 7 },
+  { key: 'month', label: 'Last 30 days', days: 30 },
+]
+const ORDERS: { key: Order; label: string }[] = [
+  { key: 'newest', label: 'Newest first' },
+  { key: 'oldest', label: 'Oldest first' },
+  { key: 'name', label: 'A to Z' },
+]
+/** The day an item came in: a donation's received day, else the day its record was made. */
+function enteredAt(i: { received_on?: string | null; created_at: string }): number {
+  const d = i.received_on ? new Date(`${i.received_on.slice(0, 10)}T00:00:00`) : new Date(i.created_at)
+  const t = d.getTime()
+  return Number.isNaN(t) ? 0 : t
+}
+
 /** The spreadsheet's columns, after the photo (Download with photos). */
 const SHEET_COLUMNS: SheetColumn[] = [
   { header: 'Number', width: 14 },
@@ -241,6 +262,8 @@ export default function Items() {
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<ReactNode>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [when, setWhen] = useState<When>('all')
+  const [order, setOrder] = useState<Order>('newest')
   const [view, setView] = useState<DonationView>('waiting')
   const [q, setQ] = useState('')
   const [panel, setPanel] = useState<Panel>(null)
@@ -350,13 +373,27 @@ export default function Items() {
 
   const shown = useMemo(() => {
     const n = q.trim().toLowerCase()
-    return (items ?? []).filter(
+    const days = WHENS.find((w) => w.key === when)?.days ?? 0
+    const since = new Date()
+    since.setHours(0, 0, 0, 0)
+    since.setDate(since.getDate() - (days - 1))
+    const rows = (items ?? []).filter(
       (i) =>
         (filter === 'all' || i.kind === filter) &&
         (filter !== 'donation' || inView(i, view)) &&
-        (!n || i.title.toLowerCase().includes(n) || i.code.toLowerCase().includes(n) || (i.donated_by ?? '').toLowerCase().includes(n)),
+        (!days || enteredAt(i) >= since.getTime()) &&
+        (!n ||
+          i.title.toLowerCase().includes(n) ||
+          i.code.toLowerCase().includes(n) ||
+          (i.donated_by ?? '').toLowerCase().includes(n) ||
+          // Also who it was bought from, where it's kept and the box it's in.
+          [i.bought_from, i.location, i.category, i.box ? `box ${i.box.box_no} ${i.box.code} ${i.box.name ?? ''}` : ''].some((t) => (t ?? '').toLowerCase().includes(n))),
     )
-  }, [items, filter, view, q])
+    // Newest first is the order the list already comes in; the others re-sort it.
+    if (order === 'name') rows.sort((a, b) => a.title.localeCompare(b.title))
+    else if (order === 'oldest') rows.sort((a, b) => enteredAt(a) - enteredAt(b))
+    return rows
+  }, [items, filter, view, q, when, order])
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = { all: 0, donation: 0, auction: 0, raffle: 0, stock: 0 }
@@ -535,7 +572,21 @@ export default function Items() {
             {f === 'all' ? 'All' : f === 'donation' ? 'Donations' : KIND_META[f].label} ({counts[f]})
           </button>
         ))}
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, donor or code" className={`${staffInput} !mt-0 max-w-xs`} aria-label="Search items" />
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, donor, place or code" className={`${staffInput} !mt-0 max-w-xs`} aria-label="Search items" />
+        <select value={when} onChange={(e) => setWhen(e.target.value as When)} aria-label="When it came in" className={`${staffInput} !mt-0 !w-auto`}>
+          {WHENS.map((w) => (
+            <option key={w.key} value={w.key}>
+              {w.label}
+            </option>
+          ))}
+        </select>
+        <select value={order} onChange={(e) => setOrder(e.target.value as Order)} aria-label="Order" className={`${staffInput} !mt-0 !w-auto`}>
+          {ORDERS.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         {shown.length > 0 && <ExportButtons spec={sheet} label={`Download ${shown.length} with photos`} />}
       </div>
 
