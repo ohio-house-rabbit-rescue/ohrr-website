@@ -19,7 +19,7 @@ export function useGuideWho(): { ready: boolean; userId: string | null; orgId: s
  * the tiles in lib/staffTiles.ts), and the page's real title. Here "My volunteer hours" is a button in the Me
  * group (it opens the volunteer page), so its link goes to that group.
  */
-export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: string }> = {
+export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: string; external?: boolean }> = {
   account: { to: '/staff/account', match: '/staff/account', title: 'My account' },
   'my-hours': { to: '/staff/g/me', match: '#my-volunteer-hours', title: 'My volunteer hours' },
   announcements: { to: '/staff/announcements', match: '/staff/announcements', title: 'Announcements' },
@@ -43,6 +43,15 @@ export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: 
   // Selling is on the phone app only; "!" says this site has no such page (the guide then skips the step).
   sell: { to: '/staff/counter', match: '!phone-app', title: 'Sell' },
   'sell-today': { to: '/staff/counter/today', match: '!phone-app', title: 'Today’s sales' },
+  events: { to: '/staff/events', match: '/staff/events', title: 'Events' },
+  'bunfest-content': { to: '/staff/bunfest', match: '/staff/bunfest', title: 'Midwest BunFest' },
+  'bunny-registrations': { to: '/staff/bunfest/bunnies', match: '/staff/bunfest/bunnies', title: 'Bunny registrations' },
+  raffle: { to: '/staff/raffle-tickets', match: '/staff/raffle-tickets', title: 'Raffle tickets' },
+  // Public pages: always open.
+  'public-events': { to: '/events', match: '', title: 'Events' },
+  'public-shop': { to: '/hop-shop', match: '', title: 'The Hop Shop' },
+  // The other site, in a new tab.
+  'other-site': { to: `${APP_URL}/adopt`, match: '', title: 'the OHRR app', external: true },
 }
 
 /** Where the Welcome page's "I have my invitation" goes: the app's join screen (an invite link carries its code; this one opens on Create account and comes back to the join screen). */
