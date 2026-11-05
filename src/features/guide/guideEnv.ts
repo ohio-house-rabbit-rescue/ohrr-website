@@ -38,6 +38,11 @@ export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: 
   shelf: { to: '/staff/hopshop', match: '/staff/hopshop', title: 'Hop Shop inventory' },
   reorder: { to: '/staff/hopshop/reorder', match: '/staff/hopshop', title: 'Hop Shop inventory' },
   deliveries: { to: '/staff/hopshop/deliveries', match: '/staff/hopshop', title: 'Deliveries' },
+  // The money page of the guide itself: always open.
+  money: { to: '/staff/guide/money', match: '', title: 'What the app does with money' },
+  // Selling is on the phone app only; "!" says this site has no such page (the guide then skips the step).
+  sell: { to: '/staff/counter', match: '!phone-app', title: 'Sell' },
+  'sell-today': { to: '/staff/counter/today', match: '!phone-app', title: 'Today’s sales' },
 }
 
 /** Where the Welcome page's "I have my invitation" goes: the app's join screen (an invite link carries its code; this one opens on Create account and comes back to the join screen). */
