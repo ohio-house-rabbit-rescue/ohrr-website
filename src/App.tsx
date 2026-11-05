@@ -15,6 +15,8 @@ import GuideTrail from './features/guide/GuideTrail'
 import GuideLevelPage from './features/guide/GuideLevel'
 import GuideMoney from './features/guide/GuideMoney'
 import Welcome from './features/guide/Welcome'
+import GuidePrint from './features/guide/GuidePrint'
+import GuideFlows from './features/guide/GuideFlows'
 import Vets from './pages/Vets'
 import { BreedGuide, BreedDetail } from './pages/Breeds'
 import Volunteer from './pages/Volunteer'
@@ -244,6 +246,7 @@ export default function App() {
         {/* The guided start (Hop Into the App): the Trail, one level, and the plain note about money */}
         <Route path="guide" element={<GuideTrail />} />
         <Route path="guide/money" element={<GuideMoney />} />
+        <Route path="guide/flows" element={<GuideFlows />} />
         <Route path="guide/:level" element={<GuideLevelPage />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />
@@ -253,6 +256,9 @@ export default function App() {
         <Route path="activity" element={<Activity />} />
         <Route path="*" element={<StaffDashboard />} />
       </Route>
+
+      {/* The printable staff guide: unlisted and outside the site's frame, so a print shows only the handout */}
+      <Route path="/welcome/print" element={<GuidePrint />} />
 
       {/* Public site */}
       <Route element={<Layout />}>

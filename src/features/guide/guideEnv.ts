@@ -82,4 +82,7 @@ export const PUBLIC_PAGE_CLASS = 'mx-auto max-w-2xl space-y-5 px-5 py-8'
 /** Staff pages on this site. */
 export const TRAIL_PATH = '/staff/guide'
 export const MONEY_PATH = '/staff/guide/money'
+export const FLOWS_PATH = '/staff/guide/flows'
+/** The printable handout: outside the staff area, so anyone with the link can print it. */
+export const PRINT_PATH = '/welcome/print'
 export const LEVEL_PATH = (key: string) => `/staff/guide/${key}`
