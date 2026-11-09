@@ -248,6 +248,8 @@ function inviteMailto(m: MadeInvite): string {
     '',
     `You'll join as ${levelLabel(m.level)}.${m.accessUntil ? ` Your access runs until ${longDate(m.accessUntil)}.` : ''} The code works once and expires in 14 days.`,
     '',
+    `New here? A short walk-through is at ${window.location.origin}/welcome`,
+    '',
     'Ohio House Rabbit Rescue',
   ].join('\n')
   return `mailto:${m.email}?subject=${encodeURIComponent('Your OHRR staff invite')}&body=${encodeURIComponent(body)}`

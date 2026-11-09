@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import GuideReturnBar from '../features/guide/GuideReturnBar'
+import { JOINED_PATH } from '../features/guide/guideEnv'
 import { supabase, errMessage } from '../lib/supabase'
 import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate } from '../lib/staff'
 import { useStaffTiles, placeOf, groupLink } from '../lib/staffTiles'
@@ -226,6 +228,7 @@ export function AccountLinks({ account = true }: { account?: boolean }) {
 }
 
 function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
+  const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -252,6 +255,7 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
       return
     }
     await onJoined()
+    navigate(JOINED_PATH, { replace: true })
   }
 
   return (
@@ -342,6 +346,7 @@ export default function StaffShell() {
         <main className="min-w-0 flex-1 pb-8 pt-4 lg:pt-6">
           {/* Laptop: the same path above the page (the dashboard has none) */}
           <StaffPath className="mb-2 hidden lg:block" />
+          <GuideReturnBar />
           <Outlet />
         </main>
       </div>

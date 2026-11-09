@@ -7,3 +7,8 @@ export function useOpenablePaths(): string[] | null {
   const { tiles } = useStaffTiles()
   return tiles.map((t) => t.to)
 }
+
+/** The website has no Sell page, so nobody here is "sales only". */
+export function useIsCounterOnly(): boolean {
+  return false
+}

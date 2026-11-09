@@ -13,6 +13,8 @@ import StaffGuardians from './pages/staff/Guardians'
 import MyAccount from './pages/staff/MyAccount'
 import GuideTrail from './features/guide/GuideTrail'
 import GuideLevelPage from './features/guide/GuideLevel'
+import GuideNext from './features/guide/GuideNext'
+import GuideJoined from './features/guide/GuideJoined'
 import GuideMoney from './features/guide/GuideMoney'
 import Welcome from './features/guide/Welcome'
 import GuidePrint from './features/guide/GuidePrint'
@@ -247,6 +249,8 @@ export default function App() {
         <Route path="guide" element={<GuideTrail />} />
         <Route path="guide/money" element={<GuideMoney />} />
         <Route path="guide/flows" element={<GuideFlows />} />
+        <Route path="guide/next" element={<GuideNext />} />
+        <Route path="joined" element={<GuideJoined />} />
         <Route path="guide/:level" element={<GuideLevelPage />} />
         <Route path="volunteers" element={<Volunteers />} />
         <Route path="auction" element={<SilentAuctionManager />} />

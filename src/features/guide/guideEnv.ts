@@ -19,9 +19,9 @@ export function useGuideWho(): { ready: boolean; userId: string | null; orgId: s
  * the tiles in lib/staffTiles.ts), and the page's real title. Here "My volunteer hours" is a button in the Me
  * group (it opens the volunteer page), so its link goes to that group.
  */
-export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: string; external?: boolean }> = {
+export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: string; external?: boolean; note?: string }> = {
   account: { to: '/staff/account', match: '/staff/account', title: 'My account' },
-  'my-hours': { to: '/staff/g/me', match: '#my-volunteer-hours', title: 'My volunteer hours' },
+  'my-hours': { to: '/staff/g/me', match: '#my-volunteer-hours', title: 'My volunteer hours', note: 'This opens the Me page. Tap “My volunteer hours” there.' },
   announcements: { to: '/staff/announcements', match: '/staff/announcements', title: 'Announcements' },
   'post-queue': { to: '/staff/posts', match: '/staff/posts', title: 'Posts' },
   inbox: { to: '/staff/inbox', match: '/staff/inbox', title: 'Inbox' },
@@ -33,9 +33,11 @@ export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: 
   tails: { to: '/staff/tails', match: '/staff/tails', title: 'Happy Tails' },
   scan: { to: '/staff/scan', match: '/staff/scan', title: 'Scan an item' },
   items: { to: '/staff/items', match: '/staff/items', title: 'Items' },
+  // Receiving is on the phone app only; "!" makes the guide skip the step here.
+  'receive-items': { to: '/staff/catalog', match: '!phone-app', title: 'Receive items' },
   hopshop: { to: '/staff/hopshop', match: '/staff/hopshop', title: 'Hop Shop inventory' },
   // Here the shelf list is the Items tab of that one page, and the reorder list is its Reorder tab.
-  shelf: { to: '/staff/hopshop', match: '/staff/hopshop', title: 'Hop Shop inventory' },
+  shelf: { to: '/staff/hopshop', match: '/staff/hopshop', title: 'Hop Shop inventory', note: 'The shop’s item list is the Items tab at the top of this page.' },
   reorder: { to: '/staff/hopshop/reorder', match: '/staff/hopshop', title: 'Hop Shop inventory' },
   deliveries: { to: '/staff/hopshop/deliveries', match: '/staff/hopshop', title: 'Deliveries' },
   // The money page of the guide itself: always open.
@@ -85,4 +87,9 @@ export const MONEY_PATH = '/staff/guide/money'
 export const FLOWS_PATH = '/staff/guide/flows'
 /** The printable handout: outside the staff area, so anyone with the link can print it. */
 export const PRINT_PATH = '/welcome/print'
+/** The "you finished, what next" page, and the "you're on the team" page shown right after joining. */
+export const NEXT_PATH = '/staff/guide/next'
+export const JOINED_PATH = '/staff/joined'
+/** Where the phone app is, for the steps this site does not have. */
+export const PHONE_APP_URL = APP_URL
 export const LEVEL_PATH = (key: string) => `/staff/guide/${key}`
