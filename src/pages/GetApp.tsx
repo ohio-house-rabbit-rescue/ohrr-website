@@ -6,7 +6,7 @@ import { APP_URL } from '../lib/constants'
 
 // What the app does that only a phone can, then what it shares with this site.
 const APP_ONLY = [
-  { h: 'My Bunny', p: 'Your own rabbits, with vet visits, medicine and nail-trim reminders that go straight into your phone calendar. It stays on your phone.' },
+  { h: 'My Bunny', p: 'Your own rabbits, with vet visits, medicine and nail-trim reminders that go straight into your phone calendar. It stays on your phone unless you make a free account.' },
   { h: 'Works offline', p: 'Care guides, the vet list and Bunny Help open without a signal once you have used them.' },
   { h: 'Camera and share sheet', p: 'Send a found-rabbit report or a Happy Tail with a photo from the camera, and share a rabbit straight to Facebook or Instagram.' },
   { h: 'For OHRR volunteers', p: 'Scan an item, ring up sales and run the BunFest door — the phone-side staff tools.' },
@@ -60,7 +60,9 @@ export default function GetApp() {
               The OHRR app is a free web app that runs in your phone's browser — nothing to buy, no account
               needed. It shows the same live information as this website, laid out for a phone, and it
               updates the moment OHRR staff make a change. It is for anyone who has a rabbit, wants one, or
-              helps the rescue: adopters, volunteers, supporters, and Midwest BunFest visitors.
+              helps the rescue: adopters, volunteers, supporters, and Midwest BunFest visitors. A free account
+              is there if you want one: it keeps your favorite bunnies, saved BunFest sessions and My Bunny on
+              any phone you sign in on.
             </p>
             <h3 className="mt-6 font-display text-lg font-extrabold text-brand-blue">Only in the app</h3>
             <ul className="mt-3 space-y-2.5">
@@ -85,8 +87,8 @@ export default function GetApp() {
               ))}
             </ul>
             <p className="mt-5 text-sm text-slate-500">
-              App Store and Google Play versions are planned. No account is needed, and anything you keep in My
-              Bunny stays on your phone — see our{' '}
+              App Store and Google Play versions are planned. No account is needed. Without one, anything you
+              keep in My Bunny stays on your phone — see our{' '}
               <Link to="/privacy" className="font-semibold text-brand-blue">
                 privacy policy
               </Link>
