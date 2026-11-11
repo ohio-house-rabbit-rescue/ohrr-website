@@ -103,6 +103,7 @@ import Features from './pages/staff/Features'
 import Design from './pages/staff/Design'
 import Activity from './pages/staff/Activity'
 import ResetPassword from './pages/staff/ResetPassword'
+import JoinForward from './pages/staff/JoinForward'
 // One account for everyone (update 31): the email list
 import EmailChoices from './pages/EmailChoices'
 import Supporters from './pages/staff/Supporters'
@@ -131,6 +132,8 @@ export default function App() {
     <Routes>
       {/* The password-reset link lands here signed out, so it sits outside the shell */}
       <Route path="/staff/reset" element={<ResetPassword />} />
+      {/* An invite link is finished in the app: send it on with its code */}
+      <Route path="/staff/join" element={<JoinForward />} />
 
       {/* Staff area — its own shell, gated by sign-in + membership */}
       <Route

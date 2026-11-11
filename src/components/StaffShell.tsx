@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import GuideReturnBar from '../features/guide/GuideReturnBar'
 import { JOINED_PATH } from '../features/guide/guideEnv'
 import { supabase, errMessage } from '../lib/supabase'
+import { inviteProblem } from '../lib/inviteText'
 import { useStaff, staffInput, Spinner, PasswordInput, levelLabel, longDate } from '../lib/staff'
 import { useStaffTiles, placeOf, groupLink } from '../lib/staffTiles'
 import { Icon, type IconName } from './icons'
@@ -64,14 +65,16 @@ function SignIn() {
       ) : (
         <>
           <h1 className="font-display text-2xl font-black text-ink">This area is for OHRR staff and volunteers</h1>
-          <p className="mt-2 text-base text-slate-700">
-            {mode === 'signin'
-              ? 'If you work or volunteer with OHRR and were given an account, please sign in.'
-              : 'Create your account, then enter the invite code you were given.'}
-          </p>
-          <p className="mt-1 text-base text-slate-700">
-            If you don’t have an account, there’s nothing for you here. Thank you for stopping by, and for caring about rabbits.
-          </p>
+          {mode === 'signin' ? (
+            <>
+              <p className="mt-3 text-base font-bold text-ink">Already on the team?</p>
+              <p className="mt-1 text-base text-slate-700">
+                Sign in with the email and password you made. They are the same here and in the app.
+              </p>
+            </>
+          ) : (
+            <p className="mt-3 text-base text-slate-700">Create your account, then enter the invite code you were given.</p>
+          )}
           <form onSubmit={onSubmit} className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <label className="block text-sm font-semibold text-slate-700">
               Email
@@ -90,10 +93,21 @@ function SignIn() {
               {status === 'working' ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
-          <p className="mt-3 text-center text-sm text-slate-500">
-            {mode === 'signin' ? 'Joining the team?' : 'Already have an account?'}{' '}
+          {mode === 'signin' && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-base font-bold text-ink">Have an invitation?</p>
+              <p className="mt-1 text-base text-slate-700">
+                Open your invitation email or text and tap the link in it. The link sets everything up for you.
+              </p>
+            </div>
+          )}
+          <p className="mt-4 text-base text-slate-700">
+            Not on the team? This part isn’t for visitors. Thank you for stopping by, and for caring about bunnies.
+          </p>
+          <p className="mt-3 text-center text-sm text-slate-600">
+            {mode === 'signin' ? 'Have a code but no link?' : 'Already have an account?'}{' '}
             <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null) }} className="font-bold text-brand-blue">
-              {mode === 'signin' ? 'I was given an invite code' : 'Sign in'}
+              {mode === 'signin' ? 'Create your account here' : 'Sign in'}
             </button>
           </p>
           <p className="mt-2 text-center">
@@ -229,6 +243,7 @@ export function AccountLinks({ account = true }: { account?: boolean }) {
 
 function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
   const navigate = useNavigate()
+  const { user } = useStaff()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -248,9 +263,21 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
       bErr = b.error
     }
     if (!ok) {
-      const msgs = [errMessage(a.error), errMessage(bErr)]
-      const informative = msgs.find((m) => /expired|used|authenticat/i.test(m))
-      setError(informative ?? "That code isn't valid. Check it with your OHRR owner — it may have expired or already been used.")
+      // The invite's own answer in plain words (lib/inviteText), unless it only says it doesn't know the code
+      // and the owner code has more to say.
+      const raw = errMessage(a.error)
+      const invite = inviteProblem(raw, user?.email)
+      const master = errMessage(bErr)
+      const known = invite.text !== raw
+      setError(
+        known && !/invalid code/i.test(raw)
+          ? invite.text
+          : /expired|used/i.test(master)
+            ? master
+            : known
+              ? invite.text
+              : 'That code isn’t valid. Check it with the person who invited you. It may have run out or already been used.',
+      )
       setBusy(false)
       return
     }
@@ -300,8 +327,8 @@ export default function StaffShell() {
         ) : (
           <p className="mt-2 text-sm text-slate-600">
             You're signed in as <strong>{user.email}</strong>, but this account isn't on the OHRR team yet.
-            Ask whoever is bringing you on — a founder, an admin or a lead — for an invite code (they make one in Staff → Team) and enter
-            it here.
+            If you have an invitation email or text, tap the link in it: that is the easy way. Or type the code from the end of
+            that link here. No invitation? Ask whoever is bringing you on (a founder, an admin or a lead) to send one.
           </p>
         )}
         {!onHold && <JoinByCode onJoined={refresh} />}

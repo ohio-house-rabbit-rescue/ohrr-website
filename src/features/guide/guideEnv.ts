@@ -52,8 +52,13 @@ export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: 
   // Public pages: always open.
   'public-events': { to: '/events', match: '', title: 'Events' },
   'public-shop': { to: '/hop-shop', match: '', title: 'The Hop Shop' },
-  // The other site, in a new tab.
+  'public-home': { to: '/', match: '', title: 'the public home page' },
+  'public-bunfest': { to: '/bunfest', match: '', title: 'Midwest BunFest' },
+  // Putting the app on a phone: the website's own page about it.
+  install: { to: '/app', match: '', title: 'Get the OHRR app', note: 'Scroll down to “Add it to your home screen” and follow the steps for your phone.' },
+  // The other site, in a new tab: its public side, and its staff door.
   'other-site': { to: `${APP_URL}/adopt`, match: '', title: 'the OHRR app', external: true },
+  'other-staff': { to: `${APP_URL}/staff`, match: '', title: 'the OHRR app', external: true },
 }
 
 /** Where the Welcome page's "I have my invitation" goes: the app's join screen (an invite link carries its code; this one opens on Create account and comes back to the join screen). */

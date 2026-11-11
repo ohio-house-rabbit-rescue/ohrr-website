@@ -44,6 +44,8 @@ import {
   type PermissionMeta,
   type StaffLevel,
 } from '../../lib/staff'
+import { APP_URL } from '../../lib/constants'
+import { inviteMailto, inviteShortText, type InviteWords } from '../../lib/inviteText'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle, Explain } from '../../components/StaffTitle'
@@ -236,23 +238,24 @@ interface MadeInvite {
   accessUntil: string | null
 }
 
-/** A ready-to-send email with the code in it — email is how OHRR reaches people. */
-function inviteMailto(m: MadeInvite): string {
-  const url = `${window.location.origin}/staff`
-  const body = [
-    `Hi${m.name ? ` ${m.name}` : ''},`,
-    '',
-    `Here's your invite to OHRR's staff area${m.position ? ` (${m.position})` : ''}. Sign in at ${url}, or create an account there with this email, then enter this code:`,
-    '',
-    m.code,
-    '',
-    `You'll join as ${levelLabel(m.level)}.${m.accessUntil ? ` Your access runs until ${longDate(m.accessUntil)}.` : ''} The code works once and expires in 14 days.`,
-    '',
-    `New here? A short walk-through is at ${window.location.origin}/welcome`,
-    '',
-    'Ohio House Rabbit Rescue',
-  ].join('\n')
-  return `mailto:${m.email}?subject=${encodeURIComponent('Your OHRR staff invite')}&body=${encodeURIComponent(body)}`
+/**
+ * The invite's one link: the app's join page with the code in it. The app makes the account and puts them on
+ * the team; the same email and password then work on this website too. The words are lib/inviteText.ts, the
+ * same as the app sends.
+ */
+const joinUrl = (code: string) => `${APP_URL}/staff/join?code=${encodeURIComponent(code)}`
+
+const INVITE_PILL =
+  'inline-flex min-h-11 items-center gap-1.5 rounded-full border-2 border-brand-blue/60 bg-white px-4 text-sm font-bold text-brand-blue hover:bg-brand-blue-50'
+
+/** Copy some text, and say so on the button for a moment. */
+async function copyText(text: string, done: () => void) {
+  try {
+    await navigator.clipboard.writeText(text)
+    done()
+  } catch {
+    /* clipboard may be blocked; the code is shown for manual copy */
+  }
 }
 
 function InvitePanel({
@@ -260,6 +263,7 @@ function InvitePanel({
   tiers,
   myLevel,
   holds,
+  fromName,
   onInvited,
 }: {
   orgId: string
@@ -268,6 +272,8 @@ function InvitePanel({
   myLevel: StaffLevel | null
   /** Whether the signed-in person has a task (founders and developers have them all). */
   holds: (cap: Cap) => boolean
+  /** The inviter's own name, to sign the invite with. */
+  fromName: string
   onInvited: () => void
 }) {
   // Only levels the inviter may give; the lowest (Volunteer 1) is the default, so nobody makes a founder by accident.
@@ -285,6 +291,7 @@ function InvitePanel({
   const [error, setError] = useState<string | null>(null)
   const [made, setMade] = useState<MadeInvite | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copiedMessage, setCopiedMessage] = useState(false)
   // Always a level the inviter may give, and a preset they may share.
   const chosen: StaffLevel = canGive.includes(level) ? level : lowest
   const presetNow = preset === '__custom__' || presets.includes(preset) ? preset : (presets[0] ?? '__custom__')
@@ -343,6 +350,7 @@ function InvitePanel({
     setError(null)
     setMade(null)
     setCopied(false)
+    setCopiedMessage(false)
     const end = fullAccess ? null : until || null
     if (end && end < today) return setError('Pick an end date from today on, or leave it empty.')
     setBusy(true)
@@ -373,15 +381,24 @@ function InvitePanel({
     onInvited()
   }
 
-  const copy = async () => {
+  const copy = () => {
     if (!made) return
-    try {
-      await navigator.clipboard.writeText(made.code)
+    void copyText(made.code, () => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard may be blocked; code is shown for manual copy */
-    }
+    })
+  }
+
+  // The short invite: one link, a few plain lines.
+  const words: InviteWords | null = made
+    ? { link: joinUrl(made.code), name: made.name, from: fromName, accessUntil: made.accessUntil ? longDate(made.accessUntil) : null }
+    : null
+  const copyMessage = () => {
+    if (!words) return
+    void copyText(inviteShortText(words), () => {
+      setCopiedMessage(true)
+      setTimeout(() => setCopiedMessage(false), 1500)
+    })
   }
 
   if (!tiers) {
@@ -521,24 +538,30 @@ function InvitePanel({
         </button>
       </form>
 
-      {made && (
+      {made && words && (
         <div className="mt-3 rounded-xl border border-brand-blue/30 bg-brand-blue-50/60 p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">
-            Invite code {made.name ? `for ${made.name}` : '— share with them'} · joins as {levelLabel(made.level)}
+            Invite {made.name ? `for ${made.name}` : '— share with them'} · joins as {levelLabel(made.level)}
           </p>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <code className="font-mono text-lg font-black tracking-wider text-ink">{made.code}</code>
             <button type="button" onClick={copy} className="rounded-full bg-brand-blue px-3 py-1 text-xs font-bold text-white">{copied ? 'Copied!' : 'Copy'}</button>
           </div>
           {made.accessUntil && <p className="mt-1.5 text-sm font-semibold text-slate-700">Access until {longDate(made.accessUntil)}</p>}
-          {made.email && (
-            <a href={inviteMailto(made)} className="mt-2 inline-flex min-h-11 items-center rounded-full bg-brand-blue px-4 text-sm font-bold text-white">
-              Email it to {made.email}
-            </a>
-          )}
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-            Single-use, expires in 14 days. They sign in here (or create an account), then enter this code on their dashboard — they’ll join as{' '}
-            {levelLabel(made.level)}.
+          <div className="mt-2 flex flex-wrap gap-2">
+            {made.email && (
+              <a href={inviteMailto(made.email, words)} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-brand-blue px-4 text-sm font-bold text-white">
+                <Icon name="mail" size={16} /> Email it
+              </a>
+            )}
+            <button type="button" onClick={copyMessage} className={INVITE_PILL}>
+              {copiedMessage ? 'Copied!' : 'Copy the invite to paste in a text'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+            The invite is a short message with one link. They tap it, make a password with this email address, and they’re on the team
+            with the access you chose. The link opens the OHRR app; the same email and password then work on this website too.
+            Single-use, works for 14 days.
           </p>
         </div>
       )}
@@ -562,7 +585,9 @@ interface OpenInvite {
 }
 
 /* ---------- Invites not used yet ---------- */
-function WaitingInvites({ invites }: { invites: OpenInvite[] }) {
+function WaitingInvites({ invites, fromName }: { invites: OpenInvite[]; fromName: string }) {
+  // The code whose invite was just copied (hooks before the early return).
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
   if (invites.length === 0) return null
   return (
     <section aria-labelledby="waiting-invites" className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -579,8 +604,17 @@ function WaitingInvites({ invites }: { invites: OpenInvite[] }) {
           const expires = i.expires_at
             ? new Date(i.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
             : null
+          // The same short invite as the first time, with the days it has left.
+          const again: InviteWords = {
+            link: joinUrl(i.code),
+            name: i.invitee_name,
+            from: fromName,
+            linkUntil: i.expires_at ? shortDate(i.expires_at.slice(0, 10)) : null,
+            accessUntil: i.access_until ? longDate(i.access_until) : null,
+          }
           return (
-            <li key={i.code} className="flex flex-wrap items-start justify-between gap-2 py-2.5">
+            <li key={i.code} className="py-2.5">
+             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-ink">
                   {i.invitee_name || 'No name given'}
@@ -594,6 +628,26 @@ function WaitingInvites({ invites }: { invites: OpenInvite[] }) {
                 </p>
               </div>
               {i.access_until && <AccessBadge until={i.access_until} />}
+             </div>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {i.invitee_email && (
+                  <a href={inviteMailto(i.invitee_email, again)} className={INVITE_PILL}>
+                    <Icon name="mail" size={16} /> Email it again
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    void copyText(inviteShortText(again), () => {
+                      setCopiedCode(i.code)
+                      setTimeout(() => setCopiedCode((c) => (c === i.code ? null : c)), 1500)
+                    })
+                  }
+                  className={INVITE_PILL}
+                >
+                  {copiedCode === i.code ? 'Copied!' : 'Copy the invite'}
+                </button>
+              </div>
             </li>
           )
         })}
@@ -1223,7 +1277,10 @@ export default function Team() {
   }, [])
 
   // Your own level: from the staff context, or your own row if the context loaded before update 28 was run.
-  const myLevel = contextLevel ?? members.find((m) => m.user_id === user?.id)?.level ?? null
+  const mine = members.find((m) => m.user_id === user?.id)
+  const myLevel = contextLevel ?? mine?.level ?? null
+  // Your own name, to sign the invites you send.
+  const fromName = mine?.display_name?.trim() || mine?.account_name?.trim() || ''
   const giveable = useMemo(() => (levels ? levelsICanGive(myLevel, tiers === true) : []), [levels, myLevel, tiers])
   const byUser = useMemo(() => new Map(members.map((m) => [m.user_id, memberName(m)])), [members])
   const nameOfUser = useCallback((id: string | null) => (id ? (byUser.get(id) ?? null) : null), [byUser])
@@ -1283,10 +1340,10 @@ export default function Team() {
 
       {canInvite && tiers !== null && (
         <div className="mt-5">
-          <InvitePanel orgId={orgId} tiers={tiers} myLevel={myLevel} holds={can} onInvited={() => void loadInvites()} />
+          <InvitePanel orgId={orgId} tiers={tiers} myLevel={myLevel} holds={can} fromName={fromName} onInvited={() => void loadInvites()} />
         </div>
       )}
-      {canInvite && invites && <WaitingInvites invites={invites} />}
+      {canInvite && invites && <WaitingInvites invites={invites} fromName={fromName} />}
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
       {notice && <p className="mt-4 text-sm font-semibold text-green-700">{notice}</p>}

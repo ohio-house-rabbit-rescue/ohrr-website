@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Icon } from './icons'
+import TeamStrip from './TeamStrip'
 import { AMAZON_WISH_LIST, DONATE } from '../lib/constants'
 
 const HELP_PILL =
@@ -193,6 +194,9 @@ export default function Header() {
           </div>
         </nav>
       )}
+
+      {/* The team's own row (a visitor never sees it): the way to Staff, or back to the guide */}
+      <TeamStrip />
     </header>
   )
 }

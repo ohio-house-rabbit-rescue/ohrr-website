@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, isConfigured } from './supabase'
+import { markTeamDevice } from './teamDevice'
 import { Icon } from '../components/icons'
 
 // Capability keys (mirror the app / DB seed). Owners & admins implicitly hold all.
@@ -335,6 +336,8 @@ export function StaffProvider({ children }: { children: ReactNode }) {
       accessUntil: until,
     }
     setMembership(m)
+    // This browser has had a team member on it: the public side may offer the way to Staff (TeamStrip).
+    markTeamDevice()
     if (m.role === 'owner' || m.role === 'admin') {
       setCapabilities(new Set(CAPS))
       return
