@@ -10,6 +10,8 @@ import { useOrgProfile } from '../lib/orgProfile'
 // pages. Vets, rescues, impact and contact are reached from the pages they
 // belong to (Rabbit care, Found / surrender, About, the top bar).
 const MORE = [
+  // The visitors' tour (features/guide/LookAround): its Done card says to look for it here.
+  { to: '/look-around', label: 'New here? Look around' },
   { to: '/events', label: 'Events' },
   { to: '/bunfest', label: 'Midwest BunFest' },
   { to: '/hop-shop', label: 'Hop Shop' },

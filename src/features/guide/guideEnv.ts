@@ -54,12 +54,23 @@ export const GUIDE_ROUTES: Record<RouteKey, { to: string; match: string; title: 
   'public-shop': { to: '/hop-shop', match: '', title: 'The Hop Shop' },
   'public-home': { to: '/', match: '', title: 'the public home page' },
   'public-bunfest': { to: '/bunfest', match: '', title: 'Midwest BunFest' },
+  // The visitors' tour ends on Help (here that is Bunny Help, which also has the way to email OHRR).
+  'public-help': { to: '/help', match: '', title: 'Bunny Help' },
   // Putting the app on a phone: the website's own page about it.
   install: { to: '/app', match: '', title: 'Get the OHRR app', note: 'Scroll down to “Add it to your home screen” and follow the steps for your phone.' },
   // The other site, in a new tab: its public side, and its staff door.
   'other-site': { to: `${APP_URL}/adopt`, match: '', title: 'the OHRR app', external: true },
   'other-staff': { to: `${APP_URL}/staff`, match: '', title: 'the OHRR app', external: true },
 }
+
+/** Stops the visitors' tour leaves out right now: none on this site (its BunFest pages are always there). */
+const NO_STOPS: ReadonlySet<RouteKey> = new Set()
+export function useTourOff(): ReadonlySet<RouteKey> {
+  return NO_STOPS
+}
+
+/** Where a visitor finds the tour again (the last line of its Done card). */
+export const TOUR_FIND = 'This tour is always at the bottom of every page, under “New here? Look around.”'
 
 /** Where the Welcome page's "I have my invitation" goes: the app's join screen (an invite link carries its code; this one opens on Create account and comes back to the join screen). */
 export const JOIN = { href: `${APP_URL}/account?next=${encodeURIComponent('/staff/join')}&create=1`, external: true }

@@ -17,6 +17,7 @@ import GuideNext from './features/guide/GuideNext'
 import GuideJoined from './features/guide/GuideJoined'
 import GuideMoney from './features/guide/GuideMoney'
 import Welcome from './features/guide/Welcome'
+import LookAround from './features/guide/LookAround'
 import GuidePrint from './features/guide/GuidePrint'
 import GuideFlows from './features/guide/GuideFlows'
 import Vets from './pages/Vets'
@@ -282,6 +283,8 @@ export default function App() {
         <Route path="/mailing-list" element={<MailingListPage />} />
         {/* Unlisted, before sign-in: what the staff guide is and how to begin */}
         <Route path="/welcome" element={<Welcome />} />
+        {/* For everyone: a short tour of the public pages (the footer links to it) */}
+        <Route path="/look-around" element={<LookAround />} />
         <Route path="/emails/:token" element={<EmailChoices />} />
         <Route path="/impact" element={<Impact />} />
         <Route path="/support/become-a-supporter" element={<BecomeSupporter />} />

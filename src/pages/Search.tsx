@@ -62,6 +62,7 @@ const PAGES: { title: string; subtitle: string; to: string; extra?: string }[] =
   { title: 'About OHRR', subtitle: 'Mission, hours & visiting', to: '/about', extra: 'hours address directions visit contact instagram facebook' },
   { title: 'Contact', subtitle: 'Email, a message form, and visiting', to: '/contact', extra: 'email message address directions visit' },
   { title: 'Get the OHRR app', subtitle: 'The whole rescue on your phone', to: '/app', extra: 'app iphone android my bunny' },
+  { title: 'Look around', subtitle: 'A short tour for new visitors', to: '/look-around', extra: 'new here start tour intro first time where do i begin' },
   { title: 'Privacy', subtitle: 'How this site handles your information', to: '/privacy', extra: 'privacy data' },
 ]
 
