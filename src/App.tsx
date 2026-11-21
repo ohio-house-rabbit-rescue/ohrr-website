@@ -59,6 +59,7 @@ import ManageVolunteer from './pages/staff/ManageVolunteer'
 import ManageCare from './pages/staff/ManageCare'
 import Team from './pages/staff/Team'
 import Items from './pages/staff/Items'
+import ItemsSheet from './pages/staff/ItemsSheet'
 import StaffHopShop from './pages/staff/HopShop'
 import BunFestContent from './pages/staff/BunFestContent'
 import HappyTails from './pages/staff/HappyTails'
@@ -166,6 +167,7 @@ export default function App() {
         <Route path="outreach" element={<Outreach />} />
         <Route path="impact" element={<ManageImpact />} />
         <Route path="items" element={<Items />} />
+        <Route path="items/sheet" element={<ItemsSheet />} />
         <Route
           path="scan"
           element={

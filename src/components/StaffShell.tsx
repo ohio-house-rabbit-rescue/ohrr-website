@@ -302,7 +302,10 @@ function JoinByCode({ onJoined }: { onJoined: () => Promise<void> }) {
 export default function StaffShell() {
   const { configured, loading, user, membership, accessEndedOn, onHold, signOut, refresh } = useStaff()
   // Hooks before any early return. The phone's top bar is the path, and the dashboard needs none.
-  const atDashboard = isDashboardPath(useLocation().pathname)
+  const pathname = useLocation().pathname
+  const atDashboard = isDashboardPath(pathname)
+  // The items spreadsheet is a table: it uses the whole width of a computer screen.
+  const wide = pathname.replace(/\/+$/, '') === '/staff/items/sheet'
 
   if (!configured)
     return <div className="mx-auto max-w-md px-5 py-16 text-center text-slate-600">Backend not configured.</div>
@@ -363,7 +366,7 @@ export default function StaffShell() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl gap-8 px-4 sm:px-5">
+      <div className={`mx-auto flex ${wide ? 'max-w-none' : 'max-w-7xl'} gap-8 px-4 sm:px-5`}>
         {/* Laptop: the grouped menu stays in view down the left */}
         <aside className="hidden w-60 shrink-0 lg:block">
           <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto py-6">

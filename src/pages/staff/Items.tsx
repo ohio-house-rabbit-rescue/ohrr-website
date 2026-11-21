@@ -150,7 +150,7 @@ function enteredAt(i: { received_on?: string | null; created_at: string }): numb
 }
 
 /** The spreadsheet's columns, after the photo (Download with photos). */
-const SHEET_COLUMNS: SheetColumn[] = [
+export const SHEET_COLUMNS: SheetColumn[] = [
   { header: 'Number', width: 14 },
   { header: 'Name', width: 32 },
   { header: 'Kind', width: 20 },
@@ -176,7 +176,7 @@ const SHEET_COLUMNS: SheetColumn[] = [
   { header: 'Added', width: 13, kind: 'date' },
 ]
 
-function sheetRow(i: TaggedItem): SheetRow {
+export function sheetRow(i: TaggedItem): SheetRow {
   const v = i.kind === 'donation' ? donationValues(i) : { each: null, total: i.value_cents }
   return {
     photos: itemPhotos(i),
@@ -518,6 +518,11 @@ export default function Items() {
           <Link to="/staff/items/labels" className={btn.blue}>
             <Icon name="printer" size={16} /> Print labels
           </Link>
+          {canDonations && (
+            <Link to="/staff/items/sheet" className={btn.outline}>
+              <Icon name="file" size={16} /> Spreadsheet
+            </Link>
+          )}
           <Link to="/staff/boxes" className={btn.outline}>
             <Icon name="box" size={16} /> Boxes
           </Link>
