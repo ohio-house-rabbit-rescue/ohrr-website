@@ -94,6 +94,7 @@ import {
   splitDonation,
   startDropoff,
   statusLabel,
+  takeItemsBackup,
   toCents,
   dueSoon,
   valueLine,
@@ -310,6 +311,10 @@ export default function Items() {
       alive = false
     }
   }, [orgId])
+  // The first time the list is opened on a day, today's backup of the donations is saved (update 58; quiet if it can't be).
+  useEffect(() => {
+    if (orgId && canDonations) void takeItemsBackup(orgId)
+  }, [orgId, canDonations])
   // Read once, then drop it, so a reload doesn't jump to the form again.
   useEffect(() => {
     if (!wantsAdd && !codeParam) return

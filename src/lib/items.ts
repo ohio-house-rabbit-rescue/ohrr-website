@@ -13,6 +13,7 @@
 // Care …); 'event' joins headed_for and 'rabbits' now means our own use.
 import { supabase } from './supabase'
 import type { IconName } from '../components/icons'
+import type { BackupDay, BackupFull, RestoreResult } from './sheetBackup'
 
 export type ItemKind = 'auction' | 'raffle' | 'stock' | 'donation'
 
@@ -685,6 +686,48 @@ export async function markLabelsPrinted(orgId: string, codes: string[], printed 
   const { data, error } = await supabase.rpc('mark_labels_printed', { p_org: orgId, p_codes: codes, p_printed: printed })
   if (error) throw error
   return typeof data === 'number' ? data : 0
+}
+
+/* ---------------------------------------------- daily backups (update 58) */
+
+const noBackups = (e: unknown) => /could not find the function|does not exist|schema cache/i.test((e as { message?: string } | null)?.message ?? '')
+
+/**
+ * Save today's backup of the donations list if there isn't one yet (the first time the list is opened on a day).
+ * Never throws: a backup that can't be made must not get in the way of the screen. `ready` is false before update 58.
+ * The app has the same (src/features/scan/api.ts).
+ */
+export async function takeItemsBackup(orgId: string): Promise<{ made: boolean; ready: boolean }> {
+  try {
+    const { data, error } = await supabase.rpc('take_items_backup', { p_org: orgId })
+    if (error) return { made: false, ready: !noBackups(error) }
+    return { made: Boolean((data as { made?: boolean } | null)?.made), ready: true }
+  } catch {
+    return { made: false, ready: true }
+  }
+}
+
+/** The days that have a backup, newest first; null before update 58. */
+export async function listItemBackups(orgId: string): Promise<BackupDay[] | null> {
+  const { data, error } = await supabase.rpc('list_item_backups', { p_org: orgId })
+  if (error) {
+    if (noBackups(error)) return null
+    throw error
+  }
+  return Array.isArray(data) ? (data as BackupDay[]) : []
+}
+
+export async function getItemBackup(orgId: string, backupId: string): Promise<BackupFull> {
+  const { data, error } = await supabase.rpc('get_item_backup', { p_org: orgId, p_backup: backupId })
+  if (error) throw error
+  return data as BackupFull
+}
+
+/** Bring the chosen items (by number) back to what that day's backup says. */
+export async function restoreItemBackup(orgId: string, backupId: string, codes: string[]): Promise<RestoreResult> {
+  const { data, error } = await supabase.rpc('restore_item_backup', { p_org: orgId, p_backup: backupId, p_codes: codes })
+  if (error) throw error
+  return data as RestoreResult
 }
 
 /** Donor names typed lately, newest first — for one-click chips. */
