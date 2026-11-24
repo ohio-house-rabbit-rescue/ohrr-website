@@ -348,7 +348,8 @@ export default function Items() {
       setFocusAdd((n) => n + 1)
     } else if (code) {
       setOpenCode(code)
-      if (backCode) setCameBack(backTarget(backCode))
+      // An item opened without "back" clears the banner left by an earlier one.
+      setCameBack(backCode ? backTarget(backCode) : null)
     }
     setParams(
       (p) => {
