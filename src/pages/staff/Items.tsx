@@ -171,11 +171,20 @@ export const SHEET_COLUMNS: SheetColumn[] = [
   { header: 'Condition', width: 11 },
   { header: 'Sort of thing', width: 16 },
   { header: 'Where it’s kept', width: 18 },
+  { header: 'Box', width: 16 },
   { header: 'Use by', width: 13, kind: 'date' },
   { header: 'Description', width: 40 },
   { header: 'Label printed', width: 13, kind: 'date' },
   { header: 'Added', width: 13, kind: 'date' },
 ]
+
+/** The box an item is in, as written on the box: "Box 12", or "Box 12 · Raffle box · 1 of 4" when it has a name. */
+export function boxCell(b: TaggedItem['box']): string | null {
+  if (!b) return null
+  const n = `Box ${b.box_no}`
+  const t = boxTitle(b)
+  return t === n ? n : `${n} · ${t}`
+}
 
 export function sheetRow(i: TaggedItem): SheetRow {
   const v = i.kind === 'donation' ? donationValues(i) : { each: null, total: i.value_cents }
@@ -201,6 +210,7 @@ export function sheetRow(i: TaggedItem): SheetRow {
       conditionLabel(i.condition),
       i.category,
       i.location,
+      boxCell(i.box),
       i.use_by,
       i.description,
       i.label_printed_at,
