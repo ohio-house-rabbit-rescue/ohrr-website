@@ -10,6 +10,7 @@ import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { toCsv, exportCsv } from '../../lib/exportFile'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { INTERESTS, cleanInterests, emailChoicesLink, interestLabel, isMissingTable, type Interest } from '../../lib/emailList'
 
 interface Row {
@@ -251,6 +252,7 @@ export default function Supporters() {
           )}
         </>
       )}
+      <GoesWith links={[{ to: '/staff/wish-list', label: 'Wish list items' }, { to: '/staff/guardians', label: 'Rescue Rabbit Guardians' }]} />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { btn, Card } from '../../components/ui'
 import { OUTREACH, fillLetter, mailtoFor, type OutreachLetter } from '../../lib/share/outreach'
 import { copyText } from '../../lib/share/share'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 
 const SENDER_KEY = 'ohrr.outreach.sender'
 
@@ -84,6 +85,7 @@ export default function Outreach() {
           </Card>
         </div>
       </div>
+      <GoesWith links={[{ to: '/staff/flyers', label: 'Flyers' }, { to: '/staff/posts?view=kit', label: 'Share kit' }]} />
     </div>
   )
 }

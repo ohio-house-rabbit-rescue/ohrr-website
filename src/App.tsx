@@ -50,6 +50,7 @@ import Privacy from './pages/Privacy'
 import { StaffProvider, Spinner } from './lib/staff'
 import StaffShell from './components/StaffShell'
 import StaffDashboard from './pages/staff/Dashboard'
+import StaffNotFound from './pages/staff/NotFound'
 // The dashboard's groups (OHRR, 2026-10-01): /staff/g/items, /staff/g/rabbits, …
 import StaffGroup from './pages/staff/Group'
 import ManageAnnouncements from './pages/staff/ManageAnnouncements'
@@ -65,6 +66,7 @@ import BunFestContent from './pages/staff/BunFestContent'
 import HappyTails from './pages/staff/HappyTails'
 import RaffleTicketsDesk from './pages/staff/RaffleTickets'
 import Inbox from './pages/staff/Inbox'
+import CareRequests from './pages/staff/CareRequests'
 import Bookings from './pages/staff/Bookings'
 import Posts from './pages/staff/Posts'
 import Flyers from './pages/staff/Flyers'
@@ -158,6 +160,7 @@ export default function App() {
         <Route path="details" element={<OrgDetails />} />
         <Route path="team" element={<Team />} />
         <Route path="inbox" element={<Inbox />} />
+        <Route path="care-requests" element={<CareRequests />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="calls" element={<VolunteerCalls />} />
         <Route path="calls/:id" element={<VolunteerCallRoute />} />
@@ -264,7 +267,7 @@ export default function App() {
         <Route path="bunny-help" element={<BunnyHelp />} />
         <Route path="features" element={<Features />} />
         <Route path="activity" element={<Activity />} />
-        <Route path="*" element={<StaffDashboard />} />
+        <Route path="*" element={<StaffNotFound />} />
       </Route>
 
       {/* The printable staff guide: unlisted and outside the site's frame, so a print shows only the handout */}

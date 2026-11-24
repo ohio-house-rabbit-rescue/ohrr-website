@@ -217,7 +217,14 @@ export default function DonationsReport() {
                       <td className="px-3 py-2">
                         {l.title}
                         {l.size ? ` (${l.size})` : ''}
-                        {lineCode(l) && <span className="block font-mono text-xs font-bold tracking-widest text-slate-500">{lineCode(l)}</span>}
+                        {lineCode(l) && (
+                          <Link
+                            to={`/staff/scan?code=${encodeURIComponent(lineCode(l))}&back=report`}
+                            className="block font-mono text-xs font-bold tracking-widest text-brand-blue underline-offset-2 hover:underline"
+                          >
+                            {lineCode(l)}
+                          </Link>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{l.quantity}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{l.value_total_cents != null ? money(l.value_total_cents) : '—'}</td>

@@ -19,6 +19,7 @@ import BunFestFloor from './BunFestFloor'
 import BunFestSpeakers from './BunFestSpeakers'
 import { Icon } from '../../components/icons'
 import { StaffTitle, Explain } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { listSuppliers, type Supplier } from '../../lib/hopshop'
 import { giftTotals, type GiftTotals } from '../../lib/companies'
 import { CompanyForm, CompanySummary, CompanyThumb, useVendorRecordsReady } from './CompanyForm'
@@ -158,6 +159,7 @@ export default function StaffBunfest() {
       {tab === 'vendors' && <VendorsTab orgId={orgId} />}
       {tab === 'partners' && <PartnersTab orgId={orgId} />}
       {tab === 'floor' && <BunFestFloor orgId={orgId} />}
+      <GoesWith links={[{ to: '/staff/events', label: 'Events' }, { to: '/staff/bunfest/bunnies', label: 'Bunny registrations' }]} />
     </Screen>
   )
 }

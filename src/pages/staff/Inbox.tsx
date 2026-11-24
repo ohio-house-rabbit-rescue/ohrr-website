@@ -10,6 +10,7 @@ import { btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
 import { StaffTitle } from '../../components/StaffTitle'
 import { kindLabel } from '../../lib/volunteers/approval'
+import { useStaffTiles, type StaffTile } from '../../lib/staffTiles'
 
 type Status = 'new' | 'in_progress' | 'done' | 'archived'
 interface Row {
@@ -47,20 +48,52 @@ const KIND: Record<string, { label: string; icon: IconName }> = {
   booking: { label: 'Booking', icon: 'calendar' },
 }
 const kindMeta = (k: string) => KIND[k] ?? { label: k.replace(/-/g, ' '), icon: 'mail' as IconName }
-const labelOf = (key: string) => {
+export const labelOf = (key: string) => {
   const s = key.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim()
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 }
 /** A payload value as text: a list becomes "a, b" (an application's kinds by their names). */
-const asText = (key: string, v: unknown): string => {
+export const asText = (key: string, v: unknown): string => {
   if (Array.isArray(v)) return v.map((x) => (key === 'kinds' ? kindLabel(String(x)) : String(x))).join(', ')
   if (v && typeof v === 'object') return JSON.stringify(v)
   return v == null ? '' : String(v)
 }
-const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+/**
+ * Where the work on a request continues. `via` is the staff-menu page whose
+ * permission decides whether this person may open `to` (nothing is shown if
+ * they may not). A volunteer application has its own button; a plain message
+ * (contact) is finished by replying, so it has none. The website has one
+ * Bookings page for adoption visits, shifts and clinics alike.
+ */
+const CARE_PAGE = { label: 'Track it in Foster, surrender and found', to: '/staff/care-requests', via: '/staff/care-requests' }
+const BOOKINGS_PAGE = { label: 'Continue in Bookings', to: '/staff/bookings', via: '/staff/bookings' }
+const CONTINUE: Record<string, { label: string; to: string; via: string }> = {
+  'adoption-application': { label: 'Continue in Adoptable rabbits', to: '/staff/rabbits', via: '/staff/rabbits' },
+  'appointment-request': BOOKINGS_PAGE,
+  'service-signup': BOOKINGS_PAGE,
+  booking: BOOKINGS_PAGE,
+  'reserve-session': BOOKINGS_PAGE,
+  'notify-me': BOOKINGS_PAGE,
+  'volunteer-signup': { label: 'Continue in Volunteers', to: '/staff/volunteers', via: '/staff/volunteers' },
+  'raffle-request': { label: 'Continue in Raffle tickets', to: '/staff/raffle-tickets', via: '/staff/raffle-tickets' },
+  supporter: { label: 'Continue in Supporters', to: '/staff/supporters', via: '/staff/supporters' },
+  'mailing-list': { label: 'Continue in Supporters', to: '/staff/supporters', via: '/staff/supporters' },
+  'legacy-info': { label: 'Continue in Rescue Rabbit Guardians', to: '/staff/guardians', via: '/staff/guardians' },
+  'foster-application': CARE_PAGE,
+  'surrender-intake': CARE_PAGE,
+  'found-rabbit': CARE_PAGE,
+}
+/** The "Continue in…" link for a request, or null when there is none or this person can't open it. */
+function continueLink(kind: string, tiles: StaffTile[]): { label: string; to: string } | null {
+  const c = CONTINUE[kind]
+  return c && tiles.some((t) => t.to === c.via) ? c : null
+}
+
+export const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 export default function Inbox() {
   const { membership } = useStaff()
+  const { tiles } = useStaffTiles()
   const orgId = membership?.orgId ?? ''
   const [rows, setRows] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -158,6 +191,7 @@ export default function Inbox() {
         {shown.map((r) => {
           const k = kindMeta(r.kind)
           const open = openId === r.id
+          const next = continueLink(r.kind, tiles)
           return (
             <li key={r.id} className={`rounded-2xl border bg-white p-4 shadow-sm ${r.status === 'new' ? 'border-brand-orange/40' : 'border-black/5'}`}>
               <button type="button" onClick={() => setOpenId(open ? null : r.id)} className="flex w-full items-start gap-3 text-left">
@@ -194,25 +228,7 @@ export default function Inbox() {
                       </a>
                     )}
                   </div>
-                  <dl className="grid gap-x-6 gap-y-1 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                    {Object.entries(r.payload ?? {}).map(([key, raw]) => {
-                      const value = asText(key, raw)
-                      return (
-                        <div key={key} className={isPhoto(value) || value.length > 80 ? 'sm:col-span-2' : ''}>
-                          <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">{labelOf(key)}</dt>
-                          <dd className="whitespace-pre-wrap break-words text-sm text-ink">
-                            {isPhoto(value) ? (
-                              <a href={value} target="_blank" rel="noopener noreferrer">
-                                <img src={value} alt={labelOf(key)} loading="lazy" className="mt-1 max-h-72 rounded-xl object-cover" />
-                              </a>
-                            ) : (
-                              value
-                            )}
-                          </dd>
-                        </div>
-                      )
-                    })}
-                  </dl>
+                  <PayloadList payload={r.payload} />
                   {r.kind === 'happy-tail' && <PublishTail row={r} onPublished={() => void setStatus(r, 'done')} />}
                   {r.kind === 'volunteer-application' && (
                     <Link to="/staff/volunteers" className={btn.outline}>
@@ -220,6 +236,11 @@ export default function Inbox() {
                     </Link>
                   )}
                   <Notes row={r} onSave={(n) => setStatus(r, r.status, n)} />
+                  {next && (
+                    <Link to={next.to} className={btn.outline}>
+                      {next.label} <Icon name="chevron" size={15} />
+                    </Link>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {r.status !== 'done' && (
                       <button type="button" onClick={() => void setStatus(r, 'done')} className={btn.orange}>
@@ -253,6 +274,31 @@ export default function Inbox() {
         })}
       </ul>
     </div>
+  )
+}
+
+/** Everything the person sent, as label / value pairs; a photo is shown as a photo. */
+export function PayloadList({ payload }: { payload: Record<string, unknown> | null }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-1 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
+      {Object.entries(payload ?? {}).map(([key, raw]) => {
+        const value = asText(key, raw)
+        return (
+          <div key={key} className={isPhoto(value) || value.length > 80 ? 'sm:col-span-2' : ''}>
+            <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">{labelOf(key)}</dt>
+            <dd className="whitespace-pre-wrap break-words text-sm text-ink">
+              {isPhoto(value) ? (
+                <a href={value} target="_blank" rel="noopener noreferrer">
+                  <img src={value} alt={labelOf(key)} loading="lazy" className="mt-1 max-h-72 rounded-xl object-cover" />
+                </a>
+              ) : (
+                value
+              )}
+            </dd>
+          </div>
+        )
+      })}
+    </dl>
   )
 }
 
@@ -370,7 +416,7 @@ function PublishTail({ row, onPublished }: { row: Row; onPublished: () => void }
   )
 }
 
-function Notes({ row, onSave }: { row: Row; onSave: (notes: string) => Promise<void> }) {
+export function Notes({ row, onSave }: { row: Row; onSave: (notes: string) => Promise<void> }) {
   const [notes, setNotes] = useState(row.staff_notes ?? '')
   const dirty = notes !== (row.staff_notes ?? '')
   return (

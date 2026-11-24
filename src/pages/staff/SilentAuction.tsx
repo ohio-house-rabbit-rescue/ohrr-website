@@ -523,6 +523,7 @@ function ItemCard({
   orgId,
   isFirst,
   isLast,
+  fromDonation = false,
   onChanged,
   onMove,
 }: {
@@ -530,6 +531,8 @@ function ItemCard({
   orgId: string
   isFirst: boolean
   isLast: boolean
+  /** Made by sorting a donation, and still without a starting bid. */
+  fromDonation?: boolean
   onChanged: () => void
   onMove: (dir: -1 | 1) => Promise<void>
 }) {
@@ -648,6 +651,7 @@ function ItemCard({
               <Badge tone="blue">Available</Badge>
             )}
             {!item.is_published && <Badge tone="slate">Hidden</Badge>}
+            {fromDonation && <Badge tone="orange">From donations, no starting bid</Badge>}
             {!ev.online && <Badge tone="slate">{sessionLabel(item.session)}</Badge>}
           </div>
         </div>
@@ -1324,6 +1328,11 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  // Lots made by sorting a donation (Scan an item): the database makes them published, with no starting bid.
+  const [donatedIds, setDonatedIds] = useState<Set<string>>(new Set())
+  // ?show=items: the lots are on this page, so land on them.
+  const [params] = useSearchParams()
+  const wantsLots = params.get('show') === 'items'
 
   const load = useCallback(async () => {
     if (!orgId || !allowed) {
@@ -1342,8 +1351,26 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
     }
     setItems(sortForStaff((itemsRes.data ?? []) as AuctionItem[]))
     setSettings((settingsRes.data as AuctionSettings | null) ?? null)
+    // Which lots came from a sorted donation. A failed look just means no notice.
+    const fromDon = await supabase
+      .from('donation_items')
+      .select('tag:sorted_tag_id(raffle_item_id)')
+      .eq('org_id', orgId)
+      .eq('outcome', 'sorted')
+      .eq('sorted_kind', 'auction')
+    const ids = new Set<string>()
+    for (const r of (fromDon.data ?? []) as unknown as { tag: { raffle_item_id: string | null } | { raffle_item_id: string | null }[] | null }[]) {
+      const t = Array.isArray(r.tag) ? r.tag[0] : r.tag
+      if (t?.raffle_item_id) ids.add(t.raffle_item_id)
+    }
+    setDonatedIds(ids)
     setLoading(false)
   }, [orgId, allowed, ev.slug])
+
+  useEffect(() => {
+    if (!wantsLots || loading) return
+    document.getElementById('auction-lots')?.scrollIntoView({ block: 'start' })
+  }, [wantsLots, loading])
 
   useEffect(() => {
     void load()
@@ -1387,6 +1414,10 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
 
   const nextSortOrder = items.reduce((max, i) => Math.max(max, i.sort_order), -1) + 1
   const availableCount = items.filter((i) => i.status === 'available' && i.is_published).length
+  // Donated lots that still need a look: no starting bid yet. (They are already published.)
+  const needsLook = (i: AuctionItem) => donatedIds.has(i.id) && i.status === 'available' && i.starting_bid_cents == null
+  const lookCount = items.filter(needsLook).length
+  const canOpenItems = can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
 
   return (
     <div className="space-y-6">
@@ -1442,6 +1473,22 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
 
       <FormError>{error}</FormError>
 
+      {!loading && lookCount > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-1 text-base text-slate-800" role="status">
+          <span className="min-w-0 flex-1 py-2 font-bold">
+            {lookCount} lot{lookCount === 1 ? '' : 's'} came from donations and {lookCount === 1 ? 'has' : 'have'} no starting bid yet
+          </span>
+          <button type="button" onClick={() => document.getElementById('auction-lots')?.scrollIntoView({ block: 'start', behavior: 'smooth' })} className={`${btn.orange} shrink-0`}>
+            See the lots
+          </button>
+        </div>
+      )}
+      {!loading && canOpenItems && (
+        <Link to="/staff/items" className="inline-flex min-h-11 items-center font-bold text-brand-blue underline">
+          Donations still waiting to be sorted
+        </Link>
+      )}
+
       {loading ? (
         <Spinner label="Loading items…" />
       ) : items.length === 0 ? (
@@ -1451,13 +1498,13 @@ function AuctionManager({ onSwitch }: { onSwitch: (online: boolean) => void }) {
           </p>
         </Card>
       ) : (
-        <section className="space-y-2.5">
+        <section id="auction-lots" className="scroll-mt-24 space-y-2.5">
           <SectionLabel>
             Items · {items.length} total · {availableCount} available in the app
           </SectionLabel>
           <div className="grid grid-cols-1 gap-3">
             {items.map((item, i) => (
-              <ItemCard key={item.id} item={item} orgId={orgId} isFirst={i === 0} isLast={i === items.length - 1} onChanged={() => void load()} onMove={(dir) => move(item.id, dir)} />
+              <ItemCard key={item.id} item={item} orgId={orgId} isFirst={i === 0} isLast={i === items.length - 1} fromDonation={needsLook(item)} onChanged={() => void load()} onMove={(dir) => move(item.id, dir)} />
             ))}
           </div>
         </section>

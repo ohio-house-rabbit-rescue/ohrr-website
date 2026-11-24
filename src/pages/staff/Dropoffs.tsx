@@ -188,6 +188,9 @@ export function DropoffDetail() {
   const [edited, setEdited] = useState(false)
   const [letterNote, setLetterNote] = useState<string | null>(null)
   const [thankBusy, setThankBusy] = useState(false)
+  // After "Mark as thanked": the next drop-off still waiting for its letter, so the job carries on (staff audit 2026-11-24).
+  const [nextUp, setNextUp] = useState<{ id: string | null; left: number } | null>(null)
+  useEffect(() => setNextUp(null), [id])
 
   const fill = (x: Detail) => {
     setD(x)
@@ -258,6 +261,16 @@ export function DropoffDetail() {
     try {
       const o = await setDropoffThanked(orgId, d.id, yes)
       setD({ ...d, ...o, lines: d.lines })
+      setNextUp(null)
+      if (yes) {
+        // Best effort: without the list the page is as it was.
+        void listDropoffs(orgId, 200)
+          .then((rows) => {
+            const waiting = rows.filter((r) => !r.thanked_at && r.id !== d.id)
+            setNextUp({ id: waiting[0]?.id ?? null, left: waiting.length })
+          })
+          .catch(() => undefined)
+      }
     } catch (err) {
       setLetterNote(errMessage(err))
     } finally {
@@ -363,7 +376,16 @@ export function DropoffDetail() {
                             {l.value_total_cents != null ? ` · ${l.quantity > 1 && l.value_each_cents != null ? `${money(l.value_each_cents)} each · ${money(l.value_total_cents)} in all` : money(l.value_total_cents)}` : ''}
                             {l.split_from ? ' · split from a bigger lot' : ''}
                           </p>
-                          {lineCode(l) && <p className="font-mono text-xs font-bold tracking-widest text-slate-500">{lineCode(l)}</p>}
+                          {lineCode(l) && (
+                            <p>
+                              <Link
+                                to={`/staff/scan?code=${encodeURIComponent(lineCode(l))}&back=dropoff:${d.id}`}
+                                className="font-mono text-xs font-bold tracking-widest text-brand-blue underline-offset-2 hover:underline"
+                              >
+                                {lineCode(l)}
+                              </Link>
+                            </p>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -430,6 +452,19 @@ export function DropoffDetail() {
                   {d.thanked_at ? (
                     <>
                       <span className="text-base text-slate-800">Thanked {usDate(ohioDay(d.thanked_at))}.</span>
+                      {nextUp &&
+                        (nextUp.id ? (
+                          <Link to={`/staff/dropoffs/${nextUp.id}`} className={btn.orange}>
+                            Next one to thank ({nextUp.left} left) <Icon name="chevron" size={16} />
+                          </Link>
+                        ) : (
+                          <span className="text-base font-bold text-green-800">
+                            Everyone has been thanked.{' '}
+                            <Link to="/staff/dropoffs" className="text-brand-blue underline">
+                              All drop-offs
+                            </Link>
+                          </span>
+                        ))}
                       <button type="button" disabled={thankBusy} onClick={() => void thanked(false)} className={`${btn.outline} disabled:opacity-60`}>
                         Not thanked yet
                       </button>

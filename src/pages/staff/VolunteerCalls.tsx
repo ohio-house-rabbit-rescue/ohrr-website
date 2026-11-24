@@ -8,6 +8,7 @@ import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { fmtClock, fmtDay } from '../../lib/volunteers/calls'
 import { callRoster, listCalls, type CallRow } from '../../lib/volunteers/callsApi'
 import VolunteerCallDetail from './VolunteerCallDetail'
@@ -82,6 +83,7 @@ export default function VolunteerCalls() {
 
       {upcoming.length > 0 && <CallList title="Coming up" rows={upcoming} fill={fill} />}
       {past.length > 0 && <CallList title="Done" rows={past} fill={fill} past />}
+      <GoesWith links={[{ to: '/staff/bookings', label: 'Volunteer shifts' }, { to: '/staff/volunteers', label: 'Volunteers' }]} />
     </div>
   )
 }

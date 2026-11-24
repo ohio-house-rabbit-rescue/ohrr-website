@@ -3,6 +3,7 @@ import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { LIMIT_KINDS, OPP_CATEGORIES, categoryLabel, remainingLabel } from '../../lib/volunteerOpps'
 
 interface Opp {
@@ -334,6 +335,7 @@ export default function ManageVolunteer() {
           )}
         </div>
       )}
+      <GoesWith links={[{ to: '/staff/calls', label: 'Volunteer calls' }, { to: '/staff/volunteers', label: 'Volunteers' }]} />
     </div>
   )
 }

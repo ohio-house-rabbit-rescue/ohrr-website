@@ -22,6 +22,7 @@ import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
 import { StaffTitle, Explain } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { copyText } from '../../lib/share/share'
 import { bccMailto, exportCsv, toCsv } from '../../lib/exportFile'
 import {
@@ -197,6 +198,7 @@ export default function Volunteers() {
       {rows && shown === 'certificates' && suggestions && (
         <Certificates orgId={orgId} rows={rows} suggestions={suggestions} marks={marks} by={user?.id ?? null} onChanged={load} />
       )}
+      <GoesWith links={[{ to: '/staff/calls', label: 'Volunteer calls' }, { to: '/staff/bookings', label: 'Volunteer shifts' }]} />
     </div>
   )
 }

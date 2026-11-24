@@ -8,6 +8,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { isMissingFunction } from '../../lib/emailList'
 
 /** What people can ask to be notified about, in the app's words. */
@@ -235,6 +236,7 @@ export default function SendNotification() {
               )}
               {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
               {msg && <p className="text-sm font-semibold text-green-700">{msg}</p>}
+              {msg && <GoesWith links={[{ to: '/staff/announcements', label: 'Post it as an announcement too' }, { to: '/staff/posts?view=kit', label: 'Make a social post' }]} />}
               <button
                 type="submit"
                 disabled={busy || !counts.ready || count === 0 || !title.trim() || badUrl || (link === 'custom' && !url)}

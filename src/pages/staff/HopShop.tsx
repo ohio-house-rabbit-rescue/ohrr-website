@@ -156,6 +156,9 @@ function usePacksReady(): boolean | null {
 }
 
 // Small local stand-ins for the app's shell pieces.
+/** Sorted in from a donation and not priced yet: the database leaves it hidden with a price of 0. */
+const needsPrice = (p: { is_active: boolean; price_cents: number | null }) => !p.is_active && (p.price_cents ?? 0) === 0
+
 function Screen({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={className}>{children}</div>
 }
@@ -294,6 +297,22 @@ function Items({
   // ?add=1&code=X (Scan an item, a packet barcode): the same, with that barcode filled in.
   // ?code=X (Scan an item, "Open it"): that product's card, opened for editing.
   const [params, setParams] = useSearchParams()
+  const { can: canDo } = useStaff()
+  // Donations still waiting to be sorted live in Items; only people who can open Items get the link.
+  const canOpenItems = canDo('events.bunfest.manage') || perms.canCreate || perms.canEdit || perms.canInventory
+  // ?need=price: only the items that came from donations and wait for a price.
+  const onlyNeedPrice = params.get('need') === 'price'
+  const setNeedPrice = (on: boolean) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        if (on) next.set('need', 'price')
+        else next.delete('need')
+        next.delete('show')
+        return next
+      },
+      { replace: true },
+    )
   const wantsAdd = params.get('add') === '1'
   const codeParam = params.get('code')
   // A new item left half-entered in this browser opens again where it was.
@@ -375,12 +394,14 @@ function Items({
 
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
-    if (!t) return rows ?? []
-    return (rows ?? []).filter((p) =>
+    const base = onlyNeedPrice ? (rows ?? []).filter(needsPrice) : (rows ?? [])
+    if (!t) return base
+    return base.filter((p) =>
       [p.name, p.code, p.sku, p.barcode, p.type_name, p.category, p.supplier_name, p.supplier_sku, p.shelf].some((v) => v && v.toLowerCase().includes(t)),
     )
-  }, [rows, q])
+  }, [rows, q, onlyNeedPrice])
 
+  const needPrice = (rows ?? []).filter(needsPrice).length
   const low = (rows ?? []).filter(isLow).length
 
   return (
@@ -423,6 +444,32 @@ function Items({
             OK
           </button>
         </p>
+      )}
+      {onlyNeedPrice ? (
+        <div className="space-y-1 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-base text-slate-700">
+          <p>These came from donations. They stay hidden from the shop until they have a price. Open one, type the price, check “Show on the shelf”, and save.</p>
+          <button type="button" onClick={() => setNeedPrice(false)} className="inline-flex min-h-11 items-center font-bold text-brand-blue underline">
+            See the whole shelf
+          </button>
+          {canOpenItems && (
+            <div>
+              <Link to="/staff/items" className="inline-flex min-h-11 items-center font-bold text-brand-blue underline">
+                Donations still waiting to be sorted
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : (
+        needPrice > 0 && (
+          <div className="flex flex-wrap items-center gap-x-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-1 text-base text-slate-800" role="status">
+            <span className="min-w-0 flex-1 py-2 font-bold">
+              {needPrice} item{needPrice === 1 ? '' : 's'} from donations {needPrice === 1 ? 'needs' : 'need'} a price
+            </span>
+            <button type="button" onClick={() => setNeedPrice(true)} className={`${btn.orange} shrink-0`}>
+              Set the prices
+            </button>
+          </div>
+        )
       )}
       {low > 0 && (
         <p className="text-xs font-bold text-brand-orange-dark">
@@ -478,7 +525,12 @@ function Items({
           </p>
         </Card>
       )}
-      {rows && rows.length > 0 && shown.length === 0 && <p className="text-sm text-slate-500">Nothing matches “{q}”.</p>}
+      {onlyNeedPrice && rows && !q.trim() && shown.length === 0 && (
+        <Card className="border-slate-200 bg-slate-50/80 text-center">
+          <p className="text-sm leading-relaxed text-slate-600">Nothing is waiting for a price.</p>
+        </Card>
+      )}
+      {rows && rows.length > 0 && shown.length === 0 && q.trim() && <p className="text-sm text-slate-500">Nothing matches “{q}”.</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {shown.map((p) => (
           <div
@@ -583,6 +635,7 @@ function ProductCard({
           <div className="flex flex-wrap items-center gap-1.5">
             <h3 className="font-display text-[15px] font-extrabold text-ink">{p.name}</h3>
             {!p.is_active && <Badge tone="slate">Hidden</Badge>}
+            {needsPrice(p) && <Badge tone="orange">Needs a price</Badge>}
             {low && <Badge tone="orange">Low</Badge>}
             {p.on_order_qty > 0 && <Badge tone="blue">{p.on_order_qty} on order</Badge>}
           </div>
@@ -1217,6 +1270,9 @@ function ProductForm({
         <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-brand-blue" checked={d.is_active} onChange={(e) => setD((x) => ({ ...x, is_active: e.target.checked }))} />
         Show on the shelf
       </label>
+      {initial && needsPrice(initial) && (
+        <p className="text-sm text-slate-600">Check this when the price is right, and it shows in the shop.</p>
+      )}
 
       <FormError>{error}</FormError>
       <div className="flex gap-2">

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { btn, Card } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { OHRR } from '../../lib/constants'
 import { utm } from '../../lib/share/templates'
 
@@ -101,6 +102,7 @@ export default function Flyers() {
         <Card className="mt-6 max-w-xl">
           <FlyerSheet f={pick} qr={qr} accent={accent} preview />
         </Card>
+        <GoesWith className="mt-6" links={[{ to: '/staff/outreach', label: 'Outreach letters' }, { to: '/staff/posts?view=kit', label: 'Share kit' }]} />
       </div>
       <div className="hidden print:block">
         <FlyerSheet f={pick} qr={qr} accent={accent} />

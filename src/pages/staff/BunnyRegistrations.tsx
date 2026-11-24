@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStaff, Spinner, staffInput } from '../../lib/staff'
 import { btn, Card } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import {
   activityLabel,
   deleteRegistration,
@@ -319,6 +320,7 @@ export default function StaffBunnyRegistrations() {
           )}
         </>
       )}
+      <GoesWith links={[{ to: '/staff/bunfest', label: 'BunFest content' }]} />
     </div>
   )
 }

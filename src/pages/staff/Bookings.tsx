@@ -8,6 +8,7 @@ import { bccMailto, exportCsv, toCsv } from '../../lib/exportFile'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import {
   dayKey,
   deleteSlot,
@@ -113,6 +114,7 @@ export default function StaffBookings() {
       {types && tab === 'roster' && <Roster orgId={orgId} />}
       {types && tab === 'times' && <MakeTimes types={types} />}
       {types && tab === 'setup' && <Setup orgId={orgId} types={types} approvals={approvals} onChanged={reloadTypes} />}
+      <GoesWith links={[{ to: '/staff/calls', label: 'Volunteer calls' }, { to: '/staff/volunteers', label: 'Volunteers' }, { to: '/staff/rabbits', label: 'Adoptable rabbits' }]} />
     </Screen>
   )
 }

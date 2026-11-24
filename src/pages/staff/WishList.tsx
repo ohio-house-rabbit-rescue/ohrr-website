@@ -10,6 +10,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, ext, Card } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { AMAZON_WISH_LIST } from '../../lib/constants'
 import { isMissingTable } from '../../lib/emailList'
 import { WISH_LIST_COLUMNS, cleanAmazonUrl, isAmazonUrl, sortWishList, type WishListItem } from '../../lib/wishList'
@@ -324,6 +325,7 @@ export default function WishList() {
       )}
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
       {msg && <p className="mt-4 text-sm font-semibold text-green-700">{msg}</p>}
+      <GoesWith links={[{ to: '/staff/supporters', label: 'Supporters' }, { to: '/staff/guardians', label: 'Rescue Rabbit Guardians' }]} />
     </div>
   )
 }

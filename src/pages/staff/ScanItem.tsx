@@ -28,6 +28,7 @@ import Scanner from '../../components/Scanner'
 import { StaffTitle } from '../../components/StaffTitle'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
 import { boxTitle, isBoxCode, isDonationCode, isRetailBarcode, normalizeCode } from '../../lib/codes'
+import { backParam, backTarget } from '../../lib/backTo'
 import { KIND_META, extrasSummary, findByCode, itemPhotos, kindLabel, money, statusLabel, type TaggedItem } from '../../lib/items'
 import { PhotoUnreadable, readCodeFromImage } from '../../lib/readCode'
 
@@ -41,12 +42,12 @@ const linkClass = 'font-bold text-brand-blue underline-offset-2 hover:underline'
 const toolBox = 'flex min-h-16 w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-center text-base font-bold transition'
 
 /** Where an item is edited: shop stock in Hop Shop inventory, everything else on Items. */
-const openItemPath = (item: Pick<TaggedItem, 'kind' | 'code'>) =>
-  item.kind === 'stock' ? `/staff/hopshop?code=${encodeURIComponent(item.code)}` : `/staff/items?code=${encodeURIComponent(item.code)}`
+const openItemPath = (item: Pick<TaggedItem, 'kind' | 'code'>, back?: string | null) =>
+  item.kind === 'stock' ? `/staff/hopshop?code=${encodeURIComponent(item.code)}` : `/staff/items?code=${encodeURIComponent(item.code)}${backParam(back)}`
 
 /** Where its label prints: shop stock on the Hop Shop price labels, everything else with the donations. */
-const labelPath = (item: Pick<TaggedItem, 'kind' | 'code'>) =>
-  `${item.kind === 'stock' ? '/staff/hopshop/labels' : '/staff/items/labels'}?code=${encodeURIComponent(item.code)}`
+const labelPath = (item: Pick<TaggedItem, 'kind' | 'code'>, back?: string | null) =>
+  `${item.kind === 'stock' ? '/staff/hopshop/labels' : '/staff/items/labels'}?code=${encodeURIComponent(item.code)}${backParam(back)}`
 
 export default function ScanItem() {
   const { membership, can } = useStaff()
@@ -283,7 +284,7 @@ export default function ScanItem() {
         </p>
       )}
 
-      {result && 'item' in result && <Found item={result.item} onLookup={(c) => void lookup(c)} onAnother={scanAnother} />}
+      {result && 'item' in result && <Found item={result.item} back={params.get('back')} onLookup={(c) => void lookup(c)} onAnother={scanAnother} />}
       {result && 'code' in result && <NotFound code={result.code} canAddStock={canAddStock} onAnother={scanAnother} />}
 
       {!result && !busy && (
@@ -312,7 +313,9 @@ export default function ScanItem() {
 
 /* ------------------------------------------------------------ found */
 
-function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (code: string) => void; onAnother: () => void }) {
+function Found({ item, back, onLookup, onAnother }: { item: TaggedItem; back: string | null; onLookup: (code: string) => void; onAnother: () => void }) {
+  // Where it was opened from (a box, a drop-off, the report, the spreadsheet): Back returns there (see lib/backTo.ts).
+  const cameFrom = backTarget(back)
   const k = KIND_META[item.kind]
   const tile = k.tone === 'orange' ? 'bg-brand-orange-50 text-brand-orange-ink' : 'bg-brand-blue-50 text-brand-blue'
   const cover = itemPhotos(item)[0]
@@ -347,10 +350,10 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
           {item.box && (
             <p className="text-base font-semibold text-slate-700">
               In{' '}
-              <Link to={`/staff/boxes/${item.box.code}`} className={linkClass}>
+              <Link to={`/staff/boxes/${encodeURIComponent(item.box.code)}`} className={linkClass}>
                 {boxTitle(item.box)}
               </Link>
-              {item.box.location ? ` · ${item.box.location}` : ''}
+              {item.box.location ? '' : ' · this box has no place yet'}
             </p>
           )}
           <p className="font-mono text-base font-bold tracking-widest text-slate-500">{item.code}</p>
@@ -365,12 +368,22 @@ function Found({ item, onLookup, onAnother }: { item: TaggedItem; onLookup: (cod
         </p>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link to={openItemPath(item)} className={`${btn.orange} min-w-36 text-base`} aria-describedby="open-where">
+        <Link to={openItemPath(item, back)} className={`${btn.orange} min-w-36 text-base`} aria-describedby="open-where">
           Open it
         </Link>
-        <Link to={labelPath(item)} className={`${btn.outline} text-base`}>
+        <Link to={labelPath(item, back)} className={`${btn.outline} text-base`}>
           <Icon name="printer" size={18} /> Print its label
         </Link>
+        {item.kind === 'donation' && item.dropoff_id && (
+          <Link to={`/staff/dropoffs/${item.dropoff_id}`} className={`${btn.outline} text-base`}>
+            <Icon name="mail" size={18} /> Its drop-off and thank-you letter
+          </Link>
+        )}
+        {cameFrom && (
+          <Link to={cameFrom.to} className={`${btn.outline} text-base`}>
+            <Icon name="arrowLeft" size={18} /> {cameFrom.long}
+          </Link>
+        )}
         <button type="button" onClick={onAnother} className={`${btn.outline} text-base`}>
           <Icon name="scan" size={18} /> Scan another
         </button>

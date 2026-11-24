@@ -35,6 +35,7 @@ import {
   type LabelItem,
   type LabelSize,
 } from '../../lib/labels'
+import { backTarget } from '../../lib/backTo'
 import { setSetting, useSetting, type Json } from '../../lib/settings'
 import { listenForLabelChanges, tellOthersLabelsChanged } from '../../lib/labelSync'
 import { PAGE_SIZE, SHOW_OPTIONS, SORT_OPTIONS, WHEN_OPTIONS, filterRows, groupByDay, loadView, saveView, type ListView } from '../../lib/labelList'
@@ -142,6 +143,8 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
     [searchParams, perCode],
   )
   const wantedCopies = Number(searchParams.get('copies')) || 0
+  // Opened from receiving, a box, a drop-off, the report or the spreadsheet (?back=): Back returns there, not to the Items front page.
+  const cameFrom = backTarget(searchParams.get('back'))
   const toLabel = (r: Row): LabelItem => (shop ? { ...r.label, price_cents: showPrice ? r.price_cents : null } : r.label)
   // Show / Added / Kind / Sort, kept on this computer ("Print its label" links show just their items).
   const [view, setViewState] = useState<ListView>(() => (wanted.length ? { ...loadView(), show: 'ticked' } : loadView()))
@@ -390,8 +393,8 @@ export default function PrintLabels({ mode = 'items' }: { mode?: Mode }) {
   return (
     <>
       <div className="print:hidden">
-        <Link to={shop ? '/staff/hopshop' : '/staff/items'} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
-          <Icon name="arrowLeft" size={16} /> {shop ? 'Hop Shop inventory' : 'Items'}
+        <Link to={cameFrom ? cameFrom.to : shop ? '/staff/hopshop' : '/staff/items'} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-brand-blue">
+          <Icon name="arrowLeft" size={16} /> {cameFrom ? cameFrom.long : shop ? 'Hop Shop inventory' : 'Items'}
         </Link>
         <StaffTitle title={shop ? 'Hop Shop labels' : 'Print labels'} flow={['Check items', 'Choose size', 'Print']}>
           <p className="max-w-2xl">

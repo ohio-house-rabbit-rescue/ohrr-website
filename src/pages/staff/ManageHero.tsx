@@ -4,6 +4,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { slideVisual } from '../../data/heroSlides'
 
 // Home-page hero slides + featured cards (shared `hero_slides` table — the app's home
@@ -391,6 +392,7 @@ export default function ManageHero() {
           )
         })
       )}
+      <GoesWith links={[{ to: '/staff/announcements', label: 'Announcements' }]} />
     </div>
   )
 }

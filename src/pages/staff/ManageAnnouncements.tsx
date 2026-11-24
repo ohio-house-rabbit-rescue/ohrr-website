@@ -5,6 +5,7 @@ import { isMissingImageColumn } from '../../lib/data'
 import { uploadSiteImage } from '../../lib/images'
 import { btn } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 
 interface Ann {
   id: string
@@ -168,6 +169,8 @@ export default function ManageAnnouncements() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  // The title just posted, so the next steps can be offered.
+  const [posted, setPosted] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   // False once Supabase says the `image_url` column doesn't exist yet.
   const [imagesSupported, setImagesSupported] = useState(true)
@@ -210,6 +213,7 @@ export default function ManageAnnouncements() {
   const create = async (d: Draft) => {
     await write((p) => supabase.from('announcements').insert({ org_id: orgId, created_by: userId, ...p }), d)
     setCreating(false)
+    setPosted(d.is_published ? d.title.trim() : null)
     await load()
   }
   const saveEdit = (id: string) => async (d: Draft) => {
@@ -252,6 +256,13 @@ export default function ManageAnnouncements() {
       )}
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
+
+      {posted && !creating && (
+        <div className="mt-4">
+          <p className="text-sm font-bold text-green-700">Posted “{posted}”. It is showing on the home page now.</p>
+          <GoesWith links={[{ to: '/staff/posts?view=kit', label: 'Make a social post about it' }, { to: '/staff/notify', label: 'Send a notification about it' }]} />
+        </div>
+      )}
 
       {loading ? (
         <Spinner />

@@ -3,6 +3,7 @@
 // app repo). Reservations, mark paid, sell at the table, draw winners or
 // record the bucket number.
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
@@ -64,6 +65,10 @@ export default function RaffleTicketsDesk() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
   const [prizes, setPrizes] = useState<Prize[]>([])
+  // ?show=prizes: the prize list is the Prize choice in the Draw card on this page, so land there.
+  const [params] = useSearchParams()
+  const wantsPrizes = params.get('show') === 'prizes'
+  const canOpenItems = can('events.bunfest.manage') || can('hopshop.products.create') || can('hopshop.products.edit') || can('hopshop.inventory.update')
   const [list, setList] = useState<Winner[]>([])
   const [prizeId, setPrizeId] = useState('')
   const [bucketNo, setBucketNo] = useState('')
@@ -98,6 +103,11 @@ export default function RaffleTicketsDesk() {
     const t = setTimeout(() => void load(), 250)
     return () => clearTimeout(t)
   }, [load])
+
+  useEffect(() => {
+    if (!wantsPrizes || orders === null) return
+    document.getElementById('raffle-prizes')?.scrollIntoView({ block: 'start' })
+  }, [wantsPrizes, orders])
 
   if (!can('events.bunfest.manage')) return <p className="text-slate-600">You don’t have access to the raffle desk.</p>
 
@@ -166,6 +176,11 @@ export default function RaffleTicketsDesk() {
           Numbered tickets reserved in the app and paid at the raffle table; tickets sold at the table; the draw. Prices come from the app’s Silent Auction → Auction setup; prizes from Scan an item.
         </p>
       </StaffTitle>
+      {canOpenItems && (
+        <Link to="/staff/items" className="mt-2 inline-flex min-h-11 items-center font-bold text-brand-blue underline">
+          Donations still waiting to be sorted
+        </Link>
+      )}
       {summary && (
         <div className="mt-5 grid max-w-xl grid-cols-4 gap-3 text-center">
           {[
@@ -262,6 +277,7 @@ export default function RaffleTicketsDesk() {
             </Card>
           </form>
 
+          <div id="raffle-prizes" className="scroll-mt-24">
           <Card className="space-y-3">
             <h2 className="font-display text-lg font-extrabold text-ink">Draw</h2>
             <label className="block text-sm font-semibold text-slate-700">
@@ -309,6 +325,7 @@ export default function RaffleTicketsDesk() {
               </ul>
             )}
           </Card>
+          </div>
         </div>
       </div>
     </div>

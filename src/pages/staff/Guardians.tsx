@@ -8,6 +8,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { guessSortName, sortGuardians, type Guardian } from '../../lib/guardians'
 
 export default function Guardians() {
@@ -273,6 +274,7 @@ export default function Guardians() {
       )}
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
       {msg && <p className="mt-4 text-sm font-semibold text-green-700">{msg}</p>}
+      <GoesWith links={[{ to: '/staff/supporters', label: 'Supporters' }, { to: '/staff/wish-list', label: 'Wish list items' }]} />
     </div>
   )
 }

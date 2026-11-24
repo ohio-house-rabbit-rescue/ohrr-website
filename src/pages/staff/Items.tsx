@@ -41,7 +41,7 @@
 // Bunny Care), which Admin 1 and up can add to; an event's item is a raffle
 // prize, an auction lot or used there. A box is given its place when started.
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner, shortDate, todayOhio } from '../../lib/staff'
 import { uploadItemPhoto } from '../../lib/hopshop'
@@ -109,6 +109,8 @@ import {
 } from '../../lib/items'
 import { dropoffName, loadCurrentDropoff, saveCurrentDropoff } from '../../lib/donations'
 import { boxTitle, isDonationCode, normalizeCode } from '../../lib/codes'
+import { keptAt, placeFromBox } from '../../lib/sheetSave'
+import { backTarget, cleanBack, type BackTo } from '../../lib/backTo'
 import { boxByCode, loadPackingBox, newBox, putInBox, savePackingBox, type Box, type PackingBox } from '../../lib/boxes'
 import BoxNameEditor from '../../components/BoxNameEditor'
 import PhotoDrop, { fileFocus } from '../../components/PhotoDrop'
@@ -165,15 +167,15 @@ export const SHEET_COLUMNS: SheetColumn[] = [
   { header: 'Bought from', width: 18 },
   { header: 'How many', width: 10, kind: 'number' },
   { header: 'Size', width: 12 },
-  { header: 'Value each', width: 12, kind: 'money' },
-  { header: 'Value in all', width: 12, kind: 'money' },
+  { header: 'Worth each', width: 12, kind: 'money' },
+  { header: 'Worth in all', width: 12, kind: 'money' },
   { header: 'Price', width: 10, kind: 'money' },
   { header: 'Condition', width: 11 },
   { header: 'Sort of thing', width: 16 },
   { header: 'Where it’s kept', width: 18 },
   { header: 'Box', width: 16 },
   { header: 'Use by', width: 13, kind: 'date' },
-  { header: 'Description', width: 40 },
+  { header: 'Notes', width: 40 },
   { header: 'Label printed', width: 13, kind: 'date' },
   { header: 'Added', width: 13, kind: 'date' },
 ]
@@ -209,7 +211,7 @@ export function sheetRow(i: TaggedItem): SheetRow {
       i.price_cents,
       conditionLabel(i.condition),
       i.category,
-      i.location,
+      keptAt(i) || null,
       boxCell(i.box),
       i.use_by,
       i.description,
@@ -225,7 +227,7 @@ const FILTERS: Filter[] = ['donation', 'all', 'auction', 'raffle', 'stock']
 type DonationView = 'waiting' | 'unsure' | HeadedFor | 'done'
 const DONATION_VIEWS: { v: DonationView; label: string }[] = [
   { v: 'waiting', label: 'All waiting' },
-  { v: 'unsure', label: 'Not sure yet' },
+  { v: 'unsure', label: 'Needs a decision' },
   { v: 'raffle', label: 'Raffle' },
   { v: 'auction', label: 'Silent Auction' },
   { v: 'event', label: 'Used at an event' },
@@ -255,6 +257,13 @@ const smallBtn =
   'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-brand-blue disabled:opacity-60'
 
 const linkClass = 'font-bold text-brand-blue underline-offset-2 hover:underline'
+
+/** Where sorted things live now: the page, what to call the link, and which kind of staff may open it (the same checks as the menu tiles). */
+const WHERE_NOW = {
+  raffle: { to: '/staff/raffle-tickets?show=prizes', label: 'See the raffle prizes' },
+  auction: { to: '/staff/auction?show=items', label: 'See the auction lots' },
+  shop: { to: '/staff/hopshop?need=price', label: 'Give them prices in the Hop Shop' },
+} as const
 
 // One line under the title: how an item moves through OHRR.
 const ITEMS_FLOW = ['Receive', 'Label', 'Put away', 'Sort by use', 'Sell, raffle or use']
@@ -293,6 +302,10 @@ export default function Items() {
   const [params, setParams] = useSearchParams()
   const wantsAdd = params.get('add') === '1'
   const codeParam = params.get('code')
+  // ?code=X&back=… (the spreadsheet, a box, a drop-off, the report, receiving: see lib/backTo.ts): Back and Close return there.
+  const backCode = cleanBack(params.get('back'))
+  const [cameBack, setCameBack] = useState<BackTo | null>(null)
+  const navigate = useNavigate()
   // ?add=1&box=1 (Receive into boxes): the same form, explaining boxes first.
   const wantsBox = params.get('box') === '1'
   const [boxMode, setBoxMode] = useState(false)
@@ -335,6 +348,7 @@ export default function Items() {
       setFocusAdd((n) => n + 1)
     } else if (code) {
       setOpenCode(code)
+      if (backCode) setCameBack(backTarget(backCode))
     }
     setParams(
       (p) => {
@@ -342,11 +356,12 @@ export default function Items() {
         next.delete('add')
         next.delete('code')
         next.delete('box')
+        next.delete('back')
         return next
       },
       { replace: true },
     )
-  }, [wantsAdd, wantsBox, codeParam, setParams])
+  }, [wantsAdd, wantsBox, codeParam, backCode, setParams])
 
   // ?code=X: once the list is in, open that item (or say nothing has the code).
   useEffect(() => {
@@ -402,7 +417,7 @@ export default function Items() {
           i.code.toLowerCase().includes(n) ||
           (i.donated_by ?? '').toLowerCase().includes(n) ||
           // Also who it was bought from, where it's kept and the box it's in.
-          [i.bought_from, i.location, i.category, i.box ? `box ${i.box.box_no} ${i.box.code} ${i.box.name ?? ''}` : ''].some((t) => (t ?? '').toLowerCase().includes(n))),
+          [i.bought_from, keptAt(i), i.category, i.box ? `box ${i.box.box_no} ${i.box.code} ${i.box.name ?? ''}` : ''].some((t) => (t ?? '').toLowerCase().includes(n))),
     )
     // Newest first is the order the list already comes in; the others re-sort it.
     if (order === 'name') rows.sort((a, b) => a.title.localeCompare(b.title))
@@ -465,6 +480,29 @@ export default function Items() {
   // The database checks for real (can_manage_item_kind); this only decides what to show.
   const mayEdit = (it: TaggedItem) => (it.kind === 'stock' ? canStock : it.kind === 'donation' ? canDonations : canAuction)
   const mayMoveTo = (k: ItemKind) => (k === 'stock' ? canAddStock : canAuction)
+  /** A link to where sorted things live now, only for someone who may open that page. */
+  const nowLink = (k: 'raffle' | 'auction' | 'shop', text?: string, to?: string): ReactNode =>
+    (k === 'shop' ? canStock : canAuction) ? (
+      <Link to={to ?? WHERE_NOW[k].to} className={linkClass}>
+        {text ?? WHERE_NOW[k].label}
+      </Link>
+    ) : null
+  /** One calm line for a shop product, auction lot or raffle prize: where it lives now. */
+  const livesNow = (it: TaggedItem): ReactNode => {
+    if (it.kind === 'stock') {
+      const needsPrice = !it.is_published && !it.price_cents
+      return needsPrice ? (
+        <>
+          This is in the Hop Shop now, but hidden: it needs a price before shoppers see it. {nowLink('shop', 'Give it a price')}
+        </>
+      ) : (
+        'This is in the Hop Shop.'
+      )
+    }
+    if (it.kind === 'auction') return <>This is a Silent Auction lot now. {nowLink('auction')}</>
+    if (it.kind === 'raffle') return <>This is a raffle prize now. {nowLink('raffle')}</>
+    return null
+  }
 
   // "Move all" — the headed-for view picked, how many, and whether this person may.
   const headed: HeadedFor | null = filter === 'donation' && (view === 'raffle' || view === 'auction' || view === 'shop' || view === 'rabbits') ? view : null
@@ -483,12 +521,22 @@ export default function Items() {
     try {
       const n = await sortHeadedDonations(orgId, headed)
       await load()
-      setNote(
+      const text =
         headed === 'rabbits'
           ? `Marked ${n} as in use by OHRR.`
           : headed === 'shop'
             ? `Moved ${n} to the Hop Shop. Any without a price are hidden until they’re priced in Hop Shop inventory.`
-            : `Moved ${n} to ${PLACE_NAME[headed]}. Each kept its code, so its label still works.`,
+            : `Moved ${n} to ${PLACE_NAME[headed]}. Each kept its code, so its label still works.`
+      // The next step: where they live now.
+      const next = headed !== 'rabbits' && n > 0 ? nowLink(headed) : null
+      setNote(
+        next ? (
+          <>
+            {text} {next}
+          </>
+        ) : (
+          text
+        ),
       )
     } catch (e) {
       setBulkError(errMessage(e))
@@ -533,11 +581,6 @@ export default function Items() {
           <Link to="/staff/items/labels" className={btn.blue}>
             <Icon name="printer" size={16} /> Print labels
           </Link>
-          {canDonations && (
-            <Link to="/staff/items/sheet" className={btn.outline}>
-              <Icon name="file" size={16} /> Spreadsheet
-            </Link>
-          )}
           <Link to="/staff/boxes" className={btn.outline}>
             <Icon name="box" size={16} /> Boxes
           </Link>
@@ -559,6 +602,13 @@ export default function Items() {
           )}
         </div>
       </div>
+      {canDonations && (
+        <p className="mt-3">
+          <Link to="/staff/items/sheet" className={`inline-flex min-h-11 items-center gap-1.5 ${linkClass}`}>
+            <Icon name="file" size={16} /> See and change them all in a spreadsheet (best on a computer)
+          </Link>
+        </p>
+      )}
 
       {canDonations && (
         <AddDonation
@@ -653,6 +703,13 @@ export default function Items() {
       )}
 
       {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
+      {cameBack && (
+        <p className="mt-4">
+          <Link to={cameBack.to} className={`${btn.outline} text-base`}>
+            <Icon name="arrowLeft" size={16} /> {cameBack.long}
+          </Link>
+        </p>
+      )}
       {note && (
         <div className="mt-4 rounded-xl bg-brand-blue-50 px-3 py-2 text-base text-slate-800" role="status">
           {note}{' '}
@@ -677,7 +734,7 @@ export default function Items() {
               <>
                 Made the basket “{basket.title}” for {basket.kind === 'auction' ? 'the Silent Auction' : 'the raffle'}. Its code is{' '}
                 <span className="font-mono font-bold tracking-widest">{basket.code}</span>. {adds}{' '}
-                <Link to={`/staff/items/labels?code=${encodeURIComponent(basket.code)}`} className={linkClass}>
+                <Link to={`/staff/items/labels?code=${encodeURIComponent(basket.code)}&back=items`} className={linkClass}>
                   Print its label
                 </Link>
               </>,
@@ -756,9 +813,19 @@ export default function Items() {
                     {donation && it.source === 'purchase' && it.bought_from ? ` · bought at ${it.bought_from}` : ''}
                     {!donation && it.kind !== 'stock' && it.value_cents != null ? ` · worth ${money(it.value_cents)}` : ''}
                     {donation && it.received_on ? ` · received ${shortDate(it.received_on)}` : ''}
-                    {it.box ? ` · in ${boxTitle(it.box)}${it.box.location ? ` (${it.box.location})` : ''}` : ''}
+                    {it.box && (
+                      <>
+                        {' · in '}
+                        <Link to={`/staff/boxes/${encodeURIComponent(it.box.code)}`} className={linkClass}>
+                          {boxTitle(it.box)}
+                        </Link>
+                        {it.box.location ? ` (${it.box.location})` : ''}
+                      </>
+                    )}
                   </p>
                   {extras && <p className="text-sm font-semibold text-slate-700">{extras}</p>}
+                  {!donation && it.kind !== 'stock' && <p className="text-sm text-slate-600">{livesNow(it)}</p>}
+                  {it.kind === 'stock' && !it.is_published && !it.price_cents && <p className="text-sm text-slate-600">{livesNow(it)}</p>}
                   {!donation && it.contents && it.contents.length > 0 && <BasketContents item={it} />}
                   <p className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-xs font-bold tracking-widest text-slate-500">
                     {it.code}
@@ -810,7 +877,12 @@ export default function Items() {
                       </button>
                     </>
                   )}
-                  <button type="button" onClick={() => toggle('edit')} aria-expanded={open === 'edit'} className={btn.outline}>
+                  <button
+                    type="button"
+                    onClick={() => (cameBack && open === 'edit' && spot === it.tag_id ? navigate(cameBack.to) : toggle('edit'))}
+                    aria-expanded={open === 'edit'}
+                    className={btn.outline}
+                  >
                     {open === 'edit' ? 'Close' : 'Edit'}
                   </button>
                   <button type="button" onClick={() => void remove(it)} className="min-h-11 px-2 text-sm font-bold text-red-600">
@@ -832,12 +904,16 @@ export default function Items() {
                         // Into the shop it gets a SKU (update 41); its DON number stays as a second code.
                         <>
                           “{saved.title}” is now Hop Shop stock, with the SKU <span className="font-mono font-bold">{saved.code}</span>. Its {it.code} label still scans.{' '}
-                          <Link to={`/staff/hopshop/labels?code=${encodeURIComponent(saved.code)}`} className={linkClass}>
+                          <Link to={`/staff/hopshop/labels?code=${encodeURIComponent(saved.code)}&back=items`} className={linkClass}>
                             Print its price label
                           </Link>
+                          {!saved.price_cents && <> {nowLink('shop', 'Give it a price')}</>}
                         </>
                       ) : (
-                        `“${saved.title}” is now in ${KIND_META[saved.kind].label} — same number, ${saved.code}, so its label still works.`
+                        <>
+                          “{saved.title}” is now in {KIND_META[saved.kind].label} — same number, {saved.code}, so its label still works.{' '}
+                          {saved.kind === 'raffle' ? nowLink('raffle') : saved.kind === 'auction' ? nowLink('auction') : null}
+                        </>
                       ),
                     )
                   }}
@@ -853,7 +929,7 @@ export default function Items() {
                     setNote(
                       <>
                         Split off {n} of “{it.title}”. The new part’s number is <span className="font-mono font-bold tracking-widest">{part.code}</span>.{' '}
-                        <Link to={`/staff/items/labels?code=${encodeURIComponent(part.code)}`} className={linkClass}>
+                        <Link to={`/staff/items/labels?code=${encodeURIComponent(part.code)}&back=items`} className={linkClass}>
                           Print its label
                         </Link>
                       </>,
@@ -875,6 +951,14 @@ export default function Items() {
                       <>
                         Saved: <strong>{saved.title}</strong> (<span className="font-mono font-bold tracking-widest">{saved.code}</span>).
                         {warn && <span className="block text-amber-900">{warn}</span>}
+                        {cameBack && (
+                          <>
+                            {' '}
+                            <Link to={cameBack.to} className={linkClass}>
+                              {cameBack.long}
+                            </Link>
+                          </>
+                        )}
                       </>,
                     )
                     document.getElementById(`item-${saved.tag_id}`)?.scrollIntoView({ block: 'nearest' })
@@ -1292,7 +1376,19 @@ function PlaceField({
  * kept — each optional, the same as the app's Catalog donations. Shop stock
  * shows only the sort of thing and its shelf (`only="place"`).
  */
-function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Partial<Details>) => void; suggestions: Suggestions; only?: 'place' }) {
+function DetailsFields({
+  v,
+  set,
+  suggestions,
+  only,
+  box,
+}: {
+  v: Details
+  set: (p: Partial<Details>) => void
+  suggestions: Suggestions
+  only?: 'place'
+  box?: TaggedItem['box']
+}) {
   // Used by Edit (a donation's details, or shop stock's sort and shelf).
   return (
     <div className="space-y-3">
@@ -1313,6 +1409,15 @@ function DetailsFields({ v, set, suggestions, only }: { v: Details; set: (p: Par
       )}
       <CategoryField value={v.category} set={(category) => set({ category })} suggestions={suggestions} />
       <PlaceField value={v.location} set={(location) => set({ location })} suggestions={suggestions} shelf={only === 'place'} />
+      {box && placeFromBox({ box }) && (
+        <p className="text-sm text-slate-700">
+          It’s in{' '}
+          <Link to={`/staff/boxes/${encodeURIComponent(box.code)}`} className={linkClass}>
+            {boxTitle(box)}
+          </Link>
+          , so it is kept where the box is: {box.location}. To move it, open the box.
+        </p>
+      )}
     </div>
   )
 }
@@ -2267,7 +2372,7 @@ function AddDonation({
             {lastBox ? (
               <span className={`block font-semibold ${lastBox.ok ? 'text-ink' : 'text-amber-900'}`}>{lastBox.text}</span>
             ) : (
-              <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
+              <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}&back=receive`} className="inline-flex min-h-11 items-center font-bold text-brand-blue">
                 Print its label →
               </Link>
             )}
@@ -2276,11 +2381,21 @@ function AddDonation({
           {last.details_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_39_ADD_NOTE}</p>}
           {last.plan_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_40_ADD_NOTE}</p>}
           {last.receiving_skipped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-900">{UPDATE_47_NOTE}</p>}
+          <p>
+            <Link to="/staff/items/sheet" className={`inline-flex min-h-11 items-center gap-1.5 text-base ${linkClass}`}>
+              <Icon name="file" size={16} /> See and fix them in the spreadsheet
+            </Link>
+          </p>
           {lastBox && (
             <div className="flex flex-wrap items-center gap-2">
-              <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}`} className={btn.blue}>
+              <Link to={`/staff/items/labels?code=${encodeURIComponent(last.code)}&back=receive-boxes`} className={btn.blue}>
                 <Icon name="printer" size={16} /> Print this label
               </Link>
+              {last.box && (
+                <Link to={`/staff/boxes/${encodeURIComponent(last.box.code)}`} className={btn.outline}>
+                  <Icon name="box" size={16} /> Open Box {last.box.box_no}
+                </Link>
+              )}
               {box && (
                 <button type="button" onClick={boxIsFull} className={btn.outline}>
                   <Icon name="box" size={16} /> Box is full
@@ -2640,7 +2755,7 @@ function EditForm({
       </div>
       {(stock || donation) &&
         (detailsReady ? (
-          <DetailsFields v={x} set={(p) => setX((cur) => ({ ...cur, ...p }))} suggestions={suggestions} only={stock ? 'place' : undefined} />
+          <DetailsFields v={x} set={(p) => setX((cur) => ({ ...cur, ...p }))} suggestions={suggestions} only={stock ? 'place' : undefined} box={item.box} />
         ) : (
           <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
             {stock

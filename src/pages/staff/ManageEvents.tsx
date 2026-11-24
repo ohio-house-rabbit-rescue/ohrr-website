@@ -4,12 +4,14 @@
 // permission (Manage Midwest BunFest info), same `site-images` bucket for the
 // picture.
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase, errMessage } from '../../lib/supabase'
 import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { uploadSiteImage } from '../../lib/images'
 import { btn, Card } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { formatDate, formatTimeRange } from '../../lib/format'
 import { sampleEvents } from '../../data/events'
 
@@ -334,11 +336,13 @@ function EventCard({ item, userId, onChanged }: { item: EventRow; userId: string
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
   const saveEdit = async (d: Draft) => {
     const { error } = await supabase.from('events').update(toRow(d)).eq('id', item.id)
     if (error) throw error
     setEditing(false)
+    setSaved(true)
     onChanged()
   }
 
@@ -417,6 +421,12 @@ function EventCard({ item, userId, onChanged }: { item: EventRow; userId: string
           )}
         </div>
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+        {saved && <p className="text-sm font-bold text-green-700">Saved.</p>}
+        {saved && item.is_published && (
+          <Link to="/events" className="inline-flex min-h-[44px] items-center text-sm font-bold text-brand-blue underline">
+            See it on the Events page
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -574,6 +584,7 @@ export default function ManageEvents() {
           )}
         </div>
       )}
+      <GoesWith links={[{ to: '/staff/bunfest', label: 'BunFest content' }, { to: '/staff/bunfest/bunnies', label: 'Bunny registrations' }]} />
     </div>
   )
 }

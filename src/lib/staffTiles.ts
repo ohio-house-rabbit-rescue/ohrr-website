@@ -122,6 +122,7 @@ export function useStaffTiles({ counts = false }: { counts?: boolean } = {}): St
 
     // Rabbits and care
     { to: '/staff/rabbits', title: 'Adoptable rabbits', hint: 'Rabbits, photos, adoption status', icon: 'heart', group: 'rabbits', show: canAdopt },
+    { to: '/staff/care-requests', title: 'Foster, surrender and found', hint: 'Requests to follow through to the end', icon: 'home', group: 'rabbits', show: can('inbox.manage') },
     { to: '/staff/tails', title: 'Happy Tails', hint: 'Adopters’ stories', icon: 'sparkles', group: 'rabbits', show: canCare || can('inbox.manage') },
     { to: '/staff/care', title: 'Care guides and pages', hint: 'Rabbit Care articles, Give, Adopt, About', icon: 'book', group: 'rabbits', show: canCare },
     { to: '/staff/bunny-help', title: 'Bunny Help topics', hint: 'What “My bunny is…” answers', icon: 'help', group: 'rabbits', show: canCare },

@@ -4,6 +4,7 @@ import { useStaff, staffInput, Spinner } from '../../lib/staff'
 import { errMessage, supabase } from '../../lib/supabase'
 import { btn, Card } from '../../components/ui'
 import { StaffTitle } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { IMPACT_FIELDS, type ImpactYear } from '../Impact'
 
 type Draft = { fields: Record<string, string>; highlights: string; note: string; is_published: boolean }
@@ -130,6 +131,7 @@ export default function ManageImpact() {
           </button>
         </form>
       )}
+      <GoesWith links={[{ to: '/staff/announcements', label: 'Announcements' }]} />
     </div>
   )
 }

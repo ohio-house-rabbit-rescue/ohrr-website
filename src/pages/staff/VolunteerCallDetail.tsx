@@ -17,6 +17,7 @@ import { errMessage } from '../../lib/supabase'
 import { Card, btn } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import { StaffTitle, Explain } from '../../components/StaffTitle'
+import { GoesWith } from '../../components/GoesWith'
 import { renderCard, canvasToBlob } from '../../lib/share/render'
 import { copyText, savePng } from '../../lib/share/share'
 import { printPng, renderFlyer } from '../../lib/share/flyerCanvas'
@@ -270,6 +271,12 @@ function SignupsTab({ call, roster }: { call: Call; roster: RosterLine[] }) {
             </ul>
           )}
         </Card>
+        <GoesWith
+          links={[
+            { to: '/staff/bookings', label: 'See these shifts in Volunteer shifts' },
+            { to: '/staff/volunteers', label: 'See everyone in Volunteers' },
+          ]}
+        />
       </div>
     </div>
   )
@@ -285,6 +292,7 @@ function fillOrg(body: string, to: string): string {
 }
 
 function ShareTab({ call, org }: { call: Call; org: OrgBits }) {
+  const { can } = useStaff()
   const [open, setOpen] = useState<Medium | null>('email-groups')
   const [to, setTo] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -443,6 +451,11 @@ function ShareTab({ call, org }: { call: Call; org: OrgBits }) {
                       >
                         {busy === `${m.id}-save` ? 'Making it…' : 'Download it'}
                       </button>
+                      {m.id === 'flyer' && can('announcements.post') && (
+                        <Link to="/staff/flyers" className={`${btn.outline} ${small}`}>
+                          More flyers
+                        </Link>
+                      )}
                     </>
                   )}
                   {m.id !== 'flyer' && (

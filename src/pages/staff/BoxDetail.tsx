@@ -468,7 +468,7 @@ export default function BoxDetail() {
                               <Icon name={KIND_META[i.kind]?.icon ?? 'box'} size={22} />
                             </span>
                           )}
-                          <Link to={`/staff/scan?code=${encodeURIComponent(i.code)}`} className="min-w-0 flex-1">
+                          <Link to={`/staff/scan?code=${encodeURIComponent(i.code)}&back=box:${encodeURIComponent(box.code)}`} className="min-w-0 flex-1">
                             <span className="block truncate font-display text-base font-extrabold text-ink">{i.title}</span>
                             <span className="block truncate font-mono text-sm font-bold text-slate-500">{i.code}</span>
                           </Link>
@@ -686,11 +686,18 @@ function Picker({ orgId, box, onPut, onCancel }: { orgId: string; box: Box; onPu
                       <span className="block truncate font-display text-base font-extrabold text-ink">{r.title}</span>
                       <span className="block truncate text-sm text-slate-600">
                         {r.sub}
-                        {r.box ? ` · now in ${boxTitle(r.box)}` : ''}
                       </span>
                     </span>
                     <span className="shrink-0 font-mono text-sm font-bold text-slate-500">{r.code}</span>
                   </label>
+                  {r.box && (
+                    <p className="px-3 pb-3 pl-[4.75rem] text-sm text-slate-600">
+                      Now in{' '}
+                      <Link to={`/staff/boxes/${encodeURIComponent(r.box.code)}`} className="font-bold text-brand-blue underline-offset-2 hover:underline">
+                        {boxTitle(r.box)}
+                      </Link>
+                    </p>
+                  )}
                 </li>
               )
             })}
